@@ -1,0 +1,16 @@
+{
+    "id": "prop_pink_virginia_avenue",
+    "name": "Virginia Avenue",
+    "type": "property",
+    "count": 1,
+    "bank_value": 2,
+    "property_group": "pink",
+    "set_size": 3,
+    "rent_by_count": [
+        1,
+        2,
+        4
+    ],
+    "bankable": true,
+    "image_url": "https://monopolydealrules.com/photos/cards/pink-property-card.png"
+}

@@ -1,0 +1,15 @@
+{
+    "id": "prop_utility_electric_company",
+    "name": "Electric Company",
+    "type": "property",
+    "count": 1,
+    "bank_value": 2,
+    "property_group": "utility",
+    "set_size": 2,
+    "rent_by_count": [
+        1,
+        2
+    ],
+    "bankable": true,
+    "image_url": "https://monopolydealrules.com/photos/cards/utility-property-card.png"
+}

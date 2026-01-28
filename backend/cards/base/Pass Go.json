@@ -1,0 +1,13 @@
+{
+    "id": "action_pass_go",
+    "name": "Pass Go",
+    "type": "action",
+    "count": 10,
+    "bank_value": 1,
+    "bankable": true,
+    "effect": {
+        "type": "draw_cards",
+        "amount": 2
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/pass-go-action-card.png"
+}

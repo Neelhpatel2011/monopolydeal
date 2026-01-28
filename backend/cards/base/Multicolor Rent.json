@@ -1,0 +1,20 @@
+{
+    "id": "multicolor_rent",
+    "name": "Multicolor Rent",
+    "type": "rent",
+    "count": 3,
+    "bank_value": 3,
+    "bankable": true,
+    "colors": [
+        "any"
+    ],
+    "effect": {
+        "type": "collect_rent",
+        "colors": [
+            "any"
+        ],
+        "target": "one_player",
+        "choose_color_if_multiple": false
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/all-color-wild-rent-card.png"
+}

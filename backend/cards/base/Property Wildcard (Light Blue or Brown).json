@@ -1,0 +1,17 @@
+{
+    "id": "wild_light_blue_brown",
+    "name": "Property Wildcard (Light Blue or Brown)",
+    "type": "property_wild",
+    "count": 1,
+    "bank_value": 1,
+    "bankable": true,
+    "colors": [
+        "light_blue",
+        "brown"
+    ],
+    "restrictions": {
+        "cannot_complete_set_with_only_wildcards": true,
+        "note": "A full set must include at least one standard (non-wild) property card."
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/light-blue-and-brown-wildcard-card.png"
+}

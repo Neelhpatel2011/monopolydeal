@@ -1,0 +1,16 @@
+{
+    "id": "prop_yellow_ventnor_avenue",
+    "name": "Ventnor Avenue",
+    "type": "property",
+    "count": 1,
+    "bank_value": 3,
+    "property_group": "yellow",
+    "set_size": 3,
+    "rent_by_count": [
+        2,
+        4,
+        6
+    ],
+    "bankable": true,
+    "image_url": "https://monopolydealrules.com/photos/cards/yellow-property-card.png"
+}

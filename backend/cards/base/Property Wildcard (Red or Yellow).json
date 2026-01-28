@@ -1,0 +1,17 @@
+{
+    "id": "wild_red_yellow",
+    "name": "Property Wildcard (Red or Yellow)",
+    "type": "property_wild",
+    "count": 2,
+    "bank_value": 3,
+    "bankable": true,
+    "colors": [
+        "red",
+        "yellow"
+    ],
+    "restrictions": {
+        "cannot_complete_set_with_only_wildcards": true,
+        "note": "A full set must include at least one standard (non-wild) property card."
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/red-and-yellow-wildcard-card.png"
+}

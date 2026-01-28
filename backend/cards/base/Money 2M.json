@@ -1,0 +1,9 @@
+{
+    "id": "money_2m",
+    "name": "Money 2M",
+    "type": "money",
+    "count": 5,
+    "bank_value": 2,
+    "bankable": true,
+    "image_url": "https://monopolydealrules.com/photos/cards/%242M-money-card.png"
+}

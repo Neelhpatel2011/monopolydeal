@@ -1,0 +1,13 @@
+{
+    "id": "action_sly_deal",
+    "name": "Sly Deal",
+    "type": "action",
+    "count": 3,
+    "bank_value": 3,
+    "bankable": true,
+    "effect": {
+        "type": "steal_property",
+        "from_full_set_allowed": false
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/sly-deal-action-card.png"
+}

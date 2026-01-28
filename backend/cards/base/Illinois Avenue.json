@@ -1,0 +1,16 @@
+{
+    "id": "prop_red_illinois_avenue",
+    "name": "Illinois Avenue",
+    "type": "property",
+    "count": 1,
+    "bank_value": 3,
+    "property_group": "red",
+    "set_size": 3,
+    "rent_by_count": [
+        2,
+        3,
+        6
+    ],
+    "bankable": true,
+    "image_url": "https://monopolydealrules.com/photos/cards/red-property-card.png"
+}

@@ -1,0 +1,13 @@
+{
+    "id": "action_forced_deal",
+    "name": "Forced Deal",
+    "type": "action",
+    "count": 3,
+    "bank_value": 3,
+    "bankable": true,
+    "effect": {
+        "type": "swap_property",
+        "from_full_set_allowed": false
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/force-deal-action-card.png"
+}

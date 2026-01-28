@@ -1,0 +1,22 @@
+{
+    "id": "rent_pink_orange",
+    "name": "Rent (Pink or Orange)",
+    "type": "rent",
+    "count": 2,
+    "bank_value": 1,
+    "bankable": true,
+    "colors": [
+        "pink",
+        "orange"
+    ],
+    "effect": {
+        "type": "collect_rent",
+        "colors": [
+            "pink",
+            "orange"
+        ],
+        "target": "all_others",
+        "choose_color_if_multiple": true
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/orange-and-pink-rent-card.png"
+}

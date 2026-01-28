@@ -1,0 +1,22 @@
+{
+    "id": "rent_dark_blue_green",
+    "name": "Rent (Dark Blue or Green)",
+    "type": "rent",
+    "count": 2,
+    "bank_value": 1,
+    "bankable": true,
+    "colors": [
+        "dark_blue",
+        "green"
+    ],
+    "effect": {
+        "type": "collect_rent",
+        "colors": [
+            "dark_blue",
+            "green"
+        ],
+        "target": "all_others",
+        "choose_color_if_multiple": true
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/blue-and-green-rent-card.png"
+}

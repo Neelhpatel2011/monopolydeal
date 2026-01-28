@@ -1,0 +1,22 @@
+{
+    "id": "rent_light_blue_brown",
+    "name": "Rent (Light Blue or Brown)",
+    "type": "rent",
+    "count": 2,
+    "bank_value": 1,
+    "bankable": true,
+    "colors": [
+        "light_blue",
+        "brown"
+    ],
+    "effect": {
+        "type": "collect_rent",
+        "colors": [
+            "light_blue",
+            "brown"
+        ],
+        "target": "all_others",
+        "choose_color_if_multiple": true
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/brown-and-light-blue-rent-card.png"
+}

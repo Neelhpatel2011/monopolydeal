@@ -1,0 +1,20 @@
+{
+    "id": "action_hotel",
+    "name": "Hotel",
+    "type": "action",
+    "count": 2,
+    "bank_value": 4,
+    "bankable": true,
+    "effect": {
+        "type": "building",
+        "building": "hotel",
+        "rent_bonus": 4,
+        "requires_full_set": true,
+        "requires_house": true,
+        "disallowed_groups": [
+            "railroad",
+            "utility"
+        ]
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/hotel-action-card.png"
+}
