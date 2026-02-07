@@ -1,3 +1,611 @@
-# apply_action(), validation, turn rules
-
 # Placeholder for game rules logic
+## Play Bank
+import uuid
+from typing import Dict, List
+from collections.abc import Iterable
+
+from engine.state import GameState, PlayerState, DeckState
+from schemas.card_defs import CardDef
+
+
+## Use Action
+def use_action(state: GameState, max_actions: int = 3) -> None:
+    if state.actions_taken >= max_actions:
+        raise ValueError("No actions remaining this turn.")
+    state.actions_taken += 1
+
+
+def end_turn(state: GameState, turn_order: List[str]) -> GameState:
+
+    if not turn_order:
+        raise ValueError("turn_order is empty.")
+    if state.current_player_id not in turn_order:
+        raise ValueError("current_player_id not found in turn_order.")
+
+    idx = turn_order.index(state.current_player_id)
+    next_idx = (idx + 1) % len(turn_order)
+
+    state.current_player_id = turn_order[next_idx]
+    state.turn_number += 1
+    state.actions_taken = 0
+
+    return state
+
+
+## Discard Cards
+def discard_cards(
+    state: GameState, player_id: str, card_ids: Iterable[str]
+) -> GameState:
+    """ "
+    Card_ids function argument is the card ids to be discarded from the player's hand that the player chooses to discard.
+    We take this directly from the UI and input it into the engine to update the game state.
+    """
+    if player_id not in state.players:
+        raise ValueError(f"Unknown player_id: {player_id}")
+
+    hand = state.players[player_id].hand
+    for cid in card_ids:
+        if cid not in hand:
+            raise ValueError(f"Player {player_id} does not have card {cid} in hand.")
+        hand.remove(cid)
+        state.deck.discard_pile.append(cid)
+
+    return state
+
+
+# Discard Action Cards
+def discard_action_cards(
+    state: GameState, actor: PlayerState, card_ids: List[str]
+) -> None:
+    for cid in card_ids:
+        if cid not in actor.hand:
+            raise ValueError(f"Card {cid} not in hand.")
+        actor.hand.remove(cid)
+        state.deck.discard_pile.append(cid)
+
+
+# Play Bank Cards
+def play_bank(
+    state: GameState,
+    player_id: str,
+    card_id: str,
+    catalog: Dict[str, CardDef],
+) -> GameState:
+
+    if player_id not in state.players:
+        raise ValueError(f"Unknown player_id: {player_id}")
+
+    player = state.players[player_id]
+
+    if card_id not in player.hand:
+        raise ValueError("Card not in player hand.")
+
+    if card_id not in catalog:
+        raise ValueError(f"Unknown card id: {card_id}")
+
+    cd = catalog[card_id]
+
+    # In Monopoly Deal, any card can be banked for its money value
+    if (
+        cd.money_value <= 0 and cd.kind == "property"
+    ):  # Can't bank property cards since while they have money value, they are properties
+        raise ValueError(
+            "This card has no money value or it's a property and cannot be banked."
+        )  # For example this can be a wild multiproperty card
+
+    # Move from hand -> bank
+    player.hand.remove(card_id)
+    player.bank.append(card_id)
+
+    return None
+
+
+## Play Property
+def play_property(
+    state: GameState,
+    catalog: Dict[str, CardDef],
+    player_id: str,
+    card_id: str,
+    color_if_wild: Optional[str] = None,
+) -> GameState:
+
+    if player_id not in state.players:
+        raise ValueError(f"Unknown player_id: {player_id}")
+
+    player = state.players[player_id]
+
+    if card_id not in player.hand:
+        raise ValueError("Card not in player hand.")
+
+    if card_id not in catalog:
+        raise ValueError(f"Unknown card id: {card_id}")
+
+    cd = catalog[card_id]
+
+    if cd.kind not in {"property", "property_wild"}:
+        raise ValueError("Card is not a property or a wild property.")
+
+    if not cd.colors:
+        raise ValueError("Property card has no colors defined.")
+
+    # Choose color
+    if cd.kind == "property":
+        # If only one color, auto-use it unless a different color was passed
+
+        if len(cd.colors) == 1:
+            chosen_color = cd.colors[0]
+            if color_if_wild and color_if_wild != chosen_color:
+                raise ValueError(f"Invalid color '{color_if_wild}' for this property.")
+        else:
+            # Multi-color property behaves like wild; require explicit choice
+            if not color_if_wild or color_if_wild not in cd.colors:
+                raise ValueError("Must choose a valid color for this property.")
+            chosen_color = color_if_wild
+    else:
+        # property_wild: must choose one of its colors
+        if not color_if_wild or color_if_wild not in cd.colors:
+            raise ValueError("Must choose a valid color for a wild property.")
+        chosen_color = color_if_wild
+
+    # Move card to properties
+    player.hand.remove(card_id)
+    player.properties.setdefault(chosen_color, []).append(card_id)
+
+    return None
+
+
+## Change Wild Color
+def change_wild_color(
+    state: GameState,
+    catalog: Dict[str, CardDef],
+    player_id: str,
+    card_id: str,
+    new_color: str,
+) -> GameState:
+    if player_id not in state.players:
+        raise ValueError(f"Unknown player_id: {player_id}")
+
+    player = state.players[player_id]
+
+    # Find current color pile containing this card
+    current_color = None
+    for color, cards in player.properties.items():
+        if card_id in cards:
+            current_color = color
+            break
+    if current_color is None:
+        raise ValueError("Card not found in player properties.")
+
+    if card_id not in catalog:
+        raise ValueError(f"Unknown card id: {card_id}")
+    cd = catalog[card_id]
+
+    if cd.kind != "property_wild":
+        raise ValueError("Card is not a wild property.")
+    if not cd.colors:
+        raise ValueError("Card has no color options.")
+
+    # Validate color choice
+    if "any" in cd.colors:
+        # optional: only allow real property colors
+        if "RENT_TABLE" in globals() and new_color not in RENT_TABLE:
+            raise ValueError(f"Invalid color '{new_color}'.")
+    else:
+        if new_color not in cd.colors:
+            raise ValueError(f"Card cannot be set to color '{new_color}'.")
+
+    # Move card to the new color pile
+    player.properties[current_color].remove(card_id)
+    player.properties.setdefault(new_color, []).append(card_id)
+
+    return state
+
+
+def is_counterable(card: CardDef) -> bool:
+    if card.kind == "rent":
+        return True
+    if card.kind == "action" and card.play:
+        return card.play.effect in {
+            "charge_players",
+            "steal_full_set",
+            "steal_property",
+            "swap_property",
+        }
+    return False
+
+
+def create_pending_action(
+    state: GameState,
+    *,
+    source_player: str,
+    target_player: str,
+    card_id: str,
+    card_kind: str,
+    effect: Optional[str],
+    payload: Dict[str, Any],
+) -> str:
+    pending_id = f"pend_{uuid.uuid4().hex}"
+    state.pending_actions[pending_id] = {
+        "id": pending_id,
+        "source_player": source_player,
+        "target_player": target_player,
+        "awaiting_player": target_player,
+        "card_id": card_id,
+        "card_kind": card_kind,
+        "effect": effect,
+        "payload": payload,
+        "jsn_count": 0,
+    }
+    return pending_id
+
+
+## Start Action
+def start_action(
+    state: GameState,
+    catalog: Dict[str, CardDef],
+    player_id: str,
+    *,
+    action_type: str,
+    card_id: Optional[str] = None,
+    bank_card_id: Optional[str] = None,
+    property_card_id: Optional[str] = None,
+    property_color: Optional[str] = None,
+    rent_color: Optional[str] = None,
+    double_rent_ids: Optional[List[str]] = None,
+    target_player_id: Optional[str] = None,
+    steal_card_id: Optional[str] = None,
+    give_card_id: Optional[str] = None,
+    steal_color: Optional[str] = None,
+    change_wild: Optional[Dict[str, str]] = None,
+    discard_ids: Optional[List[str]] = None,
+) -> Dict[str, Any]:
+    try:
+        if player_id not in state.players:
+            raise ValueError("Unknown player_id.")
+        actor = state.players[player_id]
+
+        # === Play bank card ===
+        if action_type == "play_bank":
+            if not bank_card_id:
+                raise ValueError("bank_card_id required.")
+            if bank_card_id not in actor.hand:
+                raise ValueError("Bank card not in hand.")
+            use_action(state)
+            play_bank(state, player_id, bank_card_id, catalog)
+            return {"status": "ok", "response_type": "action_resolved", "state": state}
+
+        # === Play property ===
+        if action_type == "play_property":
+            if not property_card_id:
+                raise ValueError("property_card_id required.")
+            if property_card_id not in actor.hand:
+                raise ValueError("Property card not in hand.")
+            use_action(state)
+            play_property(state, catalog, player_id, property_card_id, property_color)
+            return {"status": "ok", "response_type": "action_resolved", "state": state}
+
+        # === Change wild ===
+        if action_type == "change_wild":
+            if not change_wild:
+                raise ValueError("change_wild required.")
+            # validate before consuming action
+            if change_wild["card_id"] not in actor.hand and all(
+                change_wild["card_id"] not in cards
+                for cards in actor.properties.values()
+            ):
+                raise ValueError("Wild card not in properties.")
+            use_action(state)
+            change_wild_color(
+                state,
+                catalog,
+                player_id,
+                change_wild["card_id"],
+                change_wild["new_color"],
+            )
+            return {"status": "ok", "response_type": "action_resolved", "state": state}
+
+        # === Discard / End turn ===
+        if action_type == "discard":
+            discard_cards(state, player_id, discard_ids)
+            return {"status": "ok", "response_type": "action_resolved", "state": state}
+
+        if action_type == "end_turn":
+            return {
+                "status": "ok",
+                "response_type": "action_resolved",
+                "state": end_turn(state, list(state.players.keys())),
+            }
+
+        # === Play action card ===
+        if action_type in {"play_action_counterable", "play_action_non_counterable"}:
+            if not card_id:
+                raise ValueError("card_id required.")
+            if card_id not in actor.hand:
+                raise ValueError("Card not in hand.")
+            card = catalog[card_id]
+
+            if action_type == "play_action_counterable":
+                if not is_counterable(card):
+                    raise ValueError("Card is not counterable.")
+                if not target_player_id:
+                    raise ValueError(
+                        "target_player_id required for counterable action."
+                    )
+                # validation done → consume action
+                use_action(state)
+
+                discard_action_cards(state, actor, [card_id] + (double_rent_ids or []))
+                pending_id = create_pending_action(
+                    state,
+                    source_player=player_id,
+                    target_player=target_player_id,
+                    card_id=card_id,
+                    card_kind=card.kind,
+                    effect=card.play.effect if card.play else None,
+                    payload={
+                        "rent_color": rent_color,
+                        "double_rent_ids": double_rent_ids,
+                        "steal_card_id": steal_card_id,
+                        "give_card_id": give_card_id,
+                        "steal_color": steal_color,
+                        "amount": card.play.params.get("amount") if card.play else None,
+                    },
+                )
+
+                return {
+                    "status": "ok",
+                    "response_type": "response_required",
+                    "state": state,
+                    "response_required": {
+                        "pending_requests": [
+                            {
+                                "pending_id": pending_id,
+                                "target_player": target_player_id,
+                                "prompt": "Accept or Just Say No?",
+                            }
+                        ]
+                    },
+                }
+
+            # non‑counterable branch
+            if is_counterable(card):
+                raise ValueError("Card is counterable; use play_action_counterable.")
+
+            # validation done → consume action
+            use_action(state)
+
+            return apply_action_effects(
+                state,
+                catalog,
+                player_id=player_id,
+                card_id=card_id,
+                rent_color=rent_color,
+                double_rent_ids=double_rent_ids,
+                target_player_id=target_player_id,
+                steal_card_id=steal_card_id,
+                give_card_id=give_card_id,
+                steal_color=steal_color,
+                already_discarded=False,
+            )
+
+        raise ValueError("Unknown action_type.")
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "response_type": "action_resolved",
+            "message": str(e),
+        }
+
+    ## Respond to pending
+
+
+def respond_to_pending(
+    state: GameState,
+    catalog: Dict[str, CardDef],
+    pending_id: str,
+    player_id: str,
+    response: str,
+) -> Dict[str, Any]:
+    if pending_id not in state.pending_actions:
+        return {
+            "status": "error",
+            "response_type": "action_resolved",
+            "message": "Pending not found.",
+        }
+
+    pending = state.pending_actions[pending_id]
+
+    if player_id != pending["awaiting_player"]:
+        return {
+            "status": "error",
+            "response_type": "action_resolved",
+            "message": "Not your response turn.",
+        }
+
+    if response == "accept":
+        if pending["jsn_count"] % 2 == 1:
+            del state.pending_actions[pending_id]
+            return {
+                "status": "ok",
+                "response_type": "action_resolved",
+                "state": state,
+                "log": {"action": "canceled_by_jsn", "pending_id": pending_id},
+            }
+
+        result = apply_action_effects(
+            state,
+            catalog,
+            player_id=pending["source_player"],
+            card_id=pending["card_id"],
+            rent_color=pending["payload"].get("rent_color"),
+            double_rent_ids=pending["payload"].get("double_rent_ids"),
+            target_player_id=pending["target_player"],
+            steal_card_id=pending["payload"].get("steal_card_id"),
+            give_card_id=pending["payload"].get("give_card_id"),
+            steal_color=pending["payload"].get("steal_color"),
+            already_discarded=True,
+        )
+        del state.pending_actions[pending_id]
+        return result
+
+    if response == "just_say_no":
+        if JSN_CARD_ID not in state.players[player_id].hand:
+            return {
+                "status": "error",
+                "response_type": "action_resolved",
+                "message": "No JSN in hand.",
+            }
+
+        state.players[player_id].hand.remove(JSN_CARD_ID)
+        state.deck.discard_pile.append(JSN_CARD_ID)
+
+        pending["jsn_count"] += 1
+        pending["awaiting_player"] = (
+            pending["source_player"]
+            if player_id == pending["target_player"]
+            else pending["target_player"]
+        )
+
+        return {
+            "status": "ok",
+            "response_type": "response_required",
+            "state": state,
+            "response_required": {
+                "pending_requests": [
+                    {
+                        "pending_id": pending_id,
+                        "target_player": pending["awaiting_player"],
+                        "prompt": "Opponent played Just Say No. Counter?",
+                    }
+                ]
+            },
+        }
+
+    return {
+        "status": "error",
+        "response_type": "action_resolved",
+        "message": "Unknown response.",
+    }
+
+
+## Apply Action Effects
+
+
+def apply_action_effects(
+    state: GameState,
+    catalog: Dict[str, CardDef],
+    *,
+    player_id: str,
+    card_id: str,
+    rent_color: Optional[str] = None,
+    double_rent_ids: Optional[List[str]] = None,
+    target_player_id: Optional[str] = None,
+    steal_card_id: Optional[str] = None,
+    give_card_id: Optional[str] = None,
+    steal_color: Optional[str] = None,
+    already_discarded: bool = False,
+) -> Dict[str, Any]:
+
+    # Define Actor, Card, and Effect for later logic
+    actor = state.players[player_id]
+    card = catalog[card_id]
+    effect = card.play.effect if card.play else None
+
+    # discard action card here only if not already discarded
+    if not already_discarded and effect != "building":
+        discard_action_cards(state, actor, [card_id] + (double_rent_ids or []))
+
+    # Rent
+    if card.kind == "rent":
+        amount = charge_rent_amount(
+            state=state,
+            catalog=catalog,
+            player_id=player_id,
+            rent_card_id=card_id,
+            color=rent_color,
+            double_rent_ids=double_rent_ids,
+            require_in_hand=not already_discarded,
+        )
+        return {
+            "status": "ok",
+            "response_type": "payment_required",
+            "state": state,
+            "payment_request": {
+                "request_id": f"pay_{uuid.uuid4().hex}",
+                "receiver_id": player_id,
+                "targets": [{"player_id": target_player_id, "amount": amount}],
+            },
+            "log": {"action": "rent", "player_id": player_id, "amount": amount},
+        }
+
+    # Action cards
+    if card.kind == "action":
+
+        if effect == "draw_cards":
+            amount = int(card.play.params.get("amount", 0))
+            draw_cards(state, player_id, amount)
+            return {
+                "status": "ok",
+                "response_type": "action_resolved",
+                "state": state,
+                "log": {
+                    "action": "draw_cards",
+                    "player_id": player_id,
+                    "amount": amount,
+                },
+            }
+
+        if effect in {"steal_full_set", "steal_property", "swap_property"}:
+            result = process_property_manipulation(
+                state=state,
+                catalog=catalog,
+                actor_id=player_id,
+                action_card_id=card_id,
+                target_player_id=target_player_id,
+                steal_card_id=steal_card_id,
+                give_card_id=give_card_id,
+                steal_color=steal_color,
+            )
+            return {
+                "status": "ok",
+                "response_type": "action_resolved",
+                "state": state,
+                "log": result,
+            }
+
+        if effect == "charge_players":
+            amount = int(card.play.params.get("amount", 0))
+            return {
+                "status": "ok",
+                "response_type": "payment_required",
+                "state": state,
+                "payment_request": {
+                    "request_id": f"pay_{uuid.uuid4().hex}",
+                    "receiver_id": player_id,
+                    "targets": [{"player_id": target_player_id, "amount": amount}],
+                },
+                "log": {
+                    "action": "charge_players",
+                    "player_id": player_id,
+                    "amount": amount,
+                },
+            }
+
+        if effect == "building":
+            play_building(
+                state, catalog, player_id, card_id, rent_color
+            )  # use rent_color as chosen set color
+            return {
+                "status": "ok",
+                "response_type": "action_resolved",
+                "state": state,
+                "log": {
+                    "action": "building",
+                    "player_id": player_id,
+                    "card_id": card_id,
+                    "color": rent_color,
+                },
+            }
+
+    raise ValueError("Unsupported action effect.")
