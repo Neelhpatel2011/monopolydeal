@@ -10,6 +10,12 @@ import json
 from backend.app.schemas.card_defs import RawCard, CardDef, raw_to_carddef
 
 
+class CardCatalog(BaseModel):
+    cards: Dict[str, CardDef]
+    rent_table: Dict[str, List[int]]
+    jsn_card_id: str
+
+
 # Load card definitions from JSON files in a directory
 def load_card_defs_from_dir(cards_dir: str) -> Dict[str, CardDef]:
     catalog: Dict[str, CardDef] = {}
@@ -46,3 +52,19 @@ def build_rent_table(catalog: Dict[str, CardDef]) -> Dict[str, List[int]]:
             # All properties in a group should have same rent_by_count
             rent_table[card_def.meta["property_group"]] = card_def.rent_by_count
     return rent_table
+
+
+def load_catalog(cards_dir: str) -> CardCatalog:
+    cards = load_card_defs_from_dir(cards_dir)
+    rent_table = build_rent_table(cards)
+    jsn_card_id = next(
+        (
+            cid
+            for cid, cd in cards.items()
+            if cd.kind == "action" and cd.play and cd.play.effect == "counter_action"
+        ),
+        None,
+    )
+    if not jsn_card_id:
+        raise ValueError("Just Say No card not found in catalog.")
+    return CardCatalog(cards=cards, rent_table=rent_table, jsn_card_id=jsn_card_id)

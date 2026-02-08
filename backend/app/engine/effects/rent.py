@@ -2,27 +2,41 @@
 
 ## Charge Rent and building bonus rent calculation!
 from collections import Counter
-from typing import Dict, List, Optional
+from typing import List, Optional
 
-# Expect this to exist once you load cards:
-# RENT_TABLE = build_rent_table(raw_cards_or_catalog)
+from ..state import GameState
+from ...services.card_catalog import CardCatalog
+
+
+# Add extra rent if you have a building in a appropriate full property set
+# Can only have houses and then hotels on a full property set
+# No houses or hotels on railroads or utilities
+
+
+def building_bonus_for_color(
+    state: GameState,
+    catalog: CardCatalog,
+    player_id: str,
+    color: str,
+) -> int:
+    bonus = 0
+    for bid in state.players[player_id].buildings.get(color, []):
+        cd = catalog.cards[bid]
+        if cd.play and cd.play.effect == "building":
+            bonus += int(cd.play.params.get("rent_bonus", 0))
+    return bonus
 
 
 def charge_rent_amount(
     state: GameState,
-    catalog: Dict[str, CardDef],
+    catalog: CardCatalog,
     player_id: str,
     rent_card_id: str,
     color: str,
     double_rent_ids: Optional[List[str]] = None,
     require_in_hand: bool = True,
 ) -> int:
-
-    if "RENT_TABLE" not in globals():
-        raise ValueError(
-            "RENT_TABLE is not defined. Build it once before charging rent."
-        )
-    rent_table = RENT_TABLE
+    rent_table = catalog.rent_table
 
     if player_id not in state.players:
         raise ValueError(f"Unknown player_id: {player_id}")
@@ -38,9 +52,9 @@ def charge_rent_amount(
                 raise ValueError(f"Player does not have {cnt} copies of {cid} in hand.")
 
     # Validate rent card
-    if rent_card_id not in catalog:
+    if rent_card_id not in catalog.cards:
         raise ValueError(f"Unknown card id: {rent_card_id}")
-    rent_card = catalog[rent_card_id]
+    rent_card = catalog.cards[rent_card_id]
     if rent_card.kind != "rent":
         raise ValueError("Card is not a rent card.")
 
@@ -72,9 +86,9 @@ def charge_rent_amount(
     # Apply Double The Rent modifiers (stackable)
     multiplier = 1
     for dr_id in double_rent_ids or []:
-        if dr_id not in catalog:
+        if dr_id not in catalog.cards:
             raise ValueError(f"Unknown card id: {dr_id}")
-        dr = catalog[dr_id]
+        dr = catalog.cards[dr_id]
 
         if dr.kind != "action" or not dr.play:
             raise ValueError(f"{dr_id} is not a valid Double The Rent card.")
@@ -84,22 +98,3 @@ def charge_rent_amount(
         multiplier *= int(dr.play.params.get("multiplier", 2))
 
     return (base_rent + bonus) * multiplier
-
-
-# Add extra rent if you have a building in a appropriate full property set
-# Can only have houses and then hotels on a full property set
-# No houses or hotels on railroads or utilities
-
-
-def building_bonus_for_color(
-    state: GameState,
-    catalog: Dict[str, CardDef],
-    player_id: str,
-    color: str,
-) -> int:
-    bonus = 0
-    for bid in state.players[player_id].buildings.get(color, []):
-        cd = catalog[bid]
-        if cd.play and cd.play.effect == "building":
-            bonus += int(cd.play.params.get("rent_bonus", 0))
-    return bonus

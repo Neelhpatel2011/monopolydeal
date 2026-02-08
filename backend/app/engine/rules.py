@@ -1,11 +1,15 @@
 # Placeholder for game rules logic
 ## Play Bank
 import uuid
-from typing import Dict, List
 from collections.abc import Iterable
+from typing import Any, Dict, List, Optional
 
-from engine.state import GameState, PlayerState, DeckState
-from schemas.card_defs import CardDef
+from .state import GameState, PlayerState, DeckState
+from ..schemas.card_defs import CardDef
+from ..services.card_catalog import CardCatalog
+from .effects.draw import draw_cards
+from .effects.rent import charge_rent_amount
+from .effects.steal import process_property_manipulation
 
 
 ## Use Action
@@ -69,7 +73,7 @@ def play_bank(
     state: GameState,
     player_id: str,
     card_id: str,
-    catalog: Dict[str, CardDef],
+    catalog: CardCatalog,
 ) -> GameState:
 
     if player_id not in state.players:
@@ -80,10 +84,10 @@ def play_bank(
     if card_id not in player.hand:
         raise ValueError("Card not in player hand.")
 
-    if card_id not in catalog:
+    if card_id not in catalog.cards:
         raise ValueError(f"Unknown card id: {card_id}")
 
-    cd = catalog[card_id]
+    cd = catalog.cards[card_id]
 
     # In Monopoly Deal, any card can be banked for its money value
     if (
@@ -103,7 +107,7 @@ def play_bank(
 ## Play Property
 def play_property(
     state: GameState,
-    catalog: Dict[str, CardDef],
+    catalog: CardCatalog,
     player_id: str,
     card_id: str,
     color_if_wild: Optional[str] = None,
@@ -117,10 +121,10 @@ def play_property(
     if card_id not in player.hand:
         raise ValueError("Card not in player hand.")
 
-    if card_id not in catalog:
+    if card_id not in catalog.cards:
         raise ValueError(f"Unknown card id: {card_id}")
 
-    cd = catalog[card_id]
+    cd = catalog.cards[card_id]
 
     if cd.kind not in {"property", "property_wild"}:
         raise ValueError("Card is not a property or a wild property.")
@@ -157,7 +161,7 @@ def play_property(
 ## Change Wild Color
 def change_wild_color(
     state: GameState,
-    catalog: Dict[str, CardDef],
+    catalog: CardCatalog,
     player_id: str,
     card_id: str,
     new_color: str,
@@ -176,9 +180,9 @@ def change_wild_color(
     if current_color is None:
         raise ValueError("Card not found in player properties.")
 
-    if card_id not in catalog:
+    if card_id not in catalog.cards:
         raise ValueError(f"Unknown card id: {card_id}")
-    cd = catalog[card_id]
+    cd = catalog.cards[card_id]
 
     if cd.kind != "property_wild":
         raise ValueError("Card is not a wild property.")
@@ -187,8 +191,7 @@ def change_wild_color(
 
     # Validate color choice
     if "any" in cd.colors:
-        # optional: only allow real property colors
-        if "RENT_TABLE" in globals() and new_color not in RENT_TABLE:
+        if new_color not in catalog.rent_table:
             raise ValueError(f"Invalid color '{new_color}'.")
     else:
         if new_color not in cd.colors:
@@ -242,7 +245,7 @@ def create_pending_action(
 ## Start Action
 def start_action(
     state: GameState,
-    catalog: Dict[str, CardDef],
+    catalog: CardCatalog,
     player_id: str,
     *,
     action_type: str,
@@ -322,7 +325,7 @@ def start_action(
                 raise ValueError("card_id required.")
             if card_id not in actor.hand:
                 raise ValueError("Card not in hand.")
-            card = catalog[card_id]
+            card = catalog.cards[card_id]
 
             if action_type == "play_action_counterable":
                 if not is_counterable(card):
@@ -402,7 +405,7 @@ def start_action(
 
 def respond_to_pending(
     state: GameState,
-    catalog: Dict[str, CardDef],
+    catalog: CardCatalog,
     pending_id: str,
     player_id: str,
     response: str,
@@ -450,15 +453,16 @@ def respond_to_pending(
         return result
 
     if response == "just_say_no":
-        if JSN_CARD_ID not in state.players[player_id].hand:
+        jsn_card_id = catalog.jsn_card_id
+        if jsn_card_id not in state.players[player_id].hand:
             return {
                 "status": "error",
                 "response_type": "action_resolved",
                 "message": "No JSN in hand.",
             }
 
-        state.players[player_id].hand.remove(JSN_CARD_ID)
-        state.deck.discard_pile.append(JSN_CARD_ID)
+        state.players[player_id].hand.remove(jsn_card_id)
+        state.deck.discard_pile.append(jsn_card_id)
 
         pending["jsn_count"] += 1
         pending["awaiting_player"] = (
@@ -494,7 +498,7 @@ def respond_to_pending(
 
 def apply_action_effects(
     state: GameState,
-    catalog: Dict[str, CardDef],
+    catalog: CardCatalog,
     *,
     player_id: str,
     card_id: str,
@@ -509,7 +513,7 @@ def apply_action_effects(
 
     # Define Actor, Card, and Effect for later logic
     actor = state.players[player_id]
-    card = catalog[card_id]
+    card = catalog.cards[card_id]
     effect = card.play.effect if card.play else None
 
     # discard action card here only if not already discarded

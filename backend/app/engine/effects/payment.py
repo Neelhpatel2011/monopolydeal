@@ -4,6 +4,9 @@
 from collections import Counter
 from typing import Dict, List, Any
 
+from ..state import GameState
+from ...services.card_catalog import CardCatalog
+
 
 def remove_ids_from_list(pool: List[str], ids_to_remove: List[str]) -> None:
     counts = Counter(pool)
@@ -61,17 +64,17 @@ def remove_ids_from_buildings(
     return removed_by_color
 
 
-def card_value(cid: str, catalog: Dict[str, CardDef]) -> int:
-    if cid not in catalog:
+def card_value(cid: str, catalog: CardCatalog) -> int:
+    if cid not in catalog.cards:
         raise ValueError(f"Unknown card id: {cid}")
-    return catalog[cid].money_value
+    return catalog.cards[cid].money_value
 
 
 def process_payment(
     state: GameState,
     payer_id: str,
     receiver_id: str,
-    catalog: Dict[str, CardDef],
+    catalog: CardCatalog,
     user_bank_payment_ids: List[str],
     user_property_payment_ids: List[str],
     user_building_payment_ids: List[str],

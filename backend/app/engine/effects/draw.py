@@ -1,4 +1,11 @@
 # Placeholder for draw effect logic
+import random
+from typing import List
+
+from ..state import GameState
+from ...services.card_catalog import CardCatalog
+
+
 def draw_cards(state: GameState, player_id: str, n: int = 1) -> GameState:
     if player_id not in state.players:
         raise ValueError(f"Unknown player_id: {player_id}")
@@ -18,11 +25,11 @@ def draw_cards(state: GameState, player_id: str, n: int = 1) -> GameState:
     return state
 
 
-def build_deck(catalog: Dict[str, CardDef], seed=42) -> List[str]:
+def build_deck(catalog: CardCatalog, seed=42) -> List[str]:
     deck: List[str] = []
 
     # catalog is key: card id, value: CardDef
-    for cd in catalog.values():
+    for cd in catalog.cards.values():
         deck.extend([cd.id] * cd.copies)
 
     # Shuffle deck with seed
