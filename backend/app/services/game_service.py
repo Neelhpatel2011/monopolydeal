@@ -2,18 +2,27 @@
 
 # Placeholder for game service logic
 import uuid
-from typing import List
+from typing import Dict, List
 
 from ..engine.state import GameState, PlayerState, DeckState
 from ..engine.effects.draw import build_deck
 from .card_catalog import CardCatalog
 
-from ..schemas.response import ActionResponse,
+from ..schemas.response import ActionResponse, PaymentResponse
+from ..schemas.actions import ActionRequest, PaymentRequest, PendingResponseRequest
+
+from ..engine.rules import start_action, respond_to_pending
+
+# In-memory game store for MVP
+GAMES: Dict[str, GameState] = {}
 
 STARTING_HAND_SIZE = 5
 
 
 def create_new_game(player_ids: List[str], catalog: CardCatalog) -> GameState:
+
+    # Deal out and hands and initiate game after players have joined the game!
+
     # 1) Build and shuffle deck
     draw_pile = build_deck(catalog)
     deck = DeckState(draw_pile=draw_pile, discard_pile=[])
@@ -39,12 +48,27 @@ def create_new_game(player_ids: List[str], catalog: CardCatalog) -> GameState:
     )
 
 
-def join_game(game_id, player_name):
-    # TODO: Create the join_game function with two arguments: 1. The game id, 2. the player name
-    return NotImplementedError
+def join_game(game_id: str, player_name: str) -> Dict[str, object]:
+    """
+    Join an existing game by adding a new player.
+    Does NOT deal cards; starting hands are dealt when the game is started.
+    Returns a dict with player_id and the updated state.
+    """
+    if game_id not in GAMES:
+        raise ValueError("Unknown game_id.")
+
+    state = get_state(game_id)
+
+    if player_name in state.players:
+        raise ValueError("Player already exists in this game.")
+
+    # Add new player (no dealing here)
+    state.players[player_name] = PlayerState(id=player_name)
+
+    return {"player_id": player_name, "state": state}
 
 
-def get_state(game_id) -> GameState:
+def get_state(game_id: str) -> GameState:
     """
     Docstring for get_state
 
@@ -55,25 +79,42 @@ def get_state(game_id) -> GameState:
     Pulls GameState from either memory or a database! For the first iteration we will have GameState live in memory
 
     """
+    # temporarily in memory for right now. later we will use a DB like PostGres
 
-    # TODO: Return the current GameState
-    return NotImplementedError
-
-
-def handle_action(game_id, ActionRequest):
-    # TODO: Calls start_action(), validates player, locks game
+    if game_id not in GAMES:
+        return ValueError("Unknown game id!")
+    return GAMES[game_id]
 
 
+def handle_action(
+    game_id: str, req: ActionRequest, catalog: CardCatalog
+) -> ActionResponse:
+    # TODO: validates player, locks game
 
-    return NotImplementedError
+    state = get_state(game_id)
+    response = start_action(state=state, catalog=catalog, **req.model_dump())
+    return response
 
 
-def handle_pending(game_id, PendingResponseRequest) -> ActionResponse:
+def handle_pending(
+    game_id, req: PendingResponseRequest, catalog: CardCatalog
+) -> ActionResponse:
     # TODO: validate pending_id and awaiting player, calls respond_to_pending() function
-    
-    return NotImplementedError
+
+    if req.pending_id not in state.pending_actions:
+        raise ValueError("Pending ID is not in GameState Pending Actions List")
+
+    if state.pending_actions[req.pending_id]["awaiting_player"] != req.player_id:
+        raise ValueError(
+            f"Pending response player mismatch: awaiting {state.pending_actions[req.pending_id]['awaiting_player']}, got {req.player_id}."
+        )
+
+    state = get_state(game_id)
+    response = respond_to_pending(state=state, catalog=catalog, **req.model_dump())
+
+    return response
 
 
-def handle_payment(game_id, PaymentRequest):
+def handle_payment(game_id, PaymentRequest) -> PaymentResponse:
     # TODO: Validates request_id and payer, calls process_payment()
     return NotImplementedError
