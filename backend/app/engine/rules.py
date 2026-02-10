@@ -158,6 +158,41 @@ def play_property(
     return None
 
 
+def play_building(
+    state: GameState,
+    catalog: CardCatalog,
+    player_id: str,
+    card_id: str,
+    color: str,
+) -> None:
+    player = state.players[player_id]
+    if card_id not in player.hand:
+        raise ValueError("Building card not in hand.")
+    cd = catalog[card_id]
+
+    if not cd.play or cd.play.effect != "building":
+        raise ValueError("Card is not a building action.")
+
+    # disallowed groups
+    disallowed = set(cd.play.params.get("disallowed_groups", []))
+    if color in disallowed:
+        raise ValueError("Cannot place building on this color.")
+
+    # must have full set
+    needed = len(catalog.rent_table[color])
+    if len(player.properties.get(color, [])) < needed:
+        raise ValueError("Need full set to place building.")
+
+    # hotel requires house
+    if cd.play.params.get("requires_house"):
+        if "action_house" not in player.buildings.get(color, []):
+            raise ValueError("Hotel requires a house on this set.")
+
+    # move card from hand → buildings
+    player.hand.remove(card_id)
+    player.buildings.setdefault(color, []).append(card_id)
+
+
 ## Change Wild Color
 def change_wild_color(
     state: GameState,
