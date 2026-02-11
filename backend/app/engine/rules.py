@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 
 from .state import GameState, PlayerState, DeckState
 from ..schemas.card_defs import CardDef
+from ..schemas.response import ActionResponse
 from ..services.card_catalog import CardCatalog
 from .effects.draw import draw_cards
 from .effects.rent import charge_rent_amount
@@ -74,7 +75,7 @@ def play_bank(
     player_id: str,
     card_id: str,
     catalog: CardCatalog,
-) -> GameState:
+) -> None:
 
     if player_id not in state.players:
         raise ValueError(f"Unknown player_id: {player_id}")
@@ -111,7 +112,7 @@ def play_property(
     player_id: str,
     card_id: str,
     color_if_wild: Optional[str] = None,
-) -> GameState:
+) -> None:
 
     if player_id not in state.players:
         raise ValueError(f"Unknown player_id: {player_id}")
@@ -296,7 +297,7 @@ def start_action(
     steal_color: Optional[str] = None,
     change_wild: Optional[Dict[str, str]] = None,
     discard_ids: Optional[List[str]] = None,
-) -> Dict[str, Any]:
+) -> ActionResponse:
     try:
         if player_id not in state.players:
             raise ValueError("Unknown player_id.")
@@ -444,7 +445,7 @@ def respond_to_pending(
     pending_id: str,
     player_id: str,
     response: str,
-) -> Dict[str, Any]:
+) -> ActionResponse:
     if pending_id not in state.pending_actions:
         return {
             "status": "error",
@@ -544,7 +545,7 @@ def apply_action_effects(
     give_card_id: Optional[str] = None,
     steal_color: Optional[str] = None,
     already_discarded: bool = False,
-) -> Dict[str, Any]:
+) -> ActionResponse:
 
     # Define Actor, Card, and Effect for later logic
     actor = state.players[player_id]

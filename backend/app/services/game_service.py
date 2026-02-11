@@ -2,7 +2,7 @@
 
 # Placeholder for game service logic
 import uuid
-from typing import Dict, List
+from typing import Dict, List, Any
 
 from ..engine.state import GameState, PlayerState, DeckState
 from ..engine.effects.draw import build_deck
@@ -12,9 +12,11 @@ from ..schemas.response import ActionResponse, PaymentResponse
 from ..schemas.actions import ActionRequest, PaymentRequest, PendingResponseRequest
 
 from ..engine.rules import start_action, respond_to_pending
+from ..engine.effects.payment import process_payment
 
 # In-memory game store for MVP
 GAMES: Dict[str, GameState] = {}
+PENDING_PAYMENTS: Dict[str, Dict[str, Any]] = {}
 
 STARTING_HAND_SIZE = 5
 
@@ -86,6 +88,30 @@ def get_state(game_id: str) -> GameState:
     return GAMES[game_id]
 
 
+def add_to_pendingpayments(response: Dict[str, Any]) -> None:
+    """
+    Helper: extract payment_request from an ActionResponse and store it in PENDING_PAYMENTS.
+    No-op if the response is not payment_required or is missing fields.
+    """
+    if response.get("status") != "ok":
+        return
+    if response.get("response_type") != "payment_required":
+        return
+
+    payment = response.get("payment_request") or {}
+    request_id = payment.get("request_id")
+    receiver_id = payment.get("receiver_id")
+    targets = payment.get("targets") or []
+
+    if not request_id or not receiver_id or not targets:
+        return
+
+    PENDING_PAYMENTS[request_id] = {
+        "receiver_id": receiver_id,
+        "targets": {t["player_id"]: t["amount"] for t in targets},
+    }
+
+
 def handle_action(
     game_id: str, req: ActionRequest, catalog: CardCatalog
 ) -> ActionResponse:
@@ -93,13 +119,17 @@ def handle_action(
 
     state = get_state(game_id)
     response = start_action(state=state, catalog=catalog, **req.model_dump())
+
+    add_to_pendingpayments(response)
+
     return response
 
 
 def handle_pending(
     game_id, req: PendingResponseRequest, catalog: CardCatalog
 ) -> ActionResponse:
-    # TODO: validate pending_id and awaiting player, calls respond_to_pending() function
+
+    state = get_state(game_id)
 
     if req.pending_id not in state.pending_actions:
         raise ValueError("Pending ID is not in GameState Pending Actions List")
@@ -112,9 +142,55 @@ def handle_pending(
     state = get_state(game_id)
     response = respond_to_pending(state=state, catalog=catalog, **req.model_dump())
 
+    add_to_pendingpayments(response)
+
     return response
 
 
-def handle_payment(game_id, PaymentRequest) -> PaymentResponse:
-    # TODO: Validates request_id and payer, calls process_payment()
-    return NotImplementedError
+def handle_payment(
+    game_id: str, req: PaymentRequest, catalog: CardCatalog
+) -> PaymentResponse:
+
+    state = get_state(game_id)
+
+    if req.request_id not in PENDING_PAYMENTS:
+        return {
+            "status": "error",
+            "response_type": "payment_applied",
+            "message": "Unknown payment request_id.",
+        }
+
+    pending = PENDING_PAYMENTS[req.request_id]
+    receiver_id = pending["receiver_id"]
+    targets = pending[targets]
+
+    if req.receiver_id != receiver_id:
+        return {
+            "status": "error",
+            "response_type": "payment_applied",
+            "message": "Receiver does not match pending payment.",
+        }
+
+    if req.payer_id not in targets:
+        return {
+            "status": "error",
+            "response_type": "payment_applied",
+            "message": "Payer is not a target for this payment.",
+        }
+
+    amount = targets[req.payer_id]
+
+    response = process_payment(
+        state=state,
+        payer_id=req.payer_id,
+        receiver_id=receiver_id,
+        catalog=catalog,
+        user_bank_payment_ids=req.bank,
+        user_property_payment_ids=req.properties,
+        user_building_payment_ids=req.buildings,
+        money_charged=amount,
+    )
+
+    if response.get("status") == "ok":
+        del PENDING_PAYMENTS[req.request_id]
+    return response
