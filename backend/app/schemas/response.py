@@ -4,7 +4,12 @@
 
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Literal
-from engine.state import GameState
+from ..engine.state import GameState
+
+
+class JoinGameResponse(BaseModel):
+    player_id: str
+    state: GameState
 
 
 class PaymentTarget(BaseModel):

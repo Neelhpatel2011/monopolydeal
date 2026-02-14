@@ -6,6 +6,7 @@ from typing import Dict, List, Any
 
 from ..state import GameState
 from ...services.card_catalog import CardCatalog
+from ...schemas.response import PaymentResponse
 
 
 def remove_ids_from_list(pool: List[str], ids_to_remove: List[str]) -> None:
@@ -79,7 +80,7 @@ def process_payment(
     user_property_payment_ids: List[str],
     user_building_payment_ids: List[str],
     money_charged: int,
-) -> Dict[str, Any]:
+) -> PaymentResponse:
 
     # TODO: Implement Payment of Hotel FIRST and then houses! But honestly we can do that later.
     try:

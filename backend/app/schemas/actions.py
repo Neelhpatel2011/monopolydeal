@@ -6,6 +6,10 @@ from pydantic import BaseModel, Field
 from typing import List, Optional, Literal
 
 
+class CreateGameRequest(BaseModel):
+    player_ids: List[str]
+
+
 class ChangeWildPayload(BaseModel):
     card_id: str
     new_color: str

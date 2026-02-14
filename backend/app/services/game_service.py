@@ -21,26 +21,14 @@ PENDING_PAYMENTS: Dict[str, Dict[str, Any]] = {}
 STARTING_HAND_SIZE = 5
 
 
-def create_new_game(player_ids: List[str], catalog: CardCatalog) -> GameState:
-
-    # Deal out and hands and initiate game after players have joined the game!
-
-    # 1) Build and shuffle deck
-    draw_pile = build_deck(catalog)
-    deck = DeckState(draw_pile=draw_pile, discard_pile=[])
-
-    # 2) Create players
+def create_game_lobby(player_ids: List[str]) -> GameState:
+    """
+    Create a game in the lobby state (no deck, no hands dealt).
+    Players can join before the game is started.
+    """
     players = {pid: PlayerState(id=pid) for pid in player_ids}
+    deck = DeckState(draw_pile=[], discard_pile=[])
 
-    # 3) Deal starting hands
-    for _ in range(STARTING_HAND_SIZE):
-        for pid in player_ids:
-            if not deck.draw_pile:
-                raise ValueError("Deck is empty while dealing starting hands.")
-            card_id = deck.draw_pile.pop(0)
-            players[pid].hand.append(card_id)
-
-    # 4) Create game state
     return GameState(
         id=str(uuid.uuid4()),
         players=players,
@@ -48,6 +36,37 @@ def create_new_game(player_ids: List[str], catalog: CardCatalog) -> GameState:
         current_player_id=player_ids[0] if player_ids else None,
         turn_number=1,
     )
+
+
+def start_new_game(game_id: str, catalog: CardCatalog) -> GameState:
+    """
+    Start a lobby game: build/shuffle deck and deal starting hands.
+    """
+    state = get_state(game_id)
+    if not state.players:
+        raise ValueError("Cannot start game with no players.")
+
+    if state.deck.draw_pile or state.deck.discard_pile:
+        raise ValueError("Game already started (deck is not empty).")
+
+    # Build and shuffle deck
+    state.deck.draw_pile = build_deck(catalog)
+    state.deck.discard_pile = []
+
+    # Deal starting hands
+    player_ids = list(state.players.keys())
+    for _ in range(STARTING_HAND_SIZE):
+        for pid in player_ids:
+            if not state.deck.draw_pile:
+                raise ValueError("Deck is empty while dealing starting hands.")
+            dealt_card_id = state.deck.draw_pile.pop(0)
+            state.players[pid].hand.append(dealt_card_id)
+
+    # Ensure current player is set
+    if state.current_player_id is None:
+        state.current_player_id = player_ids[0]
+
+    return state
 
 
 def join_game(game_id: str, player_name: str) -> Dict[str, object]:
@@ -88,7 +107,7 @@ def get_state(game_id: str) -> GameState:
     return GAMES[game_id]
 
 
-def add_to_pendingpayments(response: Dict[str, Any]) -> None:
+def add_to_pendingpayments(response: ActionResponse) -> None:
     """
     Helper: extract payment_request from an ActionResponse and store it in PENDING_PAYMENTS.
     No-op if the response is not payment_required or is missing fields.
@@ -162,7 +181,7 @@ def handle_payment(
 
     pending = PENDING_PAYMENTS[req.request_id]
     receiver_id = pending["receiver_id"]
-    targets = pending[targets]
+    targets = pending["targets"]
 
     if req.receiver_id != receiver_id:
         return {
