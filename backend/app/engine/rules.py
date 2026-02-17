@@ -349,6 +349,20 @@ def start_action(
             return {"status": "ok", "response_type": "action_resolved", "state": state}
 
         if action_type == "end_turn":
+            hand_size = len(actor.hand)
+
+            if hand_size > 7:
+                return {
+                    "status": "ok",
+                    "response_type": "discard_required",
+                    "state": state,
+                    "discard_required": {
+                        "player_id": player_id,
+                        "required_count": hand_size - 7,
+                    },
+                    "message": f"You have {hand_size} cards. Discard {hand_size - 7} cards.",
+                }
+
             return {
                 "status": "ok",
                 "response_type": "action_resolved",

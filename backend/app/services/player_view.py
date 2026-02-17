@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, model_validator
 from typing import Dict, List, Optional
 from ..engine.state import GameState
 
@@ -14,10 +14,10 @@ class PlayerPublicView(BaseModel):
 class PlayerPrivateView(PlayerPublicView):
     hand: List[str] = Field(default_factory=list)
 
-    @computed_field
-    @property
-    def hand_count(self) -> int:
-        return len(self.hand)
+    @model_validator(mode="after")
+    def _sync_hand_count(self) -> "PlayerPrivateView":
+        self.hand_count = len(self.hand)
+        return self
 
 
 class PlayerView(BaseModel):

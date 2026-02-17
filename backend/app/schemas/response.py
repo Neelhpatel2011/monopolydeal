@@ -29,16 +29,24 @@ class PendingPrompt(BaseModel):
     prompt: str
 
 
+class DiscardRequired(BaseModel):
+    player_id: str
+    required_count: int
+
+
 class ResponseRequired(BaseModel):
     pending_requests: List[PendingPrompt]
 
 
 class ActionResponse(BaseModel):
     status: Literal["ok", "error"]
-    response_type: Literal["action_resolved", "payment_required", "response_required"]
+    response_type: Literal[
+        "action_resolved", "payment_required", "response_required", "discard_required"
+    ]
     state: Optional[GameState] = None
     payment_request: Optional[PaymentRequired] = None
     response_required: Optional[ResponseRequired] = None
+    discard_required: Optional[DiscardRequired] = None
     message: Optional[str] = None
     log: Optional[Dict[str, Any]] = None
 

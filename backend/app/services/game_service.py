@@ -13,6 +13,7 @@ from ..schemas.actions import ActionRequest, PaymentRequest, PendingResponseRequ
 
 from ..engine.rules import start_action, respond_to_pending
 from ..engine.effects.payment import process_payment
+from .realtime import broadcast_player_views
 
 # In-memory game store for MVP
 GAMES: Dict[str, GameState] = {}
@@ -141,6 +142,8 @@ def handle_action(
 
     add_to_pendingpayments(response)
 
+    # Broadcast updated views (sync fallback; websocket send is async-safe)
+    broadcast_player_views(game_id, state)
     return response
 
 
@@ -163,6 +166,7 @@ def handle_pending(
 
     add_to_pendingpayments(response)
 
+    broadcast_player_views(game_id, state)
     return response
 
 
@@ -212,4 +216,5 @@ def handle_payment(
 
     if response.get("status") == "ok":
         del PENDING_PAYMENTS[req.request_id]
+    broadcast_player_views(game_id, state)
     return response

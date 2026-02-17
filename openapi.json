@@ -1,0 +1,1071 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "FastAPI",
+        "version": "0.1.0"
+    },
+    "paths": {
+        "/games": {
+            "get": {
+                "summary": "Get Games",
+                "operationId": "get_games_games_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "additionalProperties": {
+                                        "$ref": "#/components/schemas/GameState"
+                                    },
+                                    "type": "object",
+                                    "title": "Response Get Games Games Get"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "summary": "Create Game",
+                "operationId": "create_game_games_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CreateGameRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameState"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/games/{game_id}/state": {
+            "get": {
+                "summary": "Get Game State",
+                "operationId": "get_game_state_games__game_id__state_get",
+                "parameters": [
+                    {
+                        "name": "game_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Game Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameState"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/games/{game_id}": {
+            "delete": {
+                "summary": "Delete Game",
+                "operationId": "delete_game_games__game_id__delete",
+                "parameters": [
+                    {
+                        "name": "game_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Game Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/games/{game_id}/players/{player_id}": {
+            "post": {
+                "summary": "Join Game",
+                "operationId": "join_game_games__game_id__players__player_id__post",
+                "parameters": [
+                    {
+                        "name": "game_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Game Id"
+                        }
+                    },
+                    {
+                        "name": "player_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Player Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/JoinGameResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/games/{game_id}/start": {
+            "post": {
+                "summary": "Start Game",
+                "operationId": "start_game_games__game_id__start_post",
+                "parameters": [
+                    {
+                        "name": "game_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Game Id"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GameState"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/games/{game_id}/actions": {
+            "post": {
+                "summary": "Submit Action Request",
+                "operationId": "submit_action_request_games__game_id__actions_post",
+                "parameters": [
+                    {
+                        "name": "game_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Game Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ActionRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ActionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/games/{game_id}/pending/{pending_id}/respond": {
+            "post": {
+                "summary": "Submit Pending Request",
+                "operationId": "submit_pending_request_games__game_id__pending__pending_id__respond_post",
+                "parameters": [
+                    {
+                        "name": "game_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Game Id"
+                        }
+                    },
+                    {
+                        "name": "pending_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Pending Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PendingResponseRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ActionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/games/{game_id}/payments": {
+            "post": {
+                "summary": "Submit Payment Request",
+                "operationId": "submit_payment_request_games__game_id__payments_post",
+                "parameters": [
+                    {
+                        "name": "game_id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "title": "Game Id"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/PaymentRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/PaymentResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/": {
+            "get": {
+                "summary": "Root",
+                "operationId": "root__get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ActionRequest": {
+                "properties": {
+                    "action_type": {
+                        "type": "string",
+                        "enum": [
+                            "play_bank",
+                            "play_property",
+                            "change_wild",
+                            "discard",
+                            "end_turn",
+                            "play_action_counterable",
+                            "play_action_non_counterable"
+                        ],
+                        "title": "Action Type"
+                    },
+                    "player_id": {
+                        "type": "string",
+                        "title": "Player Id"
+                    },
+                    "card_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Card Id"
+                    },
+                    "bank_card_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Bank Card Id"
+                    },
+                    "property_card_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Property Card Id"
+                    },
+                    "property_color": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Property Color"
+                    },
+                    "rent_color": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Rent Color"
+                    },
+                    "double_rent_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Double Rent Ids"
+                    },
+                    "target_player_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Target Player Id"
+                    },
+                    "steal_card_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Steal Card Id"
+                    },
+                    "give_card_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Give Card Id"
+                    },
+                    "steal_color": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Steal Color"
+                    },
+                    "change_wild": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ChangeWildPayload"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "discard_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Discard Ids"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "action_type",
+                    "player_id"
+                ],
+                "title": "ActionRequest"
+            },
+            "ActionResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "ok",
+                            "error"
+                        ],
+                        "title": "Status"
+                    },
+                    "response_type": {
+                        "type": "string",
+                        "enum": [
+                            "action_resolved",
+                            "payment_required",
+                            "response_required"
+                        ],
+                        "title": "Response Type"
+                    },
+                    "state": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/GameState"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "payment_request": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/PaymentRequired"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "response_required": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ResponseRequired"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "message": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Message"
+                    },
+                    "log": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Log"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "response_type"
+                ],
+                "title": "ActionResponse"
+            },
+            "ChangeWildPayload": {
+                "properties": {
+                    "card_id": {
+                        "type": "string",
+                        "title": "Card Id"
+                    },
+                    "new_color": {
+                        "type": "string",
+                        "title": "New Color"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "card_id",
+                    "new_color"
+                ],
+                "title": "ChangeWildPayload"
+            },
+            "CreateGameRequest": {
+                "properties": {
+                    "player_ids": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Player Ids"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "player_ids"
+                ],
+                "title": "CreateGameRequest"
+            },
+            "DeckState": {
+                "properties": {
+                    "draw_pile": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Draw Pile"
+                    },
+                    "discard_pile": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Discard Pile"
+                    }
+                },
+                "type": "object",
+                "title": "DeckState"
+            },
+            "GameState": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "players": {
+                        "additionalProperties": {
+                            "$ref": "#/components/schemas/PlayerState"
+                        },
+                        "type": "object",
+                        "title": "Players"
+                    },
+                    "deck": {
+                        "$ref": "#/components/schemas/DeckState"
+                    },
+                    "current_player_id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Current Player Id"
+                    },
+                    "turn_number": {
+                        "type": "integer",
+                        "title": "Turn Number",
+                        "default": 1
+                    },
+                    "actions_taken": {
+                        "type": "integer",
+                        "title": "Actions Taken",
+                        "default": 0
+                    },
+                    "pending_actions": {
+                        "additionalProperties": {
+                            "additionalProperties": true,
+                            "type": "object"
+                        },
+                        "type": "object",
+                        "title": "Pending Actions"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "players",
+                    "deck"
+                ],
+                "title": "GameState"
+            },
+            "HTTPValidationError": {
+                "properties": {
+                    "detail": {
+                        "items": {
+                            "$ref": "#/components/schemas/ValidationError"
+                        },
+                        "type": "array",
+                        "title": "Detail"
+                    }
+                },
+                "type": "object",
+                "title": "HTTPValidationError"
+            },
+            "JoinGameResponse": {
+                "properties": {
+                    "player_id": {
+                        "type": "string",
+                        "title": "Player Id"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/GameState"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "player_id",
+                    "state"
+                ],
+                "title": "JoinGameResponse"
+            },
+            "PaymentRequest": {
+                "properties": {
+                    "request_id": {
+                        "type": "string",
+                        "title": "Request Id"
+                    },
+                    "payer_id": {
+                        "type": "string",
+                        "title": "Payer Id"
+                    },
+                    "receiver_id": {
+                        "type": "string",
+                        "title": "Receiver Id"
+                    },
+                    "bank": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Bank"
+                    },
+                    "properties": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Properties"
+                    },
+                    "buildings": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Buildings"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "request_id",
+                    "payer_id",
+                    "receiver_id"
+                ],
+                "title": "PaymentRequest"
+            },
+            "PaymentRequired": {
+                "properties": {
+                    "request_id": {
+                        "type": "string",
+                        "title": "Request Id"
+                    },
+                    "receiver_id": {
+                        "type": "string",
+                        "title": "Receiver Id"
+                    },
+                    "targets": {
+                        "items": {
+                            "$ref": "#/components/schemas/PaymentTarget"
+                        },
+                        "type": "array",
+                        "title": "Targets"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "request_id",
+                    "receiver_id",
+                    "targets"
+                ],
+                "title": "PaymentRequired"
+            },
+            "PaymentResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "enum": [
+                            "ok",
+                            "error"
+                        ],
+                        "title": "Status"
+                    },
+                    "response_type": {
+                        "type": "string",
+                        "const": "payment_applied",
+                        "title": "Response Type"
+                    },
+                    "state": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/GameState"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "message": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Message"
+                    },
+                    "log": {
+                        "anyOf": [
+                            {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Log"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "response_type"
+                ],
+                "title": "PaymentResponse"
+            },
+            "PaymentTarget": {
+                "properties": {
+                    "player_id": {
+                        "type": "string",
+                        "title": "Player Id"
+                    },
+                    "amount": {
+                        "type": "integer",
+                        "title": "Amount"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "player_id",
+                    "amount"
+                ],
+                "title": "PaymentTarget"
+            },
+            "PendingPrompt": {
+                "properties": {
+                    "pending_id": {
+                        "type": "string",
+                        "title": "Pending Id"
+                    },
+                    "target_player": {
+                        "type": "string",
+                        "title": "Target Player"
+                    },
+                    "prompt": {
+                        "type": "string",
+                        "title": "Prompt"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "pending_id",
+                    "target_player",
+                    "prompt"
+                ],
+                "title": "PendingPrompt"
+            },
+            "PendingResponseRequest": {
+                "properties": {
+                    "pending_id": {
+                        "type": "string",
+                        "title": "Pending Id"
+                    },
+                    "player_id": {
+                        "type": "string",
+                        "title": "Player Id"
+                    },
+                    "response": {
+                        "type": "string",
+                        "enum": [
+                            "accept",
+                            "just_say_no"
+                        ],
+                        "title": "Response"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "pending_id",
+                    "player_id",
+                    "response"
+                ],
+                "title": "PendingResponseRequest"
+            },
+            "PlayerState": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "hand": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Hand"
+                    },
+                    "bank": {
+                        "items": {
+                            "type": "string"
+                        },
+                        "type": "array",
+                        "title": "Bank"
+                    },
+                    "properties": {
+                        "additionalProperties": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "type": "object",
+                        "title": "Properties"
+                    },
+                    "buildings": {
+                        "additionalProperties": {
+                            "items": {
+                                "type": "string"
+                            },
+                            "type": "array"
+                        },
+                        "type": "object",
+                        "title": "Buildings"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id"
+                ],
+                "title": "PlayerState"
+            },
+            "ResponseRequired": {
+                "properties": {
+                    "pending_requests": {
+                        "items": {
+                            "$ref": "#/components/schemas/PendingPrompt"
+                        },
+                        "type": "array",
+                        "title": "Pending Requests"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "pending_requests"
+                ],
+                "title": "ResponseRequired"
+            },
+            "ValidationError": {
+                "properties": {
+                    "loc": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "integer"
+                                }
+                            ]
+                        },
+                        "type": "array",
+                        "title": "Location"
+                    },
+                    "msg": {
+                        "type": "string",
+                        "title": "Message"
+                    },
+                    "type": {
+                        "type": "string",
+                        "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "loc",
+                    "msg",
+                    "type"
+                ],
+                "title": "ValidationError"
+            }
+        }
+    }
+}
