@@ -38,18 +38,18 @@ def pick_rent_setup(catalog):
 def test_create_and_get_state():
     res = client.post("/games", json={"player_ids": ["p1"]})
     assert res.status_code == 200
-    state = res.json()
-    game_id = state["id"]
+    game = res.json()
+    game_id = game["game_id"]
 
     res2 = client.get(f"/games/{game_id}/state")
     assert res2.status_code == 200
-    assert res2.json()["id"] == game_id
+    assert res2.json()["game_id"] == game_id
 
 
 def test_join_and_start_game():
     res = client.post("/games", json={"player_ids": ["p1"]})
-    state = res.json()
-    game_id = state["id"]
+    game = res.json()
+    game_id = game["game_id"]
 
     res2 = client.post(f"/games/{game_id}/players/p2")
     assert res2.status_code == 200
@@ -57,18 +57,18 @@ def test_join_and_start_game():
 
     res3 = client.post(f"/games/{game_id}/start")
     assert res3.status_code == 200
-    started = res3.json()
-    assert len(started["players"]["p1"]["hand"]) > 0
-    assert len(started["players"]["p2"]["hand"]) > 0
+    state = GAMES[game_id]
+    assert len(state.players["p1"].hand) > 0
+    assert len(state.players["p2"].hand) > 0
 
 
 def test_play_bank_action():
     res = client.post("/games", json={"player_ids": ["p1"]})
-    game_id = res.json()["id"]
+    game_id = res.json()["game_id"]
     client.post(f"/games/{game_id}/start")
 
-    state = client.get(f"/games/{game_id}/state").json()
-    p1_hand = state["players"]["p1"]["hand"]
+    state = GAMES[game_id]
+    p1_hand = state.players["p1"].hand
     catalog = get_catalog()
 
     bank_card_id = next(
@@ -101,7 +101,7 @@ def test_counterable_rent_payment_flow():
     )
 
     res = client.post("/games", json={"player_ids": ["p1", "p2"]})
-    game_id = res.json()["id"]
+    game_id = res.json()["game_id"]
     client.post(f"/games/{game_id}/start")
 
     # Force a predictable setup

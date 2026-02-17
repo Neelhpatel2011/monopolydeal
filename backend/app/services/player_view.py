@@ -5,7 +5,7 @@ from ..engine.state import GameState
 
 class PlayerPublicView(BaseModel):
     id: str
-    hand_count: int
+    hand_count: int = 0
     bank: List[str] = Field(default_factory=list)
     properties: Dict[str, List[str]] = Field(default_factory=dict)
     buildings: Dict[str, List[str]] = Field(default_factory=dict)

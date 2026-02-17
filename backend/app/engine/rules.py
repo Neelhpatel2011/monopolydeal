@@ -14,9 +14,12 @@ from .effects.steal import process_property_manipulation
 
 
 ## Use Action
-def use_action(state: GameState, max_actions: int = 3) -> None:
+def ensure_action_available(state: GameState, max_actions: int = 3) -> None:
     if state.actions_taken >= max_actions:
         raise ValueError("No actions remaining this turn.")
+
+
+def consume_action(state: GameState) -> None:
     state.actions_taken += 1
 
 
@@ -245,7 +248,8 @@ def is_counterable(card: CardDef) -> bool:
         return True
     if card.kind == "action" and card.play:
         return card.play.effect in {
-            "charge_players",
+            "charge_players",  # plural
+            "charge_player",  # singular
             "steal_full_set",
             "steal_property",
             "swap_property",
@@ -309,8 +313,9 @@ def start_action(
                 raise ValueError("bank_card_id required.")
             if bank_card_id not in actor.hand:
                 raise ValueError("Bank card not in hand.")
-            use_action(state)
+            ensure_action_available(state)
             play_bank(state, player_id, bank_card_id, catalog)
+            consume_action(state)
             return {"status": "ok", "response_type": "action_resolved", "state": state}
 
         # === Play property ===
@@ -319,8 +324,9 @@ def start_action(
                 raise ValueError("property_card_id required.")
             if property_card_id not in actor.hand:
                 raise ValueError("Property card not in hand.")
-            use_action(state)
+            ensure_action_available(state)
             play_property(state, catalog, player_id, property_card_id, property_color)
+            consume_action(state)
             return {"status": "ok", "response_type": "action_resolved", "state": state}
 
         # === Change wild ===
@@ -333,7 +339,7 @@ def start_action(
                 for cards in actor.properties.values()
             ):
                 raise ValueError("Wild card not in properties.")
-            use_action(state)
+            ensure_action_available(state)
             change_wild_color(
                 state,
                 catalog,
@@ -341,6 +347,7 @@ def start_action(
                 change_wild["card_id"],
                 change_wild["new_color"],
             )
+            consume_action(state)
             return {"status": "ok", "response_type": "action_resolved", "state": state}
 
         # === Discard / End turn ===
@@ -384,8 +391,7 @@ def start_action(
                     raise ValueError(
                         "target_player_id required for counterable action."
                     )
-                # validation done → consume action
-                use_action(state)
+                ensure_action_available(state)
 
                 discard_action_cards(state, actor, [card_id] + (double_rent_ids or []))
                 pending_id = create_pending_action(
@@ -404,6 +410,7 @@ def start_action(
                         "amount": card.play.params.get("amount") if card.play else None,
                     },
                 )
+                consume_action(state)
 
                 return {
                     "status": "ok",
@@ -424,10 +431,9 @@ def start_action(
             if is_counterable(card):
                 raise ValueError("Card is counterable; use play_action_counterable.")
 
-            # validation done → consume action
-            use_action(state)
+            ensure_action_available(state)
 
-            return apply_action_effects(
+            result = apply_action_effects(
                 state,
                 catalog,
                 player_id=player_id,
@@ -440,6 +446,8 @@ def start_action(
                 steal_color=steal_color,
                 already_discarded=False,
             )
+            consume_action(state)
+            return result
 
         raise ValueError("Unknown action_type.")
 
@@ -628,7 +636,7 @@ def apply_action_effects(
                 "log": result,
             }
 
-        if effect == "charge_players":
+        if effect in {"charge_players", "charge_player"}:
             amount = int(card.play.params.get("amount", 0))
             return {
                 "status": "ok",

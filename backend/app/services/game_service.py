@@ -14,6 +14,7 @@ from ..schemas.actions import ActionRequest, PaymentRequest, PendingResponseRequ
 from ..engine.rules import start_action, respond_to_pending
 from ..engine.effects.payment import process_payment
 from .realtime import broadcast_player_views
+from .player_view import build_player_view
 
 # In-memory game store for MVP
 GAMES: Dict[str, GameState] = {}
@@ -74,7 +75,7 @@ def join_game(game_id: str, player_name: str) -> Dict[str, object]:
     """
     Join an existing game by adding a new player.
     Does NOT deal cards; starting hands are dealt when the game is started.
-    Returns a dict with player_id and the updated state.
+    Returns a dict with player_id and the player's view.
     """
     if game_id not in GAMES:
         raise ValueError("Unknown game_id.")
@@ -87,7 +88,10 @@ def join_game(game_id: str, player_name: str) -> Dict[str, object]:
     # Add new player (no dealing here)
     state.players[player_name] = PlayerState(id=player_name)
 
-    return {"player_id": player_name, "state": state}
+    return {
+        "player_id": player_name,
+        "player_view": build_player_view(state, player_name),
+    }
 
 
 def get_state(game_id: str) -> GameState:
@@ -104,7 +108,7 @@ def get_state(game_id: str) -> GameState:
     # temporarily in memory for right now. later we will use a DB like PostGres
 
     if game_id not in GAMES:
-        return ValueError("Unknown game id!")
+        raise ValueError("Unknown game id!")
     return GAMES[game_id]
 
 
@@ -142,6 +146,10 @@ def handle_action(
 
     add_to_pendingpayments(response)
 
+    if response.get("status") == "ok":
+        response["player_view"] = build_player_view(state, req.player_id)
+    response.pop("state", None)
+
     # Broadcast updated views (sync fallback; websocket send is async-safe)
     broadcast_player_views(game_id, state)
     return response
@@ -161,10 +169,13 @@ def handle_pending(
             f"Pending response player mismatch: awaiting {state.pending_actions[req.pending_id]['awaiting_player']}, got {req.player_id}."
         )
 
-    state = get_state(game_id)
     response = respond_to_pending(state=state, catalog=catalog, **req.model_dump())
 
     add_to_pendingpayments(response)
+
+    if response.get("status") == "ok":
+        response["player_view"] = build_player_view(state, req.player_id)
+    response.pop("state", None)
 
     broadcast_player_views(game_id, state)
     return response
@@ -216,5 +227,7 @@ def handle_payment(
 
     if response.get("status") == "ok":
         del PENDING_PAYMENTS[req.request_id]
+        response["player_view"] = build_player_view(state, req.payer_id)
+    response.pop("state", None)
     broadcast_player_views(game_id, state)
     return response

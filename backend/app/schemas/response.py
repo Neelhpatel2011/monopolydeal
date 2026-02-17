@@ -4,12 +4,18 @@
 
 from pydantic import BaseModel
 from typing import Any, Dict, List, Optional, Literal
-from ..engine.state import GameState
+from ..services.player_view import PlayerView
+
+
+class GameSummary(BaseModel):
+    game_id: str
+    player_ids: List[str]
+    started: bool
 
 
 class JoinGameResponse(BaseModel):
     player_id: str
-    state: GameState
+    player_view: PlayerView
 
 
 class PaymentTarget(BaseModel):
@@ -43,7 +49,7 @@ class ActionResponse(BaseModel):
     response_type: Literal[
         "action_resolved", "payment_required", "response_required", "discard_required"
     ]
-    state: Optional[GameState] = None
+    player_view: Optional[PlayerView] = None
     payment_request: Optional[PaymentRequired] = None
     response_required: Optional[ResponseRequired] = None
     discard_required: Optional[DiscardRequired] = None
@@ -54,6 +60,6 @@ class ActionResponse(BaseModel):
 class PaymentResponse(BaseModel):
     status: Literal["ok", "error"]
     response_type: Literal["payment_applied"]
-    state: Optional[GameState] = None
+    player_view: Optional[PlayerView] = None
     message: Optional[str] = None
     log: Optional[Dict[str, Any]] = None
