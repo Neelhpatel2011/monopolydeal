@@ -1,4 +1,3 @@
-import asyncio
 from typing import Dict
 
 from fastapi import WebSocket
@@ -37,14 +36,3 @@ class ConnectionManager:
 
 
 manager = ConnectionManager()
-
-
-def broadcast_player_views(game_id: str, state: GameState) -> None:
-    """
-    Sync-safe wrapper. If called outside an event loop, no-op.
-    """
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        return
-    loop.create_task(manager.broadcast_player_views(game_id, state))

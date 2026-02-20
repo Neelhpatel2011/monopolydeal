@@ -16,4 +16,4 @@ app.include_router(ws_router)
 
 @app.get("/")
 async def root():
-    return "Hello"
+    return "Welcome to MonopolyDeal"

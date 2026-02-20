@@ -11,9 +11,9 @@ from .card_catalog import CardCatalog
 from ..schemas.response import ActionResponse, PaymentResponse
 from ..schemas.actions import ActionRequest, PaymentRequest, PendingResponseRequest
 
-from ..engine.rules import start_action, respond_to_pending
+from ..engine.rules import start_action, respond_to_pending, check_win
 from ..engine.effects.payment import process_payment
-from .realtime import broadcast_player_views
+from .realtime import manager
 from .player_view import build_player_view
 
 # In-memory game store for MVP
@@ -136,10 +136,17 @@ def add_to_pendingpayments(response: ActionResponse) -> None:
     }
 
 
-def handle_action(
+def add_game_over(response: Dict[str, Any], state: GameState, catalog: CardCatalog) -> None:
+    if response.get("status") != "ok":
+        return
+    winner_id = check_win(state, catalog)
+    if winner_id:
+        response["game_over"] = {"winner_id": winner_id}
+
+
+async def handle_action(
     game_id: str, req: ActionRequest, catalog: CardCatalog
 ) -> ActionResponse:
-    # TODO: validates player, locks game
 
     state = get_state(game_id)
     response = start_action(state=state, catalog=catalog, **req.model_dump())
@@ -149,13 +156,13 @@ def handle_action(
     if response.get("status") == "ok":
         response["player_view"] = build_player_view(state, req.player_id)
     response.pop("state", None)
+    add_game_over(response, state, catalog)
 
-    # Broadcast updated views (sync fallback; websocket send is async-safe)
-    broadcast_player_views(game_id, state)
+    await manager.broadcast_player_views(game_id, state)
     return response
 
 
-def handle_pending(
+async def handle_pending(
     game_id, req: PendingResponseRequest, catalog: CardCatalog
 ) -> ActionResponse:
 
@@ -176,12 +183,13 @@ def handle_pending(
     if response.get("status") == "ok":
         response["player_view"] = build_player_view(state, req.player_id)
     response.pop("state", None)
+    add_game_over(response, state, catalog)
 
-    broadcast_player_views(game_id, state)
+    await manager.broadcast_player_views(game_id, state)
     return response
 
 
-def handle_payment(
+async def handle_payment(
     game_id: str, req: PaymentRequest, catalog: CardCatalog
 ) -> PaymentResponse:
 
@@ -229,5 +237,6 @@ def handle_payment(
         del PENDING_PAYMENTS[req.request_id]
         response["player_view"] = build_player_view(state, req.payer_id)
     response.pop("state", None)
-    broadcast_player_views(game_id, state)
+    add_game_over(response, state, catalog)
+    await manager.broadcast_player_views(game_id, state)
     return response

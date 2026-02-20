@@ -72,6 +72,23 @@ def discard_action_cards(
         state.deck.discard_pile.append(cid)
 
 
+def count_complete_sets(player: PlayerState, set_sizes: Dict[str, int]) -> int:
+    complete = 0
+    for color, cards in player.properties.items():
+        needed = set_sizes.get(color)
+        if needed is not None and len(cards) >= needed:
+            complete += 1
+    return complete
+
+
+def check_win(state: GameState, catalog: CardCatalog) -> Optional[str]:
+    set_sizes = {color: len(rents) for color, rents in catalog.rent_table.items()}
+    for player_id, player in state.players.items():
+        if count_complete_sets(player, set_sizes) >= 3:
+            return player_id
+    return None
+
+
 # Play Bank Cards
 def play_bank(
     state: GameState,

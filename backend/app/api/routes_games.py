@@ -109,17 +109,17 @@ def start_game(game_id: str, request: Request) -> GameSummary:
 
 
 @router.post("/games/{game_id}/actions", response_model=ActionResponse)
-def submit_action_request(
+async def submit_action_request(
     game_id: str, req: ActionRequest, request: Request
 ) -> ActionResponse:
     catalog = request.app.state.card_catalog
-    return handle_action(game_id, req, catalog)
+    return await handle_action(game_id, req, catalog)
 
 
 @router.post(
     "/games/{game_id}/pending/{pending_id}/respond", response_model=ActionResponse
 )
-def submit_pending_request(
+async def submit_pending_request(
     game_id: str, pending_id: str, req: PendingResponseRequest, request: Request
 ) -> ActionResponse:
     catalog = request.app.state.card_catalog
@@ -128,12 +128,12 @@ def submit_pending_request(
         raise ValueError(
             f"{req.pending_id} (request body) doesn't match up with {pending_id} (url)"
         )
-    return handle_pending(game_id=game_id, req=req, catalog=catalog)
+    return await handle_pending(game_id=game_id, req=req, catalog=catalog)
 
 
 @router.post("/games/{game_id}/payments", response_model=PaymentResponse)
-def submit_payment_request(
+async def submit_payment_request(
     game_id: str, req: PaymentRequest, request: Request
 ) -> PaymentResponse:
     catalog = request.app.state.card_catalog
-    return handle_payment(game_id=game_id, req=req, catalog=catalog)
+    return await handle_payment(game_id=game_id, req=req, catalog=catalog)
