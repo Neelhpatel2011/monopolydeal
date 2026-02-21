@@ -22,12 +22,12 @@ from backend.app.services.game_service import (
     handle_payment,
     create_game_lobby,
     start_new_game,
-    GAMES,
 )
 from backend.app.services.game_service import join_game as join_game_service
 
 from backend.app.services.player_view import build_player_view, PlayerView
 from backend.app.services.game_service import get_state
+from backend.app.db import repo
 
 
 router = APIRouter()
@@ -36,14 +36,7 @@ router = APIRouter()
 
 @router.get("/games", response_model=List[GameSummary])
 def get_games() -> List[GameSummary]:
-    return [
-        GameSummary(
-            game_id=gid,
-            player_ids=list(state.players.keys()),
-            started=bool(state.deck.draw_pile or state.deck.discard_pile),
-        )
-        for gid, state in GAMES.items()
-    ]
+    return repo.list_games()
 
 
 @router.get("/games/{game_id}/state", response_model=GameSummary)
@@ -72,9 +65,7 @@ def get_player_view(
 
 @router.delete("/games/{game_id}")
 def delete_game(game_id: str) -> None:
-    if game_id not in GAMES:
-        raise ValueError(f"Unknown game_id {game_id}")
-    del GAMES[game_id]
+    repo.delete_game(game_id)
 
 
 # POST METHODS:
@@ -84,7 +75,6 @@ def delete_game(game_id: str) -> None:
 def create_game(req: CreateGameRequest) -> GameSummary:
 
     state = create_game_lobby(player_ids=req.player_ids)
-    GAMES[state.id] = state
     return GameSummary(
         game_id=state.id,
         player_ids=list(state.players.keys()),

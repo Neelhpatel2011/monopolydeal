@@ -323,6 +323,10 @@ def start_action(
         if player_id not in state.players:
             raise ValueError("Unknown player_id.")
         actor = state.players[player_id]
+        if state.current_player_id is not None and player_id != state.current_player_id:
+            raise ValueError(
+                f"Not your turn. Current player is {state.current_player_id}."
+            )
 
         # === Play bank card ===
         if action_type == "play_bank":
@@ -373,7 +377,11 @@ def start_action(
             return {"status": "ok", "response_type": "action_resolved", "state": state}
 
         if action_type == "end_turn":
-            hand_size = len(actor.hand)
+            current_pid = state.current_player_id
+            if current_pid is None or current_pid not in state.players:
+                raise ValueError("Current player is not set.")
+            current_player = state.players[current_pid]
+            hand_size = len(current_player.hand)
 
             if hand_size > 7:
                 return {
@@ -381,7 +389,7 @@ def start_action(
                     "response_type": "discard_required",
                     "state": state,
                     "discard_required": {
-                        "player_id": player_id,
+                        "player_id": current_pid,
                         "required_count": hand_size - 7,
                     },
                     "message": f"You have {hand_size} cards. Discard {hand_size - 7} cards.",

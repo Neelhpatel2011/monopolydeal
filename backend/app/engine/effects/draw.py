@@ -25,7 +25,7 @@ def draw_cards(state: GameState, player_id: str, n: int = 1) -> GameState:
     return state
 
 
-def build_deck(catalog: CardCatalog, seed=42) -> List[str]:
+def build_deck(catalog: CardCatalog) -> List[str]:
     deck: List[str] = []
 
     # catalog is key: card id, value: CardDef
@@ -33,7 +33,6 @@ def build_deck(catalog: CardCatalog, seed=42) -> List[str]:
         deck.extend([cd.id] * cd.copies)
 
     # Shuffle deck with seed
-    random.seed(seed)
     random.shuffle(deck)
 
     # Check if deck is 110 cards long

@@ -7,6 +7,7 @@ from typing import Dict, List, Any
 from ..engine.state import GameState, PlayerState, DeckState
 from ..engine.effects.draw import build_deck
 from .card_catalog import CardCatalog
+from ..db import repo
 
 from ..schemas.response import ActionResponse, PaymentResponse
 from ..schemas.actions import ActionRequest, PaymentRequest, PendingResponseRequest
@@ -15,10 +16,6 @@ from ..engine.rules import start_action, respond_to_pending, check_win
 from ..engine.effects.payment import process_payment
 from .realtime import manager
 from .player_view import build_player_view
-
-# In-memory game store for MVP
-GAMES: Dict[str, GameState] = {}
-PENDING_PAYMENTS: Dict[str, Dict[str, Any]] = {}
 
 STARTING_HAND_SIZE = 5
 
@@ -31,13 +28,15 @@ def create_game_lobby(player_ids: List[str]) -> GameState:
     players = {pid: PlayerState(id=pid) for pid in player_ids}
     deck = DeckState(draw_pile=[], discard_pile=[])
 
-    return GameState(
+    state = GameState(
         id=str(uuid.uuid4()),
         players=players,
         deck=deck,
         current_player_id=player_ids[0] if player_ids else None,
         turn_number=1,
     )
+    repo.create_game(state, status="lobby")
+    return state
 
 
 def start_new_game(game_id: str, catalog: CardCatalog) -> GameState:
@@ -68,6 +67,7 @@ def start_new_game(game_id: str, catalog: CardCatalog) -> GameState:
     if state.current_player_id is None:
         state.current_player_id = player_ids[0]
 
+    repo.update_game(state, status="active")
     return state
 
 
@@ -77,9 +77,6 @@ def join_game(game_id: str, player_name: str) -> Dict[str, object]:
     Does NOT deal cards; starting hands are dealt when the game is started.
     Returns a dict with player_id and the player's view.
     """
-    if game_id not in GAMES:
-        raise ValueError("Unknown game_id.")
-
     state = get_state(game_id)
 
     if player_name in state.players:
@@ -88,6 +85,7 @@ def join_game(game_id: str, player_name: str) -> Dict[str, object]:
     # Add new player (no dealing here)
     state.players[player_name] = PlayerState(id=player_name)
 
+    repo.update_game(state)
     return {
         "player_id": player_name,
         "player_view": build_player_view(state, player_name),
@@ -107,14 +105,12 @@ def get_state(game_id: str) -> GameState:
     """
     # temporarily in memory for right now. later we will use a DB like PostGres
 
-    if game_id not in GAMES:
-        raise ValueError("Unknown game id!")
-    return GAMES[game_id]
+    return repo.get_game(game_id)
 
 
-def add_to_pendingpayments(response: ActionResponse) -> None:
+def add_to_pendingpayments(game_id: str, response: ActionResponse) -> None:
     """
-    Helper: extract payment_request from an ActionResponse and store it in PENDING_PAYMENTS.
+    Helper: extract payment_request from an ActionResponse and store it in the DB.
     No-op if the response is not payment_required or is missing fields.
     """
     if response.get("status") != "ok":
@@ -130,10 +126,12 @@ def add_to_pendingpayments(response: ActionResponse) -> None:
     if not request_id or not receiver_id or not targets:
         return
 
-    PENDING_PAYMENTS[request_id] = {
-        "receiver_id": receiver_id,
-        "targets": {t["player_id"]: t["amount"] for t in targets},
-    }
+    repo.insert_pending_payment(
+        game_id,
+        request_id,
+        receiver_id,
+        {t["player_id"]: t["amount"] for t in targets},
+    )
 
 
 def add_game_over(response: Dict[str, Any], state: GameState, catalog: CardCatalog) -> None:
@@ -151,12 +149,13 @@ async def handle_action(
     state = get_state(game_id)
     response = start_action(state=state, catalog=catalog, **req.model_dump())
 
-    add_to_pendingpayments(response)
+    add_to_pendingpayments(game_id, response)
 
     if response.get("status") == "ok":
         response["player_view"] = build_player_view(state, req.player_id)
     response.pop("state", None)
     add_game_over(response, state, catalog)
+    repo.update_game(state)
 
     await manager.broadcast_player_views(game_id, state)
     return response
@@ -178,12 +177,13 @@ async def handle_pending(
 
     response = respond_to_pending(state=state, catalog=catalog, **req.model_dump())
 
-    add_to_pendingpayments(response)
+    add_to_pendingpayments(game_id, response)
 
     if response.get("status") == "ok":
         response["player_view"] = build_player_view(state, req.player_id)
     response.pop("state", None)
     add_game_over(response, state, catalog)
+    repo.update_game(state)
 
     await manager.broadcast_player_views(game_id, state)
     return response
@@ -195,16 +195,23 @@ async def handle_payment(
 
     state = get_state(game_id)
 
-    if req.request_id not in PENDING_PAYMENTS:
+    pending = repo.get_pending_payment(req.request_id)
+    if not pending:
         return {
             "status": "error",
             "response_type": "payment_applied",
             "message": "Unknown payment request_id.",
         }
 
-    pending = PENDING_PAYMENTS[req.request_id]
     receiver_id = pending["receiver_id"]
-    targets = pending["targets"]
+    targets = pending.get("targets", {})
+
+    if pending.get("game_id") != game_id:
+        return {
+            "status": "error",
+            "response_type": "payment_applied",
+            "message": "Payment request does not belong to this game.",
+        }
 
     if req.receiver_id != receiver_id:
         return {
@@ -234,9 +241,10 @@ async def handle_payment(
     )
 
     if response.get("status") == "ok":
-        del PENDING_PAYMENTS[req.request_id]
+        repo.delete_pending_payment(req.request_id)
         response["player_view"] = build_player_view(state, req.payer_id)
     response.pop("state", None)
     add_game_over(response, state, catalog)
+    repo.update_game(state)
     await manager.broadcast_player_views(game_id, state)
     return response
