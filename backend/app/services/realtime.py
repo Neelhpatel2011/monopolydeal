@@ -12,7 +12,14 @@ class ConnectionManager:
 
     async def connect(self, game_id: str, player_id: str, websocket: WebSocket) -> None:
         await websocket.accept()
-        self._connections.setdefault(game_id, {})[player_id] = websocket
+        # Reconnect support: replace an existing connection for this player.
+        existing = self._connections.setdefault(game_id, {}).get(player_id)
+        if existing is not None and existing is not websocket:
+            try:
+                await existing.close(code=1012)
+            except Exception:
+                pass
+        self._connections[game_id][player_id] = websocket
 
     async def disconnect(self, game_id: str, player_id: str) -> None:
         if game_id in self._connections:
@@ -22,8 +29,13 @@ class ConnectionManager:
 
     async def send_to_player(self, game_id: str, player_id: str, payload: dict) -> None:
         ws = self._connections.get(game_id, {}).get(player_id)
-        if ws:
+        if not ws:
+            return
+        try:
             await ws.send_json(payload)
+        except Exception:
+            # Drop broken connections so broadcasts don't keep failing.
+            await self.disconnect(game_id, player_id)
 
     async def broadcast_player_views(self, game_id: str, state: GameState) -> None:
         for player_id in state.players.keys():
