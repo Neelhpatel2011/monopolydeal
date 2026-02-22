@@ -147,6 +147,19 @@ async def handle_action(
 ) -> ActionResponse:
 
     state = get_state(game_id)
+    if req.action_type == "end_turn":
+        if state.pending_actions:
+            return {
+                "status": "error",
+                "response_type": "action_resolved",
+                "message": "Cannot end turn while a pending response is unresolved.",
+            }
+        if repo.has_pending_payments(game_id):
+            return {
+                "status": "error",
+                "response_type": "action_resolved",
+                "message": "Cannot end turn while a pending payment is unresolved.",
+            }
     response = start_action(state=state, catalog=catalog, **req.model_dump())
 
     add_to_pendingpayments(game_id, response)
@@ -168,12 +181,30 @@ async def handle_pending(
     state = get_state(game_id)
 
     if req.pending_id not in state.pending_actions:
-        raise ValueError("Pending ID is not in GameState Pending Actions List")
+        return {
+            "status": "error",
+            "response_type": "action_resolved",
+            "message": "Pending id not found.",
+        }
 
-    if state.pending_actions[req.pending_id]["awaiting_player"] != req.player_id:
-        raise ValueError(
-            f"Pending response player mismatch: awaiting {state.pending_actions[req.pending_id]['awaiting_player']}, got {req.player_id}."
-        )
+    pending = state.pending_actions[req.pending_id]
+
+    if (
+        state.current_player_id is not None
+        and pending.get("source_player") != state.current_player_id
+    ):
+        return {
+            "status": "error",
+            "response_type": "action_resolved",
+            "message": f"Pending action does not belong to the current turn (current={state.current_player_id}).",
+        }
+
+    if pending["awaiting_player"] != req.player_id:
+        return {
+            "status": "error",
+            "response_type": "action_resolved",
+            "message": f"Pending response player mismatch: awaiting {pending['awaiting_player']}, got {req.player_id}.",
+        }
 
     response = respond_to_pending(state=state, catalog=catalog, **req.model_dump())
 
@@ -218,6 +249,16 @@ async def handle_payment(
             "status": "error",
             "response_type": "payment_applied",
             "message": "Receiver does not match pending payment.",
+        }
+
+    if (
+        state.current_player_id is not None
+        and state.current_player_id != receiver_id
+    ):
+        return {
+            "status": "error",
+            "response_type": "payment_applied",
+            "message": f"Payment does not belong to the current turn (current={state.current_player_id}).",
         }
 
     if req.payer_id not in targets:

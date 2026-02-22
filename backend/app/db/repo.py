@@ -81,3 +81,14 @@ def get_pending_payment(request_id: str) -> Optional[Dict[str, Any]]:
 
 def delete_pending_payment(request_id: str) -> None:
     supabase.table("pending_payments").delete().eq("request_id", request_id).execute()
+
+
+def has_pending_payments(game_id: str) -> bool:
+    res = (
+        supabase.table("pending_payments")
+        .select("request_id")
+        .eq("game_id", game_id)
+        .limit(1)
+        .execute()
+    )
+    return bool(res.data)

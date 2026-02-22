@@ -9,7 +9,6 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from backend.app.services.card_catalog import load_catalog
-from backend.app.services.game_service import create_game_lobby, start_new_game, GAMES
 
 
 @pytest.fixture(scope="session")

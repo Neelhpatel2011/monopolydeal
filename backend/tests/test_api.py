@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
 from backend.app.main import app
-from backend.app.services.game_service import GAMES
+from backend.app.db import repo
 
 
 client = TestClient(app)
@@ -57,7 +57,7 @@ def test_join_and_start_game():
 
     res3 = client.post(f"/games/{game_id}/start")
     assert res3.status_code == 200
-    state = GAMES[game_id]
+    state = repo.get_game(game_id)
     assert len(state.players["p1"].hand) > 0
     assert len(state.players["p2"].hand) > 0
 
@@ -67,7 +67,7 @@ def test_play_bank_action():
     game_id = res.json()["game_id"]
     client.post(f"/games/{game_id}/start")
 
-    state = GAMES[game_id]
+    state = repo.get_game(game_id)
     p1_hand = state.players["p1"].hand
     catalog = get_catalog()
 
@@ -77,7 +77,8 @@ def test_play_bank_action():
     if not bank_card_id:
         # Inject a bankable card to make the test deterministic
         money_id = get_card_id(catalog, lambda cd: cd.kind == "money")
-        GAMES[game_id].players["p1"].hand.append(money_id)
+        state.players["p1"].hand.append(money_id)
+        repo.update_game(state)
         bank_card_id = money_id
 
     res2 = client.post(
@@ -105,10 +106,11 @@ def test_counterable_rent_payment_flow():
     client.post(f"/games/{game_id}/start")
 
     # Force a predictable setup
-    state = GAMES[game_id]
+    state = repo.get_game(game_id)
     state.players["p1"].hand = [rent_id]
     state.players["p1"].properties[color] = props[:1] if props else []
     state.players["p2"].bank = [money_id]
+    repo.update_game(state)
 
     res1 = client.post(
         f"/games/{game_id}/actions",
