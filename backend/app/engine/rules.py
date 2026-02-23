@@ -33,9 +33,14 @@ def end_turn(state: GameState, turn_order: List[str]) -> GameState:
     idx = turn_order.index(state.current_player_id)
     next_idx = (idx + 1) % len(turn_order)
 
-    state.current_player_id = turn_order[next_idx]
+    next_player_id = turn_order[next_idx]
+    state.current_player_id = next_player_id
     state.turn_number += 1
     state.actions_taken = 0
+
+    # Monopoly Deal rule: at the start of each player's turn, they draw 2 cards.
+    # TODO: If we ever add character cards that have different draw card patterns, we can add them here by changing n = X
+    draw_cards(state, next_player_id, n=2)
 
     return state
 

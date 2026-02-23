@@ -5,7 +5,7 @@ import uuid
 from typing import Dict, List, Any
 
 from ..engine.state import GameState, PlayerState, DeckState
-from ..engine.effects.draw import build_deck
+from ..engine.effects.draw import build_deck, draw_cards
 from .card_catalog import CardCatalog
 from ..db import repo
 
@@ -66,6 +66,9 @@ def start_new_game(game_id: str, catalog: CardCatalog) -> GameState:
     # Ensure current player is set
     if state.current_player_id is None:
         state.current_player_id = player_ids[0]
+
+    # Start-of-turn draw for the first player.
+    draw_cards(state, state.current_player_id, n=2)
 
     repo.update_game(state, status="active")
     return state
