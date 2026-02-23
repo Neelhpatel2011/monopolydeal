@@ -67,6 +67,12 @@ def raw_to_carddef(raw: RawCard) -> Optional[CardDef]:
             params={k: v for k, v in raw.effect.model_dump().items() if k != "type"},
         )
 
+    # Normal (non-wild) property cards in our JSON use `property_group` instead of `colors`.
+    # The engine expects every playable property to have at least one color option.
+    colors = raw.colors
+    if kind == "property" and not colors and raw.property_group:
+        colors = [raw.property_group]
+
     card_def = CardDef(
         id=raw.id,
         name=raw.name,
@@ -74,7 +80,7 @@ def raw_to_carddef(raw: RawCard) -> Optional[CardDef]:
         copies=raw.count,
         money_value=raw.bank_value,
         rent_by_count=raw.rent_by_count,
-        colors=raw.colors,
+        colors=colors,
         play=play_def,
         meta={
             "property_group": raw.property_group,

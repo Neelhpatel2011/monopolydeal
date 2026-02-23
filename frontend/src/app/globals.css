@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+:root {
+  --background: radial-gradient(ellipse at center, #1e3a5f, #0f2540);
+  --foreground: #FFFFFF;
+  --color-cyan-teal: #80d4d4;
+  --color-coral: #e89f9f;
+  --color-light-blue: #a8d8ea;
+}
+
+@theme inline {
+  --color-foreground: var(--foreground);
+  --color-container-bg: rgba(217, 217, 217, 0.05);
+  --aspect-card: 5 / 7;
+}
+
+body {
+  background-image: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Card preview animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes zoomIn {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
