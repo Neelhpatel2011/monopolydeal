@@ -4,13 +4,13 @@ import uuid
 from collections.abc import Iterable
 from typing import Any, Dict, List, Optional
 
-from .state import GameState, PlayerState, DeckState
+from .state import GameState, PlayerState, DeckState, TurnAction
 from ..schemas.card_defs import CardDef
 from ..schemas.response import ActionResponse
 from ..services.card_catalog import CardCatalog
 from .effects.draw import draw_cards
 from .effects.rent import charge_rent_amount
-from .effects.steal import process_property_manipulation
+from .effects.steal import process_property_manipulation, find_card_color, is_full_set
 
 
 ## Use Action
@@ -21,6 +21,22 @@ def ensure_action_available(state: GameState, max_actions: int = 3) -> None:
 
 def consume_action(state: GameState) -> None:
     state.actions_taken += 1
+
+
+def record_turn_action(
+    state: GameState,
+    *,
+    player_id: str,
+    action_type: str,
+    card_ids: List[str],
+) -> None:
+    state.turn_actions.append(
+        TurnAction(
+            player_id=player_id,
+            action_type=action_type,
+            card_ids=[cid for cid in card_ids if cid],
+        )
+    )
 
 
 def end_turn(state: GameState, turn_order: List[str]) -> GameState:
@@ -37,6 +53,7 @@ def end_turn(state: GameState, turn_order: List[str]) -> GameState:
     state.current_player_id = next_player_id
     state.turn_number += 1
     state.actions_taken = 0
+    state.turn_actions = []
 
     # Monopoly Deal rule: at the start of each player's turn, they draw 2 cards.
     # TODO: If we ever add character cards that have different draw card patterns, we can add them here by changing n = X
@@ -115,13 +132,15 @@ def play_bank(
 
     cd = catalog.cards[card_id]
 
-    # In Monopoly Deal, any card can be banked for its money value
-    if (
-        cd.money_value <= 0 and cd.kind == "property"
-    ):  # Can't bank property cards since while they have money value, they are properties
-        raise ValueError(
-            "This card has no money value or it's a property and cannot be banked."
-        )  # For example this can be a wild multiproperty card
+    # House rule for this implementation: properties cannot be banked.
+    if cd.kind in {"property", "property_wild"}:
+        raise ValueError("Property cards cannot be banked.")
+
+    if cd.meta.get("bankable") is False:
+        raise ValueError("This card cannot be banked.")
+
+    if cd.money_value <= 0:
+        raise ValueError("This card has no money value and cannot be banked.")
 
     # Move from hand -> bank
     player.hand.remove(card_id)
@@ -194,7 +213,7 @@ def play_building(
     player = state.players[player_id]
     if card_id not in player.hand:
         raise ValueError("Building card not in hand.")
-    cd = catalog[card_id]
+    cd = catalog.cards[card_id]
 
     if not cd.play or cd.play.effect != "building":
         raise ValueError("Card is not a building action.")
@@ -341,6 +360,12 @@ def start_action(
                 raise ValueError("Bank card not in hand.")
             ensure_action_available(state)
             play_bank(state, player_id, bank_card_id, catalog)
+            record_turn_action(
+                state,
+                player_id=player_id,
+                action_type=action_type,
+                card_ids=[bank_card_id],
+            )
             consume_action(state)
             return {"status": "ok", "response_type": "action_resolved", "state": state}
 
@@ -352,6 +377,12 @@ def start_action(
                 raise ValueError("Property card not in hand.")
             ensure_action_available(state)
             play_property(state, catalog, player_id, property_card_id, property_color)
+            record_turn_action(
+                state,
+                player_id=player_id,
+                action_type=action_type,
+                card_ids=[property_card_id],
+            )
             consume_action(state)
             return {"status": "ok", "response_type": "action_resolved", "state": state}
 
@@ -372,6 +403,12 @@ def start_action(
                 player_id,
                 change_wild["card_id"],
                 change_wild["new_color"],
+            )
+            record_turn_action(
+                state,
+                player_id=player_id,
+                action_type=action_type,
+                card_ids=[change_wild["card_id"]],
             )
             consume_action(state)
             return {"status": "ok", "response_type": "action_resolved", "state": state}
@@ -417,44 +454,114 @@ def start_action(
             if action_type == "play_action_counterable":
                 if not is_counterable(card):
                     raise ValueError("Card is not counterable.")
-                if not target_player_id:
-                    raise ValueError(
-                        "target_player_id required for counterable action."
-                    )
                 ensure_action_available(state)
 
+                target_mode = card.play.params.get("target") if card.play else None
+                if target_mode == "all_others":
+                    target_ids = [
+                        pid for pid in state.players.keys() if pid != player_id
+                    ]
+                    if not target_ids:
+                        raise ValueError("No opponents to target.")
+                else:
+                    if not target_player_id:
+                        raise ValueError("target_player_id required.")
+                    if target_player_id == player_id:
+                        raise ValueError("Cannot target yourself.")
+                    if target_player_id not in state.players:
+                        raise ValueError(
+                            f"Unknown target_player_id: {target_player_id}"
+                        )
+                    target_ids = [target_player_id]
+
+                effect = card.play.effect if card.play else None
+
+                # Validate counterable action payload before discarding the card(s).
+                if effect == "steal_property":
+                    if len(target_ids) != 1:
+                        raise ValueError("Sly Deal must target exactly one player.")
+                    if not steal_card_id:
+                        raise ValueError("steal_card_id required for Sly Deal.")
+                    target = state.players[target_ids[0]]
+                    steal_color_actual = find_card_color(
+                        target.properties, steal_card_id
+                    )
+                    if not card.play.params.get(
+                        "from_full_set_allowed", False
+                    ) and is_full_set(target, catalog, steal_color_actual):
+                        raise ValueError("Cannot steal from a full set.")
+
+                if effect == "swap_property":
+                    if len(target_ids) != 1:
+                        raise ValueError("Forced Deal must target exactly one player.")
+                    if not steal_card_id or not give_card_id:
+                        raise ValueError(
+                            "steal_card_id and give_card_id required for Forced Deal."
+                        )
+                    target = state.players[target_ids[0]]
+                    steal_color_actual = find_card_color(
+                        target.properties, steal_card_id
+                    )
+                    give_color_actual = find_card_color(actor.properties, give_card_id)
+                    if not card.play.params.get("from_full_set_allowed", False):
+                        if is_full_set(target, catalog, steal_color_actual):
+                            raise ValueError("Cannot take from a full set.")
+                        if is_full_set(actor, catalog, give_color_actual):
+                            raise ValueError("Cannot give from your full set.")
+
+                if effect == "steal_full_set":
+                    if len(target_ids) != 1:
+                        raise ValueError("Deal Breaker must target exactly one player.")
+                    if not steal_color:
+                        raise ValueError("steal_color required for Deal Breaker.")
+                    target = state.players[target_ids[0]]
+                    if not is_full_set(target, catalog, steal_color):
+                        raise ValueError(
+                            f"Target does not have a full set of '{steal_color}'."
+                        )
+
                 discard_action_cards(state, actor, [card_id] + (double_rent_ids or []))
-                pending_id = create_pending_action(
+                record_turn_action(
                     state,
-                    source_player=player_id,
-                    target_player=target_player_id,
-                    card_id=card_id,
-                    card_kind=card.kind,
-                    effect=card.play.effect if card.play else None,
-                    payload={
-                        "rent_color": rent_color,
-                        "double_rent_ids": double_rent_ids,
-                        "steal_card_id": steal_card_id,
-                        "give_card_id": give_card_id,
-                        "steal_color": steal_color,
-                        "amount": card.play.params.get("amount") if card.play else None,
-                    },
+                    player_id=player_id,
+                    action_type=action_type,
+                    card_ids=[card_id] + (double_rent_ids or []),
                 )
+
+                pending_requests = []
+                for tid in target_ids:
+                    pending_id = create_pending_action(
+                        state,
+                        source_player=player_id,
+                        target_player=tid,
+                        card_id=card_id,
+                        card_kind=card.kind,
+                        effect=card.play.effect if card.play else None,
+                        payload={
+                            "rent_color": rent_color,
+                            "double_rent_ids": double_rent_ids,
+                            "steal_card_id": steal_card_id,
+                            "give_card_id": give_card_id,
+                            "steal_color": steal_color,
+                            "amount": (
+                                card.play.params.get("amount") if card.play else None
+                            ),
+                        },
+                    )
+                    pending_requests.append(
+                        {
+                            "pending_id": pending_id,
+                            "target_player": tid,
+                            "prompt": "Accept or Just Say No?",
+                        }
+                    )
                 consume_action(state)
 
                 return {
                     "status": "ok",
                     "response_type": "response_required",
                     "state": state,
-                    "response_required": {
-                        "pending_requests": [
-                            {
-                                "pending_id": pending_id,
-                                "target_player": target_player_id,
-                                "prompt": "Accept or Just Say No?",
-                            }
-                        ]
-                    },
+                    "response_required": {"pending_requests": pending_requests},
                 }
 
             # non‑counterable branch
@@ -475,6 +582,12 @@ def start_action(
                 give_card_id=give_card_id,
                 steal_color=steal_color,
                 already_discarded=False,
+            )
+            record_turn_action(
+                state,
+                player_id=player_id,
+                action_type=action_type,
+                card_ids=[card_id] + (double_rent_ids or []),
             )
             consume_action(state)
             return result
@@ -524,19 +637,33 @@ def respond_to_pending(
                 "log": {"action": "canceled_by_jsn", "pending_id": pending_id},
             }
 
-        result = apply_action_effects(
-            state,
-            catalog,
-            player_id=pending["source_player"],
-            card_id=pending["card_id"],
-            rent_color=pending["payload"].get("rent_color"),
-            double_rent_ids=pending["payload"].get("double_rent_ids"),
-            target_player_id=pending["target_player"],
-            steal_card_id=pending["payload"].get("steal_card_id"),
-            give_card_id=pending["payload"].get("give_card_id"),
-            steal_color=pending["payload"].get("steal_color"),
-            already_discarded=True,
-        )
+        try:
+            result = apply_action_effects(
+                state,
+                catalog,
+                player_id=pending["source_player"],
+                card_id=pending["card_id"],
+                rent_color=pending["payload"].get("rent_color"),
+                double_rent_ids=pending["payload"].get("double_rent_ids"),
+                target_player_id=pending["target_player"],
+                steal_card_id=pending["payload"].get("steal_card_id"),
+                give_card_id=pending["payload"].get("give_card_id"),
+                steal_color=pending["payload"].get("steal_color"),
+                already_discarded=True,
+            )
+        except ValueError as e:
+            # Do not deadlock the game on an invalid/cannot-apply pending action.
+            del state.pending_actions[pending_id]
+            return {
+                "status": "error",
+                "response_type": "action_resolved",
+                "state": state,
+                "message": str(e),
+                "log": {
+                    "action": "pending_accept_failed",
+                    "pending_id": pending_id,
+                },
+            }
         del state.pending_actions[pending_id]
         return result
 
@@ -551,6 +678,12 @@ def respond_to_pending(
 
         state.players[player_id].hand.remove(jsn_card_id)
         state.deck.discard_pile.append(jsn_card_id)
+        record_turn_action(
+            state,
+            player_id=player_id,
+            action_type="just_say_no",
+            card_ids=[jsn_card_id],
+        )
 
         pending["jsn_count"] += 1
         pending["awaiting_player"] = (
@@ -610,6 +743,8 @@ def apply_action_effects(
 
     # Rent
     if card.kind == "rent":
+        if not target_player_id:
+            raise ValueError("target_player_id required for rent.")
         amount = charge_rent_amount(
             state=state,
             catalog=catalog,
@@ -667,6 +802,8 @@ def apply_action_effects(
             }
 
         if effect in {"charge_players", "charge_player"}:
+            if not target_player_id:
+                raise ValueError("target_player_id required for this action.")
             amount = int(card.play.params.get("amount", 0))
             return {
                 "status": "ok",

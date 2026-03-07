@@ -1,5 +1,6 @@
 import { colorBgMap } from "@/lib/tailwind-parsing"
 import { PlayerColor } from "@/types/player"
+import Image from "next/image"
 
 type OpponentsBoardProps = {
     color: PlayerColor
@@ -15,7 +16,14 @@ export default function OpponentBoard({ color, icon, name, money, children }: Op
         <section className="@container flex flex-1 flex-col bg-container-bg rounded-md overflow-hidden text-foreground min-w-23 h-40">
            <header className={`flex items-center justify-between border-slate-600 p-2 ${colorBgMap[color]}`}>
                 <div className="flex items-center gap-2">
-                    <img src={icon} alt={`${name} icon`} className="w-7 h-7 rounded-full border border-slate-600"/>
+                    <Image
+                        src={icon}
+                        alt={`${name} icon`}
+                        width={28}
+                        height={28}
+                        className="w-7 h-7 rounded-full border border-slate-600"
+                        unoptimized
+                    />
                     <p className="hidden @[140px]:block whitespace-nowrap">{name}</p>
                 </div>
                 <p>${money}</p>

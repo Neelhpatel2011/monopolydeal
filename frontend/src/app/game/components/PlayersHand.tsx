@@ -1,112 +1,226 @@
 'use client'
-import { useState } from "react"
-import { PlayerColor } from "@/types/player";
-import { colorBgMap } from "@/lib/tailwind-parsing"
-import MiniActionCard from "@/components/MiniActionCard";
-import FullCard from "@/components/Card";
-import { actionCards } from "@/data/cards/action";
-import { Card } from "@/types/card";
-import { moneyCards } from "@/data/cards/money";
-import MiniMoneyCard from "@/components/MiniMoneyCard";
 
-export default function PlayersHand() {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+import { useState } from 'react'
+import type { CSSProperties } from 'react'
+import { useDraggable } from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
+import { useGame } from '@/contexts/GameContext'
+import { getCard } from '@/data/cardCatalog'
+import { CatalogCard } from '@/components/game/CatalogCard'
 
-  // const cards: Card[] = [actionCards[0], actionCards[1], actionCards[2], actionCards[3], actionCards[4]]
-  // const cards: Card[] = [actionCards[0], actionCards[1], actionCards[2], actionCards[3], actionCards[4], actionCards[5], actionCards[6]]
-  // const cards: Card[] = [actionCards[0], actionCards[1], actionCards[2], actionCards[3], actionCards[4], actionCards[5], actionCards[6], actionCards[7], actionCards[8], actionCards[9]]
-  const cards: Card[] = [actionCards[0], actionCards[1], moneyCards[2], actionCards[3], actionCards[4], actionCards[5], actionCards[6], actionCards[7], actionCards[8], actionCards[9]]
-  // const cards: PlayerColor[] = ["red", "orange", "yellow", "green", "blue", "purple", "pink"]
+type CSSVarStyle = CSSProperties & Record<`--${string}`, string>
 
-  const middle = (cards.length - 1) / 2
-  const baseSpacing = 35
-  const baseRotation = 3.5
-  const scaleFactor = Math.max(0.3, 1 - ((cards.length - 7) * 0.12))
-  const spreadOnHover = 50
+function clamp(min: number, value: number, max: number) {
+  return Math.min(max, Math.max(min, value))
+}
+
+// ─── Draggable card in hand ───────────────────────────────────────────────────
+
+interface DraggableCardProps {
+  cardId: string
+  index: number
+  total: number
+  isSelected: boolean
+  isMyTurn: boolean
+  onHover: (i: number | null) => void
+  isHovered: boolean
+  hoveredIndex: number | null
+}
+
+function DraggableHandCard({
+  cardId,
+  index,
+  total,
+  isSelected,
+  isMyTurn,
+  onHover,
+  isHovered,
+  hoveredIndex,
+}: DraggableCardProps) {
+  const { dispatch } = useGame()
+  const card = getCard(cardId)
+
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `hand-card-${cardId}-${index}`,
+    data: { cardId },
+    disabled: !isMyTurn,
+  })
+
+  const scaleFactor = Math.max(0.38, 1 - Math.max(0, (total - 7)) * 0.11)
+  const t = total === 1 ? 0 : index / (total - 1) - 0.5 // -0.5..0.5
+
+  const maxAngle = clamp(26, 18 + total * 2, 42)
+  const spread = clamp(220, total * 46, 360) * scaleFactor
+
+  const baseRotation = t * maxAngle * scaleFactor
+  const rotation = baseRotation * ((isHovered || isSelected) ? 0.15 : 1)
+
+  let translateX = t * spread
+
+  // Arc: center card lifts slightly, edges sit lower.
+  const u = 1 - Math.min(1, Math.abs(t) * 2)
+  const lift = 18 * scaleFactor
+  const translateY = -Math.pow(u, 1.6) * lift
+
+  const spreadOnHover = 44 * scaleFactor
+  if (hoveredIndex !== null && hoveredIndex !== index) {
+    translateX += index < hoveredIndex ? -spreadOnHover : spreadOnHover
+  }
+
+  function handleClick(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!isMyTurn) return
+    if (isSelected) {
+      dispatch({ type: 'DESELECT_CARD', cardId })
+    } else {
+      dispatch({ type: 'SELECT_CARD', cardId })
+    }
+  }
+
+  const dragStyle = transform
+    ? { transform: CSS.Translate.toString(transform) }
+    : undefined
 
   return (
-    <div className="relative w-full h-36 md:h-44 mt-auto">
-      {cards.map((card, i) => {
-          const offset = i - middle
-
-          let translateX = offset * (baseSpacing * scaleFactor)
-          const rotation = offset * (baseRotation * scaleFactor)
-          let translateY = Math.abs(rotation) * 1.2
-
-          if (offset === 0) translateY += 3
-
-          // Spread effect: move cards away from hovered card
-          if (hoveredIndex !== null && hoveredIndex !== i) {
-            if (i < hoveredIndex) {
-              translateX -= spreadOnHover
-            } else {
-              translateX += spreadOnHover
-            }
-          }
-
-          return (
-            <div
-              key={i}
-              className="
-                absolute top-1/2 left-1/2
-              "
-              style={{
-                transform: `
-                  translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px))
-                  rotate(${rotation}deg)
-                `,
-                transition: 'transform 0.4s ease-out'
-              }}
-            >
-              <div
-                className="
-                  hover:-translate-y-10
-                  hover:drop-shadow-xl
-                  hover:scale-115
-                  hover:py-5
-                  hover:px-2
-                  transition-all duration-400 ease-out
-                  cursor-pointer
-                "
-                onMouseEnter={() => setHoveredIndex(i)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              >
-                {card.category === "action" ?
-                  <MiniActionCard card={card} /> :
-                  <MiniMoneyCard card={card} />
-
-                }
-              </div>
-            </div>
-          )
-        })}
-
-      {/* Full card preview overlay */}
-      {hoveredIndex !== null && (
+    <div
+      className="hand-card-wrap absolute left-1/2 bottom-[14px]"
+      style={{
+        transform: `translateX(calc(-50% + ${translateX}px)) translateY(${translateY}px) rotate(${rotation}deg)`,
+        transition: isDragging ? 'none' : 'transform 360ms var(--ease-out)',
+        zIndex: isDragging ? 1200 : (isHovered || isSelected ? 1100 : 100 + index),
+      }}
+    >
+      <div
+        ref={setNodeRef}
+        {...attributes}
+        {...listeners}
+        onClick={handleClick}
+        onMouseEnter={() => onHover(index)}
+        onMouseLeave={() => onHover(null)}
+        aria-label={`${card.name} — $${card.bankValue}M. ${isSelected ? 'Selected.' : 'Click to select.'}`}
+        aria-pressed={isSelected}
+        tabIndex={0}
+        onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); handleClick(e as unknown as React.MouseEvent) } }}
+        style={dragStyle}
+        className={[
+          'hand-card-hitbox',
+          isDragging ? 'hand-card-dragging' : '',
+          !isMyTurn ? 'cursor-not-allowed' : 'cursor-pointer',
+          'focus-accent',
+        ].filter(Boolean).join(' ')}
+      >
         <div
-          className="
-            fixed inset-0
-            flex items-center justify-center
-            pointer-events-none
-            z-50
-          "
-          style={{
-            animation: 'fadeIn 0.3s ease-out'
-          }}
+          className={[
+            'hand-card-surface',
+            isHovered ? 'hand-card-hovered' : '',
+            isSelected ? 'hand-card-selected' : '',
+          ].filter(Boolean).join(' ')}
+          style={
+            (isHovered || isSelected
+              ? ({ '--card-shadow': 'var(--card-shadow-hover)' } as CSSVarStyle)
+              : undefined)
+          }
         >
-          <div
-            className="aspect-card drop-shadow-2xl flex-shrink-0" 
-            // ToDo - adding overflow hidden gets rid of overflow, but cuts off bottom of card when viewing fullc ard on player hand over. Figure out why and how to fix.
-            style={{
-              animation: 'zoomIn 0.5s ease-out',
-              width: 'clamp(13rem, 13rem, 13rem)',
-              height: 'auto'
-            }}
-          >
-            <FullCard card={cards[hoveredIndex]} />
-          </div>
+          <CatalogCard cardId={cardId} size="hand" />
+
+          {/* Selected indicator */}
+          {isSelected && (
+            <div className="hand-selected-pin" aria-hidden="true">✓</div>
+          )}
         </div>
-      )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Main PlayersHand component ───────────────────────────────────────────────
+
+export default function PlayersHand() {
+  const { state, isMyTurn, actionsLeft } = useGame()
+  const { view, selectedCardIds } = state
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
+
+  const handIds: string[] = view?.you.hand ?? []
+
+  // Click on empty area to deselect
+  function handleBackgroundClick() {
+    // Deselect is handled via dispatch in DraggableHandCard
+  }
+  void handleBackgroundClick
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Hand status bar */}
+      <div className="hand-action-bar">
+        {isMyTurn ? (
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-[10px] font-black uppercase tracking-[0.18em] text-white/25">
+              Hand
+            </span>
+            <span className="text-[11px] text-white/55">{handIds.length} cards</span>
+            <span className="w-px h-4 bg-white/10" aria-hidden="true" />
+            {selectedCardIds.length > 0 ? (
+              <span className="text-[11px] text-white/80 min-w-0">
+                Selected:{' '}
+                <span className="text-white font-semibold inline-block max-w-[160px] truncate align-bottom">
+                  {getCard(selectedCardIds[0]).name}
+                </span>
+              </span>
+            ) : (
+              <>
+                <span className="text-[11px] text-white/35 sm:hidden">Select a card to play</span>
+                <span className="hidden sm:inline text-[11px] text-white/35">
+                  Tap a card to play. Drag to bank/properties.
+                </span>
+              </>
+            )}
+            <span className="hidden sm:inline w-px h-4 bg-white/10" aria-hidden="true" />
+            <span className="hidden sm:inline text-[11px] text-white/45">{actionsLeft} actions left</span>
+          </div>
+        ) : (
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.22)' }}>
+            Waiting for {view?.current_player_id ?? '...'}
+          </span>
+        )}
+      </div>
+
+      {/* Fan hand */}
+      <div className="hand-fan-area">
+        {handIds.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-white/20 text-sm">
+            No cards in hand
+          </div>
+        ) : (
+          handIds.map((cardId, i) => (
+            <DraggableHandCard
+              key={`${cardId}-${i}`}
+              cardId={cardId}
+              index={i}
+              total={handIds.length}
+              isSelected={selectedCardIds.includes(cardId)}
+              isMyTurn={isMyTurn}
+              onHover={setHoveredIndex}
+              isHovered={hoveredIndex === i}
+              hoveredIndex={hoveredIndex}
+            />
+          ))
+        )}
+
+        {/* Full card preview on hover */}
+        {hoveredIndex !== null && hoveredIndex < handIds.length && (
+          <div
+            className="fixed inset-0 flex items-center justify-center pointer-events-none z-50"
+            aria-hidden="true"
+          >
+            <div
+              className="drop-shadow-2xl"
+              style={{ animation: 'zoomIn 0.3s ease-out', width: '13rem' }}
+            >
+              <CatalogCard cardId={handIds[hoveredIndex]} size="fill" />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

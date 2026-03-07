@@ -2,12 +2,45 @@
 
 # Placeholder for action models
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import List, Optional, Literal
 
 
 class CreateGameRequest(BaseModel):
-    player_ids: List[str]
+    """
+    Create a lobby game.
+
+    The lobby is created with exactly one player (the host). Other players must
+    join explicitly via the join endpoint.
+    """
+
+    # Canonical field (new)
+    player_name: Optional[str] = None
+    # Backwards-compatibility for older clients (deprecated)
+    player_ids: Optional[List[str]] = None
+
+    @model_validator(mode="after")
+    def _normalize(self) -> "CreateGameRequest":
+        if self.player_name and self.player_ids:
+            raise ValueError("Provide either player_name or player_ids, not both.")
+
+        if self.player_name is not None:
+            self.player_name = self.player_name.strip()
+            if not self.player_name:
+                raise ValueError("player_name is required.")
+            return self
+
+        if self.player_ids is not None:
+            ids = [p.strip() for p in self.player_ids if p and p.strip()]
+            if len(ids) != 1:
+                raise ValueError(
+                    "Create game requires exactly 1 host player. Others must join."
+                )
+            self.player_name = ids[0]
+            self.player_ids = ids
+            return self
+
+        raise ValueError("player_name is required.")
 
 
 class ChangeWildPayload(BaseModel):

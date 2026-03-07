@@ -7,7 +7,7 @@ type PileProps = {
     children?: React.ReactNode
 }
 
-export default function Pile({ type, widthClass = "w-14 md:w-20", card, children }: PileProps) {
+export default function Pile({ widthClass = "w-14 md:w-20", children }: PileProps) {
     return (
         <div
             className={`aspect-card bg-container-bg rounded-md flex items-center justify-center ${widthClass} min-w-14`}

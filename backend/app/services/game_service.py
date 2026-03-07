@@ -25,14 +25,23 @@ def create_game_lobby(player_ids: List[str]) -> GameState:
     Create a game in the lobby state (no deck, no hands dealt).
     Players can join before the game is started.
     """
-    players = {pid: PlayerState(id=pid) for pid in player_ids}
+    if not player_ids:
+        raise ValueError("Cannot create a lobby with no host player.")
+    if len(player_ids) != 1:
+        raise ValueError("Lobby must be created with exactly 1 host player.")
+
+    host_id = player_ids[0].strip()
+    if not host_id:
+        raise ValueError("Host player name is required.")
+
+    players = {host_id: PlayerState(id=host_id)}
     deck = DeckState(draw_pile=[], discard_pile=[])
 
     state = GameState(
         id=str(uuid.uuid4()),
         players=players,
         deck=deck,
-        current_player_id=player_ids[0] if player_ids else None,
+        current_player_id=host_id,
         turn_number=1,
     )
     repo.create_game(state, status="lobby")
@@ -46,6 +55,8 @@ def start_new_game(game_id: str, catalog: CardCatalog) -> GameState:
     state = get_state(game_id)
     if not state.players:
         raise ValueError("Cannot start game with no players.")
+    if len(state.players) < 2:
+        raise ValueError("Need at least 2 players to start the game.")
 
     if state.deck.draw_pile or state.deck.discard_pile:
         raise ValueError("Game already started (deck is not empty).")
@@ -81,6 +92,10 @@ def join_game(game_id: str, player_name: str) -> Dict[str, object]:
     Returns a dict with player_id and the player's view.
     """
     state = get_state(game_id)
+
+    # Lobby-only: once the deck exists, the game has started.
+    if state.deck.draw_pile or state.deck.discard_pile:
+        raise ValueError("Game already started; cannot join.")
 
     if player_name in state.players:
         raise ValueError("Player already exists in this game.")
@@ -140,8 +155,9 @@ def add_to_pendingpayments(game_id: str, response: ActionResponse) -> None:
 def add_game_over(response: Dict[str, Any], state: GameState, catalog: CardCatalog) -> None:
     if response.get("status") != "ok":
         return
-    winner_id = check_win(state, catalog)
+    winner_id = state.winner_id or check_win(state, catalog)
     if winner_id:
+        state.winner_id = winner_id
         response["game_over"] = {"winner_id": winner_id}
 
 
@@ -150,6 +166,12 @@ async def handle_action(
 ) -> ActionResponse:
 
     state = get_state(game_id)
+    if state.winner_id:
+        return {
+            "status": "error",
+            "response_type": "action_resolved",
+            "message": f"Game is over. Winner: {state.winner_id}.",
+        }
     if req.action_type == "end_turn":
         if state.pending_actions:
             return {
@@ -166,12 +188,16 @@ async def handle_action(
     response = start_action(state=state, catalog=catalog, **req.model_dump())
 
     add_to_pendingpayments(game_id, response)
+    add_game_over(response, state, catalog)
 
     if response.get("status") == "ok":
         response["player_view"] = build_player_view(state, req.player_id)
     response.pop("state", None)
-    add_game_over(response, state, catalog)
-    repo.update_game(state)
+    if state.winner_id:
+        repo.delete_pending_payments_for_game(game_id)
+        repo.delete_game(game_id)
+    else:
+        repo.update_game(state)
 
     await manager.broadcast_player_views(game_id, state)
     return response
@@ -182,6 +208,12 @@ async def handle_pending(
 ) -> ActionResponse:
 
     state = get_state(game_id)
+    if state.winner_id:
+        return {
+            "status": "error",
+            "response_type": "action_resolved",
+            "message": f"Game is over. Winner: {state.winner_id}.",
+        }
 
     if req.pending_id not in state.pending_actions:
         return {
@@ -212,12 +244,16 @@ async def handle_pending(
     response = respond_to_pending(state=state, catalog=catalog, **req.model_dump())
 
     add_to_pendingpayments(game_id, response)
+    add_game_over(response, state, catalog)
 
     if response.get("status") == "ok":
         response["player_view"] = build_player_view(state, req.player_id)
     response.pop("state", None)
-    add_game_over(response, state, catalog)
-    repo.update_game(state)
+    if state.winner_id:
+        repo.delete_pending_payments_for_game(game_id)
+        repo.delete_game(game_id)
+    else:
+        repo.update_game(state)
 
     await manager.broadcast_player_views(game_id, state)
     return response
@@ -228,6 +264,12 @@ async def handle_payment(
 ) -> PaymentResponse:
 
     state = get_state(game_id)
+    if state.winner_id:
+        return {
+            "status": "error",
+            "response_type": "payment_applied",
+            "message": f"Game is over. Winner: {state.winner_id}.",
+        }
 
     pending = repo.get_pending_payment(req.request_id)
     if not pending:
@@ -286,9 +328,14 @@ async def handle_payment(
 
     if response.get("status") == "ok":
         repo.delete_pending_payment(req.request_id)
+    add_game_over(response, state, catalog)
+    if response.get("status") == "ok":
         response["player_view"] = build_player_view(state, req.payer_id)
     response.pop("state", None)
-    add_game_over(response, state, catalog)
-    repo.update_game(state)
+    if state.winner_id:
+        repo.delete_pending_payments_for_game(game_id)
+        repo.delete_game(game_id)
+    else:
+        repo.update_game(state)
     await manager.broadcast_player_views(game_id, state)
     return response

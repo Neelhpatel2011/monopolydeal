@@ -17,6 +17,14 @@ class PlayerState(BaseModel):
     )  # color -> building card ids
 
 
+class TurnAction(BaseModel):
+    """A public, per-turn action stack entry for the UI."""
+
+    player_id: str
+    action_type: str
+    card_ids: List[str] = Field(default_factory=list)
+
+
 class GameState(BaseModel):
     id: str
     players: Dict[str, PlayerState]
@@ -24,4 +32,6 @@ class GameState(BaseModel):
     current_player_id: Optional[str] = None
     turn_number: int = 1
     actions_taken: int = 0
+    turn_actions: List[TurnAction] = Field(default_factory=list)
+    winner_id: Optional[str] = None
     pending_actions: Dict[str, Dict[str, Any]] = Field(default_factory=dict)

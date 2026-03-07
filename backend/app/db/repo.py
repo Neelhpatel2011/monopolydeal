@@ -1,3 +1,4 @@
+import uuid
 from typing import Any, Dict, List, Optional
 
 from ..engine.state import GameState
@@ -9,6 +10,13 @@ def _require_single(res: Any) -> Dict[str, Any]:
     if not res.data:
         raise ValueError("Game not found.")
     return res.data
+
+
+def _require_uuid(value: str, *, name: str) -> None:
+    try:
+        uuid.UUID(value)
+    except Exception:
+        raise ValueError(f"Invalid {name}.")
 
 
 def create_game(state: GameState, status: str = "lobby") -> None:
@@ -25,6 +33,7 @@ def update_game(state: GameState, status: Optional[str] = None) -> None:
 
 
 def get_game(game_id: str) -> GameState:
+    _require_uuid(game_id, name="game_id")
     res = (
         supabase.table("games")
         .select("state")
@@ -37,6 +46,7 @@ def get_game(game_id: str) -> GameState:
 
 
 def delete_game(game_id: str) -> None:
+    _require_uuid(game_id, name="game_id")
     supabase.table("games").delete().eq("id", game_id).execute()
 
 
@@ -58,6 +68,7 @@ def list_games() -> List[GameSummary]:
 def insert_pending_payment(
     game_id: str, request_id: str, receiver_id: str, targets: Dict[str, int]
 ) -> None:
+    _require_uuid(game_id, name="game_id")
     supabase.table("pending_payments").insert(
         {
             "request_id": request_id,
@@ -84,6 +95,7 @@ def delete_pending_payment(request_id: str) -> None:
 
 
 def has_pending_payments(game_id: str) -> bool:
+    _require_uuid(game_id, name="game_id")
     res = (
         supabase.table("pending_payments")
         .select("request_id")
@@ -92,3 +104,8 @@ def has_pending_payments(game_id: str) -> bool:
         .execute()
     )
     return bool(res.data)
+
+
+def delete_pending_payments_for_game(game_id: str) -> None:
+    _require_uuid(game_id, name="game_id")
+    supabase.table("pending_payments").delete().eq("game_id", game_id).execute()
