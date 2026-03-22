@@ -1,9 +1,17 @@
 'use client'
 
+import { useRef, useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { useGame } from '@/contexts/GameContext'
-import { getCard, groupColorMap, groupSetSizes, groupDisplayNames } from '@/data/cardCatalog'
+import {
+  getCard,
+  getSetRentSummary,
+  groupColorMap,
+  groupSetSizes,
+  groupDisplayNames,
+} from '@/data/cardCatalog'
 import { TinyCatalogCard } from '@/components/game/TinyCatalogCard'
+import { PropertySetInspector } from '@/components/game/PropertySetInspector'
 
 interface PropertySetProps {
   color: string
@@ -15,6 +23,9 @@ interface PropertySetProps {
 
 export function PropertySet({ color, cardIds, buildingIds = [], isOwn = false }: PropertySetProps) {
   const { state, dispatch, playAction, isMyTurn, actionsLeft } = useGame()
+  const shellRef = useRef<HTMLDivElement | null>(null)
+  const [isInspecting, setIsInspecting] = useState(false)
+  const [inspectorPos, setInspectorPos] = useState<{ left: number; top: number } | null>(null)
   const { setNodeRef, isOver } = useDroppable({
     id: `prop-set-${color}`,
     disabled: !isOwn,
@@ -31,31 +42,42 @@ export function PropertySet({ color, cardIds, buildingIds = [], isOwn = false }:
     isOwn ? 'cursor-default' : '',
   ].filter(Boolean).join(' ')
 
-  const rentTable = (() => {
-    const sample = cardIds.find(id => getCard(id).rentByCount)
-    return getCard(sample ?? '').rentByCount ?? []
-  })()
-
-  const currentRent = rentTable[Math.min(count, rentTable.length) - 1] ?? 0
+  const rentSummary = getSetRentSummary(color, cardIds, buildingIds)
+  const currentRent = rentSummary.setRent
 
   const hasHouse = buildingIds.some(id => id.includes('house'))
   const hasHotel = buildingIds.some(id => id.includes('hotel'))
 
   const layerCount = Math.min(Math.max(setSize, count), 5)
   const placeholderCount = Math.min(setSize, 5)
-  const xStep = 12
-  const yStep = 3
-  const cardW = 56 // must match TinyCatalogCard size="md"
+  const xStep = 16
+  const yStep = 5
+  const cardW = 76
   const cardH = Math.round(cardW * 7 / 5)
   const stackW = cardW + (layerCount - 1) * xStep
   const stackH = cardH + (layerCount - 1) * yStep
   const canChangeWild = isOwn && isMyTurn && actionsLeft > 0 && !state.loading
 
+  function showInspector() {
+    if (!shellRef.current) return
+    const rect = shellRef.current.getBoundingClientRect()
+    setInspectorPos({ left: rect.left + rect.width / 2, top: rect.top - 14 })
+    setIsInspecting(true)
+  }
+
   return (
     <div
-      ref={isOwn ? setNodeRef : undefined}
-      className={panelClass}
+      ref={shellRef}
+      className="prop-set-shell"
+      onMouseEnter={showInspector}
+      onMouseLeave={() => setIsInspecting(false)}
+      onFocusCapture={showInspector}
+      onBlurCapture={() => setIsInspecting(false)}
     >
+      <div
+        ref={isOwn ? setNodeRef : undefined}
+        className={panelClass}
+      >
       {/* Header */}
       <div className={`prop-set-header ${colorDef?.color ?? 'bg-gray-600'}`}>
         <span className={`prop-set-title ${colorDef?.text ?? 'text-white'}`}>
@@ -128,11 +150,11 @@ export function PropertySet({ color, cardIds, buildingIds = [], isOwn = false }:
                         })
                       }}
                     >
-                      <TinyCatalogCard cardId={id} size="md" />
-                      <span className="prop-wild-badge" aria-hidden="true">↺</span>
+                      <TinyCatalogCard cardId={id} size="prop" />
+                      <span className="prop-wild-badge" aria-hidden="true">Swap</span>
                     </button>
                   ) : (
-                    <TinyCatalogCard cardId={id} size="md" />
+                    <TinyCatalogCard cardId={id} size="prop" />
                   )}
                 </div>
               )
@@ -179,8 +201,8 @@ export function PropertySet({ color, cardIds, buildingIds = [], isOwn = false }:
         {/* Buildings */}
         {false && isComplete && (hasHouse || hasHotel) && (
           <div className="flex gap-0.5 mt-0.5">
-            {hasHouse && <span title="House" className="text-[10px]">🏠</span>}
-            {hasHotel && <span title="Hotel" className="text-[10px]">🏨</span>}
+            {hasHouse && <span title="House" className="text-[10px]">House</span>}
+            {hasHotel && <span title="Hotel" className="text-[10px]">Hotel</span>}
           </div>
         )}
       </div>
@@ -189,10 +211,25 @@ export function PropertySet({ color, cardIds, buildingIds = [], isOwn = false }:
       <div className="prop-set-footer">
         <span>Rent: </span>
         <span className="prop-set-rent-value">${currentRent}M</span>
-        {(hasHouse || hasHotel) && (
-          <span className="text-[9px] text-white/30"> +bonus</span>
+        {rentSummary.buildingBonus > 0 && (
+          <span className="prop-set-rent-note">includes +{rentSummary.buildingBonus}</span>
         )}
       </div>
+      </div>
+
+      {isInspecting && inspectorPos && (
+        <div
+          className="prop-inspector-popover"
+          style={{ left: inspectorPos.left, top: inspectorPos.top }}
+          aria-hidden="true"
+        >
+          <PropertySetInspector
+            color={color}
+            cardIds={cardIds}
+            buildingIds={buildingIds}
+          />
+        </div>
+      )}
     </div>
   )
 }

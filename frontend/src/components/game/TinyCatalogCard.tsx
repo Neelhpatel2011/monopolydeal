@@ -2,7 +2,7 @@
 
 import { CatalogCard } from '@/components/game/CatalogCard'
 
-type TinyCardSize = 'xs' | 'sm' | 'md'
+type TinyCardSize = 'xs' | 'sm' | 'md' | 'prop'
 
 export function TinyCatalogCard({
   cardId,

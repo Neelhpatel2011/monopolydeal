@@ -4,7 +4,15 @@
 import uuid
 from typing import Dict, List, Any
 
-from ..engine.state import GameState, PlayerState, DeckState
+from ..engine.state import (
+    DeckState,
+    GameState,
+    PlayerState,
+    find_payment_tracker_by_request_id,
+    resolve_host_id,
+    set_payment_tracker_status,
+    upsert_payment_tracker,
+)
 from ..engine.effects.draw import build_deck, draw_cards
 from .card_catalog import CardCatalog
 from ..db import repo
@@ -18,6 +26,15 @@ from .realtime import manager
 from .player_view import build_player_view
 
 STARTING_HAND_SIZE = 5
+MAX_PLAYERS = 5
+
+
+def _ensure_host_id(state: GameState) -> str:
+    host_id = resolve_host_id(state)
+    if not host_id:
+        raise ValueError("Cannot resolve host player.")
+    state.host_id = host_id
+    return host_id
 
 
 def create_game_lobby(player_ids: List[str]) -> GameState:
@@ -39,6 +56,7 @@ def create_game_lobby(player_ids: List[str]) -> GameState:
 
     state = GameState(
         id=str(uuid.uuid4()),
+        host_id=host_id,
         players=players,
         deck=deck,
         current_player_id=host_id,
@@ -48,11 +66,21 @@ def create_game_lobby(player_ids: List[str]) -> GameState:
     return state
 
 
-def start_new_game(game_id: str, catalog: CardCatalog) -> GameState:
+def start_new_game(
+    game_id: str, catalog: CardCatalog, starter_player_id: str
+) -> GameState:
     """
     Start a lobby game: build/shuffle deck and deal starting hands.
     """
     state = get_state(game_id)
+    host_id = _ensure_host_id(state)
+    starter_player_id = starter_player_id.strip()
+    if not starter_player_id:
+        raise ValueError("player_id is required.")
+    if starter_player_id not in state.players:
+        raise ValueError("Unknown player_id.")
+    if starter_player_id != host_id:
+        raise ValueError("Only the host can start the game.")
     if not state.players:
         raise ValueError("Cannot start game with no players.")
     if len(state.players) < 2:
@@ -92,13 +120,21 @@ def join_game(game_id: str, player_name: str) -> Dict[str, object]:
     Returns a dict with player_id and the player's view.
     """
     state = get_state(game_id)
+    _ensure_host_id(state)
 
     # Lobby-only: once the deck exists, the game has started.
     if state.deck.draw_pile or state.deck.discard_pile:
         raise ValueError("Game already started; cannot join.")
 
+    player_name = player_name.strip()
+    if not player_name:
+        raise ValueError("player_name is required.")
+
     if player_name in state.players:
         raise ValueError("Player already exists in this game.")
+
+    if len(state.players) >= MAX_PLAYERS:
+        raise ValueError(f"Lobby is full ({MAX_PLAYERS} players max).")
 
     # Add new player (no dealing here)
     state.players[player_name] = PlayerState(id=player_name)
@@ -108,6 +144,41 @@ def join_game(game_id: str, player_name: str) -> Dict[str, object]:
         "player_id": player_name,
         "player_view": build_player_view(state, player_name),
     }
+
+
+def leave_game_lobby(game_id: str, player_id: str) -> Dict[str, Any]:
+    """
+    Remove a player from a lobby before the game starts.
+    If the last player leaves, delete the lobby entirely.
+    If the host leaves, host transfers to the next remaining player.
+    """
+    state = get_state(game_id)
+    _ensure_host_id(state)
+
+    if state.deck.draw_pile or state.deck.discard_pile:
+        raise ValueError("Game already started; cannot leave lobby.")
+
+    player_id = player_id.strip()
+    if not player_id:
+        raise ValueError("player_id is required.")
+
+    if player_id not in state.players:
+        raise ValueError("Unknown player_id.")
+
+    del state.players[player_id]
+
+    if not state.players:
+        repo.delete_pending_payments_for_game(game_id)
+        repo.delete_game(game_id)
+        return {"deleted": True, "state": None}
+
+    next_host_id = resolve_host_id(state)
+    state.host_id = next_host_id
+    if state.current_player_id == player_id or state.current_player_id not in state.players:
+        state.current_player_id = next_host_id
+
+    repo.update_game(state, status="lobby")
+    return {"deleted": False, "state": state}
 
 
 def get_state(game_id: str) -> GameState:
@@ -123,10 +194,15 @@ def get_state(game_id: str) -> GameState:
     """
     # temporarily in memory for right now. later we will use a DB like PostGres
 
-    return repo.get_game(game_id)
+    state = repo.get_game(game_id)
+    if state.players:
+        state.host_id = resolve_host_id(state)
+    return state
 
 
-def add_to_pendingpayments(game_id: str, response: ActionResponse) -> None:
+def add_to_pendingpayments(
+    game_id: str, state: GameState, response: ActionResponse
+) -> None:
     """
     Helper: extract payment_request from an ActionResponse and store it in the DB.
     No-op if the response is not payment_required or is missing fields.
@@ -140,9 +216,29 @@ def add_to_pendingpayments(game_id: str, response: ActionResponse) -> None:
     request_id = payment.get("request_id")
     receiver_id = payment.get("receiver_id")
     targets = payment.get("targets") or []
+    group_id = payment.get("group_id") or request_id
+    source_player = payment.get("source_player") or receiver_id
+    card_id = payment.get("card_id")
 
     if not request_id or not receiver_id or not targets:
         return
+
+    upsert_payment_tracker(
+        state,
+        group_id=str(group_id),
+        receiver_id=str(receiver_id),
+        source_player_id=str(source_player),
+        card_id=str(card_id) if card_id else None,
+        participants=[
+            {
+                "player_id": str(target["player_id"]),
+                "amount": int(target["amount"]),
+                "status": "pending",
+                "request_id": request_id,
+            }
+            for target in targets
+        ],
+    )
 
     repo.insert_pending_payment(
         game_id,
@@ -187,7 +283,7 @@ async def handle_action(
             }
     response = start_action(state=state, catalog=catalog, **req.model_dump())
 
-    add_to_pendingpayments(game_id, response)
+    add_to_pendingpayments(game_id, state, response)
     add_game_over(response, state, catalog)
 
     if response.get("status") == "ok":
@@ -243,7 +339,7 @@ async def handle_pending(
 
     response = respond_to_pending(state=state, catalog=catalog, **req.model_dump())
 
-    add_to_pendingpayments(game_id, response)
+    add_to_pendingpayments(game_id, state, response)
     add_game_over(response, state, catalog)
 
     if response.get("status") == "ok":
@@ -314,6 +410,7 @@ async def handle_payment(
         }
 
     amount = targets[req.payer_id]
+    tracker, participant = find_payment_tracker_by_request_id(state, req.request_id)
 
     response = process_payment(
         state=state,
@@ -328,6 +425,16 @@ async def handle_payment(
 
     if response.get("status") == "ok":
         repo.delete_pending_payment(req.request_id)
+        if tracker and participant:
+            paid_amount = int((response.get("log") or {}).get("paid_amount", 0))
+            fully_paid = bool((response.get("log") or {}).get("fully_paid"))
+            set_payment_tracker_status(
+                state,
+                group_id=tracker.group_id,
+                player_id=participant.player_id,
+                status="paid" if fully_paid else "partial",
+                paid_amount=paid_amount,
+            )
     add_game_over(response, state, catalog)
     if response.get("status") == "ok":
         response["player_view"] = build_player_view(state, req.payer_id)

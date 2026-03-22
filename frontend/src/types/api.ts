@@ -56,12 +56,32 @@ export interface TurnAction {
   card_ids: string[]
 }
 
+export type PaymentTrackerStatus = 'pending' | 'paid' | 'partial' | 'canceled'
+
+export interface PaymentTrackerParticipant {
+  player_id: string
+  amount: number
+  status: PaymentTrackerStatus
+  request_id?: string | null
+  paid_amount: number
+}
+
+export interface PaymentTracker {
+  group_id: string
+  receiver_id: string
+  source_player_id: string
+  card_id?: string | null
+  participants: PaymentTrackerParticipant[]
+}
+
 export interface PlayerView {
   game_id: string
+  host_id: string | null
   you: PlayerPrivateView
   others: PlayerPublicView[]
   pending_prompts: PendingPrompt[]
   turn_actions: TurnAction[]
+  payment_trackers: PaymentTracker[]
   deck_count: number
   discard_pile: string[]
   current_player_id: string | null
@@ -125,6 +145,9 @@ export interface PaymentRequestPayload {
   request_id: string
   receiver_id: string
   targets: PaymentTarget[]
+  group_id?: string | null
+  source_player?: string | null
+  card_id?: string | null
 }
 
 export interface PaymentRequest {

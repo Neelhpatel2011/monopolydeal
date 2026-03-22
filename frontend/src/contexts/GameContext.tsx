@@ -87,9 +87,18 @@ function reducer(state: GameUIState, action: Action): GameUIState {
       if (view.game_over) newState.selectedCardIds = []
       // Auto-clear discard requirement once the hand is within limit again
       if (state.discardRequired && view.you.hand_count <= 7) newState.discardRequired = null
-      // Auto-clear payment if no longer pending (WS update resolved it)
+      // Auto-clear payment if the outstanding request is gone/resolved.
       if (state.pendingPayment) {
-        // Keep payment modal until explicitly cleared via action
+        const stillPending = (view.payment_trackers ?? []).some(tracker =>
+          tracker.participants.some(participant =>
+            participant.player_id === state.playerId &&
+            participant.status === 'pending' &&
+            participant.request_id === state.pendingPayment?.request_id
+          )
+        )
+        if (!stillPending || view.game_over) {
+          newState.pendingPayment = null
+        }
       }
       return newState
     }

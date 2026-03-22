@@ -1,12 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useGame } from '@/contexts/GameContext'
-import { getCard, groupDisplayNames, groupSetSizes } from '@/data/cardCatalog'
+import {
+  getCard,
+  getSetRentSummary,
+  groupDisplayNames,
+  groupSetSizes,
+} from '@/data/cardCatalog'
 
 /**
  * Contextual action buttons that appear based on the selected card(s) and game state.
- * Handles the flow: select card → pick options → call API.
+ * Handles the flow: select card -> pick options -> call API.
  */
 export function ActionButtons() {
   const { state, dispatch, playAction, endTurn, isMyTurn, actionsLeft } = useGame()
@@ -14,6 +19,7 @@ export function ActionButtons() {
 
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [showRentColorPicker, setShowRentColorPicker] = useState(false)
+  const [rentPreviewColor, setRentPreviewColor] = useState<string | null>(null)
   const [showPropertyPicker, setShowPropertyPicker] = useState<'steal' | 'give' | null>(null)
   const [forcedDealStealCardId, setForcedDealStealCardId] = useState<string | null>(null)
 
@@ -21,16 +27,25 @@ export function ActionButtons() {
 
   const primaryId = selectedCardIds[0]
   const card = primaryId ? getCard(primaryId) : null
+  const selectedRentCardId = selectedCardIds.find((id) => getCard(id).kind === 'rent') ?? null
+  const selectedRentCard = selectedRentCardId ? getCard(selectedRentCardId) : null
+  const selectedDoubleRentIds = selectedCardIds.filter((id) => id.startsWith('action_double_the_rent'))
+  const doubleRentMultiplier = Math.max(1, 2 ** selectedDoubleRentIds.length)
   const noSelection = !card
 
-  // ─── End Turn (nothing selected) ─────────────────────────────────────────
+  useEffect(() => {
+    setShowRentColorPicker(false)
+    setRentPreviewColor(null)
+  }, [selectedCardIds.join('|'), targetPlayerId])
+
+  // End turn (nothing selected)
 
   if (noSelection) {
     return (
       <div className="flex items-center justify-center gap-2 py-1">
         <button
           onClick={() => endTurn()}
-          disabled={loading || actionsLeft === 3 /* haven't played anything */}
+          disabled={loading}
           aria-label="End your turn"
           className="btn btn-ghost text-sm"
         >
@@ -40,7 +55,7 @@ export function ActionButtons() {
     )
   }
 
-  // ─── Bank any card ────────────────────────────────────────────────────────
+  // Bank any card
 
   async function bankCard() {
     if (!primaryId) return
@@ -53,7 +68,7 @@ export function ActionButtons() {
     if (res?.status === 'ok') dispatch({ type: 'CLEAR_SELECTION' })
   }
 
-  // ─── Money card ───────────────────────────────────────────────────────────
+  // Money card
 
   if (card.kind === 'money') {
     return (
@@ -68,7 +83,7 @@ export function ActionButtons() {
     )
   }
 
-  // ─── Property card ────────────────────────────────────────────────────────
+  // Property card
 
   if (card.kind === 'property') {
     const cardId = primaryId!
@@ -93,7 +108,7 @@ export function ActionButtons() {
     )
   }
 
-  // ─── Wild property card ───────────────────────────────────────────────────
+  // Wild property card
 
   if (card.kind === 'property_wild') {
     const wildColors = card.wildColors ?? []
@@ -118,63 +133,141 @@ export function ActionButtons() {
               </button>
             ))}
           </div>
-          <button onClick={() => setShowColorPicker(false)} className="btn btn-ghost text-xs">← Back</button>
+          <button onClick={() => setShowColorPicker(false)} className="btn btn-ghost text-xs">Back</button>
         </div>
       )
     }
     return (
       <div className="flex gap-2 justify-center py-1">
         <button onClick={() => setShowColorPicker(true)} disabled={loading || actionsLeft === 0} className="btn btn-primary text-sm">
-          Place Wild ▾
+          Place Wild
         </button>
         <button onClick={() => dispatch({ type: 'CLEAR_SELECTION' })} className="btn btn-ghost text-sm">Cancel</button>
       </div>
     )
   }
 
-  // ─── Rent card ────────────────────────────────────────────────────────────
+  // Rent card
 
-  if (card.kind === 'rent') {
-    const rentColors = card.rentColors ?? []
-    const isMulticolor = card.rentTarget === 'one_player'
+  if (selectedRentCard && selectedRentCardId) {
+    const rentColors = selectedRentCard.rentColors ?? []
+    const isMulticolor = selectedRentCard.rentTarget === 'one_player'
+    const previewSummary = rentPreviewColor
+      ? getSetRentSummary(
+          rentPreviewColor,
+          view.you.properties[rentPreviewColor] ?? [],
+          view.you.buildings[rentPreviewColor] ?? [],
+          selectedDoubleRentIds.length,
+        )
+      : null
+
+    if (rentPreviewColor && previewSummary) {
+      return (
+        <div className="flex flex-col gap-3 items-center py-1 min-w-0">
+          <div className="rent-preview-panel">
+            <div className="rent-preview-header">
+              <span className="rent-preview-label">Rent Preview</span>
+              <span className="rent-preview-title">{selectedRentCard.name}</span>
+            </div>
+
+            <div className="rent-preview-amount-row">
+              <span className="rent-preview-amount">${previewSummary.totalRent}M</span>
+              <span className="rent-preview-amount-sub">
+                {isMulticolor
+                  ? `charged to ${targetPlayerId ?? 'target'}`
+                  : 'charged to each opponent'}
+              </span>
+            </div>
+
+            <div className="rent-preview-meta">
+              <span>{groupDisplayNames[rentPreviewColor] ?? rentPreviewColor}</span>
+              <span>{previewSummary.propertyCount}/{previewSummary.setSize} properties</span>
+              {selectedDoubleRentIds.length > 0 && (
+                <span>Double Rent x{doubleRentMultiplier}</span>
+              )}
+            </div>
+
+            {!isMulticolor && view.others.length > 1 && (
+              <div className="rent-preview-total">
+                Potential total collected: ${previewSummary.totalRent * view.others.length}M
+              </div>
+            )}
+
+            <div className="rent-preview-breakdown">
+              <span>Base ${previewSummary.baseRent}M</span>
+              {previewSummary.buildingBonus > 0 && (
+                <span>Buildings +${previewSummary.buildingBonus}M</span>
+              )}
+              {selectedDoubleRentIds.length > 0 && (
+                <span>Multiplier x{doubleRentMultiplier}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex gap-2 justify-center">
+            <button
+              onClick={async () => {
+                await playAction({
+                  action_type: 'play_action_counterable',
+                  card_id: selectedRentCardId,
+                  rent_color: rentPreviewColor,
+                  double_rent_ids:
+                    selectedDoubleRentIds.length > 0 ? selectedDoubleRentIds : undefined,
+                  target_player_id: isMulticolor ? (targetPlayerId ?? undefined) : undefined,
+                })
+                dispatch({ type: 'CLEAR_SELECTION' })
+              }}
+              disabled={loading}
+              className="btn btn-primary text-sm"
+            >
+              Confirm Charge
+            </button>
+            <button onClick={() => setRentPreviewColor(null)} className="btn btn-ghost text-sm">
+              Back
+            </button>
+            <button onClick={() => dispatch({ type: 'CLEAR_SELECTION' })} className="btn btn-ghost text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )
+    }
 
     if (showRentColorPicker) {
-      // For multicolor, also need a target
       return (
         <div className="flex flex-col gap-2 items-center py-1">
           <span className="text-white/60 text-xs">
-            Choose rent color{isMulticolor ? ' (and a target opponent)' : ''}:
+            Choose rent color{isMulticolor ? ' (then preview the charge)' : ''}:
           </span>
           <div className="flex gap-2 flex-wrap justify-center">
             {rentColors.map(color => {
-              // Only show colors where I have properties
-              const myCount = (view.you.properties[color] ?? []).length
-              if (myCount === 0) return null
+              const propertyIds = view.you.properties[color] ?? []
+              const buildingIds = view.you.buildings[color] ?? []
+              const summary = getSetRentSummary(
+                color,
+                propertyIds,
+                buildingIds,
+                selectedDoubleRentIds.length,
+              )
+
+              if (propertyIds.length === 0) return null
               return (
                 <button
                   key={color}
                   disabled={loading || (isMulticolor && !targetPlayerId)}
-                  aria-label={`Charge rent on ${groupDisplayNames[color] ?? color}`}
-                  onClick={async () => {
+                  aria-label={`Preview rent on ${groupDisplayNames[color] ?? color}`}
+                  onClick={() => {
                     setShowRentColorPicker(false)
-                    const doubleRentIds = selectedCardIds.filter(id => id.startsWith('action_double_the_rent'))
-                    await playAction({
-                      action_type: 'play_action_counterable',
-                      card_id: primaryId,
-                      rent_color: color,
-                      double_rent_ids: doubleRentIds.length > 0 ? doubleRentIds : undefined,
-                      target_player_id: isMulticolor ? (targetPlayerId ?? undefined) : undefined,
-                    })
-                    dispatch({ type: 'CLEAR_SELECTION' })
+                    setRentPreviewColor(color)
                   }}
                   className="btn btn-primary text-xs"
                 >
-                  {groupDisplayNames[color] ?? color} ({myCount})
+                  {groupDisplayNames[color] ?? color} / ${summary.totalRent}M
                 </button>
               )
             })}
           </div>
-          <button onClick={() => setShowRentColorPicker(false)} className="btn btn-ghost text-xs">← Back</button>
+          <button onClick={() => setShowRentColorPicker(false)} className="btn btn-ghost text-xs">Back</button>
         </div>
       )
     }
@@ -184,13 +277,18 @@ export function ActionButtons() {
         {isMulticolor && !targetPlayerId && (
           <span className="text-yellow-300/80 text-xs">Click an opponent to target them first</span>
         )}
+        {selectedDoubleRentIds.length > 0 && (
+          <span className="text-[11px] text-amber-200/80">
+            Double The Rent is selected. You will see the final charge before sending it.
+          </span>
+        )}
         <div className="flex gap-2">
           <button
             onClick={() => setShowRentColorPicker(true)}
             disabled={loading || actionsLeft === 0 || (isMulticolor && !targetPlayerId)}
             className="btn btn-primary text-sm"
           >
-            Charge Rent ▾
+            Preview Charge
           </button>
           <button onClick={bankCard} disabled={loading || actionsLeft === 0} className="btn btn-ghost text-sm">
             Play to Bank
@@ -201,10 +299,10 @@ export function ActionButtons() {
     )
   }
 
-  // ─── Action cards ─────────────────────────────────────────────────────────
+  // Action cards
 
   if (card.kind === 'action') {
-    // Pass Go — non-counterable
+  // Pass Go - non-counterable
     if (primaryId === 'action_pass_go') {
       return (
         <div className="flex gap-2 justify-center py-1">
@@ -224,7 +322,7 @@ export function ActionButtons() {
       )
     }
 
-    // It's My Birthday — non-counterable, targets all
+    // It's My Birthday - non-counterable, targets all
     if (primaryId === 'action_its_my_birthday') {
       return (
         <div className="flex gap-2 justify-center py-1">
@@ -236,7 +334,7 @@ export function ActionButtons() {
             disabled={loading || actionsLeft === 0}
             className="btn btn-primary text-sm"
           >
-            🎂 Collect $2M from all
+            Collect $2M from all
           </button>
           <button onClick={bankCard} disabled={loading || actionsLeft === 0} className="btn btn-ghost text-sm">Bank</button>
           <button onClick={() => dispatch({ type: 'CLEAR_SELECTION' })} className="btn btn-ghost text-sm">Cancel</button>
@@ -244,7 +342,7 @@ export function ActionButtons() {
       )
     }
 
-    // Debt Collector — targets one player
+    // Debt Collector - targets one player
     if (primaryId === 'action_debt_collector') {
       return (
         <div className="flex flex-col gap-2 items-center py-1">
@@ -269,7 +367,7 @@ export function ActionButtons() {
       )
     }
 
-    // Sly Deal — steal one property (not from full set)
+    // Sly Deal - steal one property (not from full set)
     if (primaryId === 'action_sly_deal') {
       if (showPropertyPicker === 'steal') {
         const targetPlayer = view.others.find(o => o.id === targetPlayerId)
@@ -295,7 +393,7 @@ export function ActionButtons() {
                 <span className="text-white/40 text-xs">No stealable properties (full sets are protected).</span>
               )}
             </div>
-            <button onClick={() => setShowPropertyPicker(null)} className="btn btn-ghost text-xs">← Back</button>
+            <button onClick={() => setShowPropertyPicker(null)} className="btn btn-ghost text-xs">Back</button>
           </div>
         )
       }
@@ -304,7 +402,7 @@ export function ActionButtons() {
           {!targetPlayerId && <span className="text-yellow-300/80 text-xs">Click an opponent to target</span>}
           <div className="flex gap-2">
             <button onClick={() => setShowPropertyPicker('steal')} disabled={!targetPlayerId || loading || actionsLeft === 0} className="btn btn-primary text-sm">
-              Steal Property ▾
+              Steal Property
             </button>
             <button onClick={bankCard} disabled={loading || actionsLeft === 0} className="btn btn-ghost text-sm">Bank</button>
             <button onClick={() => dispatch({ type: 'CLEAR_SELECTION' })} className="btn btn-ghost text-sm">Cancel</button>
@@ -313,7 +411,7 @@ export function ActionButtons() {
       )
     }
 
-    // Forced Deal — swap one property
+    // Forced Deal - swap one property
     if (primaryId === 'action_forced_deal') {
       if (showPropertyPicker === 'steal') {
         const targetPlayer = view.others.find(o => o.id === targetPlayerId)
@@ -351,7 +449,7 @@ export function ActionButtons() {
               }}
               className="btn btn-ghost text-xs"
             >
-              ← Back
+              Back
             </button>
           </div>
         )
@@ -382,7 +480,7 @@ export function ActionButtons() {
                 <span className="text-white/40 text-xs">No swappable properties (full sets are protected).</span>
               )}
             </div>
-            <button onClick={() => { setForcedDealStealCardId(null); setShowPropertyPicker('steal') }} className="btn btn-ghost text-xs">← Back</button>
+            <button onClick={() => { setForcedDealStealCardId(null); setShowPropertyPicker('steal') }} className="btn btn-ghost text-xs">Back</button>
           </div>
         )
       }
@@ -391,7 +489,7 @@ export function ActionButtons() {
           {!targetPlayerId && <span className="text-yellow-300/80 text-xs">Click an opponent to target</span>}
           <div className="flex gap-2">
             <button onClick={() => setShowPropertyPicker('steal')} disabled={!targetPlayerId || loading || actionsLeft === 0} className="btn btn-primary text-sm">
-              Swap Property ▾
+              Swap Property
             </button>
             <button onClick={bankCard} disabled={loading || actionsLeft === 0} className="btn btn-ghost text-sm">Bank</button>
             <button onClick={() => dispatch({ type: 'CLEAR_SELECTION' })} className="btn btn-ghost text-sm">Cancel</button>
@@ -400,7 +498,7 @@ export function ActionButtons() {
       )
     }
 
-    // Deal Breaker — steal full set
+    // Deal Breaker - steal full set
     if (primaryId === 'action_deal_breaker') {
           if (showColorPicker) {
         const targetPlayer = view.others.find(o => o.id === targetPlayerId)
@@ -421,7 +519,7 @@ export function ActionButtons() {
                 }} className="btn btn-primary text-xs">{groupDisplayNames[color] ?? color}</button>
               ))}
             </div>
-            <button onClick={() => setShowColorPicker(false)} className="btn btn-ghost text-xs">← Back</button>
+            <button onClick={() => setShowColorPicker(false)} className="btn btn-ghost text-xs">Back</button>
           </div>
         )
       }
@@ -430,7 +528,7 @@ export function ActionButtons() {
           {!targetPlayerId && <span className="text-yellow-300/80 text-xs">Click an opponent to target</span>}
           <div className="flex gap-2">
             <button onClick={() => setShowColorPicker(true)} disabled={!targetPlayerId || loading || actionsLeft === 0} className="btn btn-danger text-sm">
-              Steal Full Set ▾
+              Steal Full Set
             </button>
             <button onClick={bankCard} disabled={loading || actionsLeft === 0} className="btn btn-ghost text-sm">Bank</button>
             <button onClick={() => dispatch({ type: 'CLEAR_SELECTION' })} className="btn btn-ghost text-sm">Cancel</button>
@@ -439,7 +537,7 @@ export function ActionButtons() {
       )
     }
 
-    // House / Hotel — pick a color
+    // House / Hotel - pick a color
     if (primaryId === 'action_house' || primaryId === 'action_hotel') {
       const isHotel = primaryId === 'action_hotel'
       const eligibleColors = Object.entries(view.you.properties)
@@ -469,14 +567,14 @@ export function ActionButtons() {
               ))}
               {eligibleColors.length === 0 && <span className="text-white/40 text-xs">No eligible sets</span>}
             </div>
-            <button onClick={() => setShowColorPicker(false)} className="btn btn-ghost text-xs">← Back</button>
+            <button onClick={() => setShowColorPicker(false)} className="btn btn-ghost text-xs">Back</button>
           </div>
         )
       }
       return (
         <div className="flex gap-2 justify-center py-1">
           <button onClick={() => setShowColorPicker(true)} disabled={loading || actionsLeft === 0 || eligibleColors.length === 0} className="btn btn-primary text-sm">
-            Place {isHotel ? '🏨 Hotel' : '🏠 House'} ▾
+            Place {isHotel ? 'Hotel' : 'House'}
           </button>
           <button onClick={bankCard} disabled={loading || actionsLeft === 0} className="btn btn-ghost text-sm">Bank</button>
           <button onClick={() => dispatch({ type: 'CLEAR_SELECTION' })} className="btn btn-ghost text-sm">Cancel</button>
@@ -484,7 +582,7 @@ export function ActionButtons() {
       )
     }
 
-    // Just Say No — can only be played in the response modal
+    // Just Say No - can only be played in the response modal
     if (primaryId === 'action_just_say_no') {
       return (
         <div className="flex gap-2 justify-center py-1 items-center">
@@ -495,7 +593,7 @@ export function ActionButtons() {
       )
     }
 
-    // Double The Rent — attach to rent card in multi-select
+    // Double The Rent - attach to rent card in multi-select
     if (primaryId === 'action_double_the_rent') {
       return (
         <div className="flex gap-2 justify-center py-1 items-center">
@@ -527,3 +625,4 @@ export function ActionButtons() {
 
   return null
 }
+

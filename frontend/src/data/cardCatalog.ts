@@ -206,3 +206,62 @@ export const groupSetSizes: Record<string, number> = {
   red: 3, yellow: 3, green: 3, dark_blue: 2,
   railroad: 4, utility: 2,
 }
+
+export interface SetRentSummary {
+  color: string
+  propertyCount: number
+  setSize: number
+  rentTable: number[]
+  baseRent: number
+  buildingBonus: number
+  setRent: number
+  multiplier: number
+  totalRent: number
+  isFullSet: boolean
+}
+
+export function getRentTableForColor(color: string, cardIds: string[] = []): number[] {
+  const sampleId = cardIds.find((id) => (cardCatalog[id]?.rentByCount?.length ?? 0) > 0)
+  const sample = sampleId
+    ? cardCatalog[sampleId]
+    : propertyCards.find((card) => card.propertyGroup === color)
+  return sample?.rentByCount ?? []
+}
+
+export function getBuildingRentBonus(buildingIds: string[] = []): number {
+  return buildingIds.reduce((sum, id) => {
+    if (id.includes('hotel')) return sum + 4
+    if (id.includes('house')) return sum + 3
+    return sum
+  }, 0)
+}
+
+export function getSetRentSummary(
+  color: string,
+  propertyIds: string[] = [],
+  buildingIds: string[] = [],
+  doubleRentCount = 0,
+): SetRentSummary {
+  const rentTable = getRentTableForColor(color, propertyIds)
+  const propertyCount = propertyIds.length
+  const setSize = groupSetSizes[color] ?? rentTable.length ?? 0
+  const safeCount = rentTable.length > 0 ? Math.min(propertyCount, rentTable.length) : 0
+  const baseRent = safeCount > 0 ? (rentTable[safeCount - 1] ?? 0) : 0
+  const isFullSet = propertyCount >= (setSize || rentTable.length || 0)
+  const buildingBonus = isFullSet ? getBuildingRentBonus(buildingIds) : 0
+  const setRent = baseRent + buildingBonus
+  const multiplier = Math.max(1, 2 ** doubleRentCount)
+
+  return {
+    color,
+    propertyCount,
+    setSize,
+    rentTable,
+    baseRent,
+    buildingBonus,
+    setRent,
+    multiplier,
+    totalRent: setRent * multiplier,
+    isFullSet,
+  }
+}

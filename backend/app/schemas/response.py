@@ -27,6 +27,9 @@ class PaymentRequired(BaseModel):
     request_id: str
     receiver_id: str
     targets: List[PaymentTarget]
+    group_id: Optional[str] = None
+    source_player: Optional[str] = None
+    card_id: Optional[str] = None
 
 
 class PendingPrompt(BaseModel):

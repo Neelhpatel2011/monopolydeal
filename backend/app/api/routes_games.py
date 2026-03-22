@@ -22,6 +22,7 @@ from backend.app.services.game_service import (
     handle_pending,
     handle_payment,
     create_game_lobby,
+    leave_game_lobby,
     start_new_game,
 )
 from backend.app.services.game_service import join_game as join_game_service
@@ -41,8 +42,16 @@ def _map_value_error(e: ValueError) -> HTTPException:
         return HTTPException(status_code=422, detail=msg)
     if msg == "Game not found.":
         return HTTPException(status_code=404, detail=msg)
+    if msg == "Unknown player_id.":
+        return HTTPException(status_code=404, detail=msg)
     if msg == "Game already started; cannot join.":
         return HTTPException(status_code=409, detail=msg)
+    if msg == "Game already started; cannot leave lobby.":
+        return HTTPException(status_code=409, detail=msg)
+    if msg == "Lobby is full (5 players max).":
+        return HTTPException(status_code=409, detail=msg)
+    if msg == "Only the host can start the game.":
+        return HTTPException(status_code=403, detail=msg)
     return HTTPException(status_code=400, detail=msg)
 
 
@@ -102,6 +111,20 @@ def delete_game(game_id: str) -> None:
         raise _map_value_error(e)
 
 
+@router.delete("/games/{game_id}/players/{player_id}", status_code=204)
+async def leave_game(game_id: str, player_id: str) -> None:
+    _require_uuid(game_id, name="game_id")
+    try:
+        result = leave_game_lobby(game_id=game_id, player_id=player_id)
+    except ValueError as e:
+        raise _map_value_error(e)
+
+    await manager.disconnect(game_id, player_id)
+    state = result.get("state")
+    if state is not None:
+        await manager.broadcast_player_views(game_id, state)
+
+
 # POST METHODS:
 
 
@@ -133,11 +156,19 @@ async def join_game(game_id: str, player_id: str) -> JoinGameResponse:
 
 
 @router.post("/games/{game_id}/start", response_model=GameSummary)
-async def start_game(game_id: str, request: Request) -> GameSummary:
+async def start_game(
+    game_id: str,
+    request: Request,
+    player_id: str = Query(..., description="Player requesting to start the game"),
+) -> GameSummary:
     catalog = request.app.state.card_catalog
     _require_uuid(game_id, name="game_id")
     try:
-        state = start_new_game(game_id=game_id, catalog=catalog)
+        state = start_new_game(
+            game_id=game_id,
+            catalog=catalog,
+            starter_player_id=player_id,
+        )
     except ValueError as e:
         raise _map_value_error(e)
     # Push dealt hands + new state to all connected players.

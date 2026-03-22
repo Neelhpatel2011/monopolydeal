@@ -4,7 +4,14 @@ import uuid
 from collections.abc import Iterable
 from typing import Any, Dict, List, Optional
 
-from .state import GameState, PlayerState, DeckState, TurnAction
+from .state import (
+    DeckState,
+    GameState,
+    PlayerState,
+    TurnAction,
+    set_payment_tracker_status,
+    upsert_payment_tracker,
+)
 from ..schemas.card_defs import CardDef
 from ..schemas.response import ActionResponse
 from ..services.card_catalog import CardCatalog
@@ -54,6 +61,7 @@ def end_turn(state: GameState, turn_order: List[str]) -> GameState:
     state.turn_number += 1
     state.actions_taken = 0
     state.turn_actions = []
+    state.payment_trackers = []
 
     # Monopoly Deal rule: at the start of each player's turn, they draw 2 cards.
     # TODO: If we ever add character cards that have different draw card patterns, we can add them here by changing n = X
@@ -528,7 +536,31 @@ def start_action(
                     card_ids=[card_id] + (double_rent_ids or []),
                 )
 
+                pending_amount = None
+                if card.kind == "rent":
+                    pending_amount = charge_rent_amount(
+                        state=state,
+                        catalog=catalog,
+                        player_id=player_id,
+                        rent_card_id=card_id,
+                        color=rent_color,
+                        double_rent_ids=double_rent_ids,
+                        require_in_hand=False,
+                    )
+                elif effect in {"charge_players", "charge_player"}:
+                    pending_amount = (
+                        int(card.play.params.get("amount", 0)) if card.play else None
+                    )
+
                 pending_requests = []
+                payment_group_id = (
+                    f"paygrp_{uuid.uuid4().hex}"
+                    if (
+                        card.kind == "rent"
+                        or effect in {"charge_players", "charge_player"}
+                    )
+                    else None
+                )
                 for tid in target_ids:
                     pending_id = create_pending_action(
                         state,
@@ -543,9 +575,8 @@ def start_action(
                             "steal_card_id": steal_card_id,
                             "give_card_id": give_card_id,
                             "steal_color": steal_color,
-                            "amount": (
-                                card.play.params.get("amount") if card.play else None
-                            ),
+                            "amount": pending_amount,
+                            "payment_group_id": payment_group_id,
                         },
                     )
                     pending_requests.append(
@@ -554,6 +585,22 @@ def start_action(
                             "target_player": tid,
                             "prompt": "Accept or Just Say No?",
                         }
+                    )
+                if payment_group_id and pending_amount is not None:
+                    upsert_payment_tracker(
+                        state,
+                        group_id=payment_group_id,
+                        receiver_id=player_id,
+                        source_player_id=player_id,
+                        card_id=card_id,
+                        participants=[
+                            {
+                                "player_id": tid,
+                                "amount": pending_amount,
+                                "status": "pending",
+                            }
+                            for tid in target_ids
+                        ],
                     )
                 consume_action(state)
 
@@ -629,6 +676,14 @@ def respond_to_pending(
 
     if response == "accept":
         if pending["jsn_count"] % 2 == 1:
+            payment_group_id = pending.get("payload", {}).get("payment_group_id")
+            if payment_group_id:
+                set_payment_tracker_status(
+                    state,
+                    group_id=payment_group_id,
+                    player_id=pending["target_player"],
+                    status="canceled",
+                )
             del state.pending_actions[pending_id]
             return {
                 "status": "ok",
@@ -653,6 +708,14 @@ def respond_to_pending(
             )
         except ValueError as e:
             # Do not deadlock the game on an invalid/cannot-apply pending action.
+            payment_group_id = pending.get("payload", {}).get("payment_group_id")
+            if payment_group_id:
+                set_payment_tracker_status(
+                    state,
+                    group_id=payment_group_id,
+                    player_id=pending["target_player"],
+                    status="canceled",
+                )
             del state.pending_actions[pending_id]
             return {
                 "status": "error",
@@ -664,6 +727,15 @@ def respond_to_pending(
                     "pending_id": pending_id,
                 },
             }
+        payment_group_id = pending.get("payload", {}).get("payment_group_id")
+        if (
+            payment_group_id
+            and result.get("response_type") == "payment_required"
+            and result.get("payment_request")
+        ):
+            result["payment_request"]["group_id"] = payment_group_id
+            result["payment_request"]["source_player"] = pending["source_player"]
+            result["payment_request"]["card_id"] = pending["card_id"]
         del state.pending_actions[pending_id]
         return result
 

@@ -1,78 +1,185 @@
 'use client'
 
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { getCard, groupColorMap, groupDisplayNames } from '@/data/cardCatalog'
 
-export type CatalogCardSize = 'xs' | 'sm' | 'md' | 'hand' | 'fill'
+export type CatalogCardSize = 'xs' | 'sm' | 'md' | 'prop' | 'hand' | 'fill'
 
 const SIZE_CLASS: Record<CatalogCardSize, string> = {
   xs: 'w-[34px]',
   sm: 'w-[44px]',
-  md: 'w-[56px]',
-  hand: 'w-[76px] sm:w-[82px] md:w-[92px]',
+  md: 'w-[60px]',
+  prop: 'w-[76px]',
+  hand: 'w-[92px] sm:w-[104px] md:w-[114px]',
   fill: 'w-full',
 }
+
+type CSSVarStyle = CSSProperties & Record<`--${string}`, string>
 
 const SIZE_TOKENS: Record<
   CatalogCardSize,
   {
-    label: string
-    name: string
-    coin: string
-    coinText: string
     pad: string
-    circlePad: string
+    gap: string
+    radius: string
+    band: string
+    kicker: string
+    title: string
+    meta: string
+    desc: string
+    badge: string
+    seal: string
+    chip: string
+    iconStroke: string
   }
 > = {
   xs: {
-    label: 'text-[6px]',
-    name: 'text-[7px]',
-    coin: 'w-[16px] h-[16px]',
-    coinText: 'text-[7px]',
-    pad: 'p-1',
-    circlePad: 'p-0.5',
+    pad: '6px',
+    gap: '4px',
+    radius: '11px',
+    band: '5px',
+    kicker: '0.34rem',
+    title: '0.42rem',
+    meta: '0.35rem',
+    desc: '0.34rem',
+    badge: '0.35rem',
+    seal: '18px',
+    chip: '7px',
+    iconStroke: '1.4',
   },
   sm: {
-    label: 'text-[7px]',
-    name: 'text-[8px]',
-    coin: 'w-[18px] h-[18px]',
-    coinText: 'text-[8px]',
-    pad: 'p-1',
-    circlePad: 'p-0.5',
+    pad: '7px',
+    gap: '5px',
+    radius: '12px',
+    band: '6px',
+    kicker: '0.39rem',
+    title: '0.48rem',
+    meta: '0.39rem',
+    desc: '0.38rem',
+    badge: '0.38rem',
+    seal: '22px',
+    chip: '8px',
+    iconStroke: '1.5',
   },
   md: {
-    label: 'text-[7px]',
-    name: 'text-[9px]',
-    coin: 'w-[19px] h-[19px]',
-    coinText: 'text-[8px]',
-    pad: 'p-1.5',
-    circlePad: 'p-1',
+    pad: '9px',
+    gap: '6px',
+    radius: '14px',
+    band: '7px',
+    kicker: '0.44rem',
+    title: '0.58rem',
+    meta: '0.44rem',
+    desc: '0.43rem',
+    badge: '0.42rem',
+    seal: '28px',
+    chip: '9px',
+    iconStroke: '1.6',
+  },
+  prop: {
+    pad: '11px',
+    gap: '7px',
+    radius: '15px',
+    band: '8px',
+    kicker: '0.48rem',
+    title: '0.68rem',
+    meta: '0.5rem',
+    desc: '0.46rem',
+    badge: '0.48rem',
+    seal: '34px',
+    chip: '10px',
+    iconStroke: '1.7',
   },
   hand: {
-    label: 'text-[8px]',
-    name: 'text-[10px]',
-    coin: 'w-[22px] h-[22px]',
-    coinText: 'text-[9px]',
-    pad: 'p-1.5',
-    circlePad: 'p-1.5',
+    pad: '12px',
+    gap: '8px',
+    radius: '16px',
+    band: '9px',
+    kicker: '0.52rem',
+    title: '0.74rem',
+    meta: '0.54rem',
+    desc: '0.5rem',
+    badge: '0.52rem',
+    seal: '38px',
+    chip: '11px',
+    iconStroke: '1.8',
   },
   fill: {
-    label: 'text-[10px]',
-    name: 'text-[14px]',
-    coin: 'w-[30px] h-[30px]',
-    coinText: 'text-[12px]',
-    pad: 'p-2',
-    circlePad: 'p-2',
+    pad: '18px',
+    gap: '12px',
+    radius: '20px',
+    band: '12px',
+    kicker: '0.62rem',
+    title: '1rem',
+    meta: '0.68rem',
+    desc: '0.68rem',
+    badge: '0.62rem',
+    seal: '76px',
+    chip: '13px',
+    iconStroke: '1.9',
   },
 }
 
-function cap(s: string, max: number) {
-  return s.length > max ? `${s.slice(0, max - 3)}...` : s
+function cap(value: string, max: number) {
+  return value.length > max ? `${value.slice(0, max - 3)}...` : value
 }
 
-function kindLabel(kind: string) {
-  if (kind === 'property_wild') return 'WILD'
-  return kind.toUpperCase()
+function iconForKind(kind: string): ReactNode {
+  if (kind === 'money') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3.5 7.5h17v9h-17z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="12" cy="12" r="2.75" fill="none" stroke="currentColor" />
+        <path d="M7 10c.5-.7 1.3-1 2.1-1M17 14c-.5.7-1.3 1-2.1 1" fill="none" stroke="currentColor" strokeLinecap="round" />
+      </svg>
+    )
+  }
+
+  if (kind === 'property' || kind === 'property_wild') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4.5 11.5 12 5l7.5 6.5v8h-5v-4.75h-5V19.5h-5z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    )
+  }
+
+  if (kind === 'rent') {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 8.5h14M5 12h10M5 15.5h8" fill="none" stroke="currentColor" strokeLinecap="round" />
+        <path d="M16.5 5.5c1.7 1 2.75 2.9 2.75 5.1 0 3.2-2.3 5.7-5.25 5.7" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m12 3-5 8h3l-1 10 8-11h-4l2-7z" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function bandLabel(cardId: string, kind: string, propertyGroup?: string) {
+  if (kind === 'property') return groupDisplayNames[propertyGroup ?? ''] ?? 'Property'
+  if (kind === 'property_wild') return 'Wild Property'
+  if (kind === 'money') return 'Bank Note'
+  if (kind === 'rent') return 'Rent'
+  if (cardId === 'action_just_say_no') return 'Counter'
+  return 'Action'
+}
+
+function kindMeta(kind: string) {
+  if (kind === 'property_wild') return 'Flexible placement'
+  if (kind === 'property') return 'Plays to your tableau'
+  if (kind === 'money') return 'Play to your bank'
+  if (kind === 'rent') return 'Charge for your sets'
+  return 'Single-use effect'
+}
+
+function chipLimit(size: CatalogCardSize) {
+  if (size === 'fill') return 10
+  if (size === 'hand') return 6
+  if (size === 'prop') return 5
+  return 4
 }
 
 export function CatalogCard({
@@ -85,263 +192,109 @@ export function CatalogCard({
   className?: string
 }) {
   const card = getCard(cardId)
-  const w = SIZE_CLASS[size]
-  const t = SIZE_TOKENS[size]
+  const sizeClass = SIZE_CLASS[size]
+  const tokens = SIZE_TOKENS[size]
+  const maxName =
+    size === 'fill' ? 26 : size === 'hand' ? 18 : size === 'prop' ? 16 : size === 'md' ? 13 : 12
 
-  const base = [
-    'catalog-card',
-    w,
-    'aspect-[5/7]',
-    'select-none',
-    className,
-  ]
-    .filter(Boolean)
-    .join(' ')
+  const bandClass =
+    card.kind === 'property'
+      ? groupColorMap[card.propertyGroup ?? '']?.color ?? card.color
+      : card.color
 
-  const paperOverlay: CSSProperties = {
-    background:
-      'linear-gradient(180deg, rgba(255,255,255,0.45), transparent 52%), radial-gradient(circle at 30% 18%, rgba(0,0,0,0.06), transparent 62%)',
+  const accentLabel = bandLabel(cardId, card.kind, card.propertyGroup)
+  const chips =
+    card.kind === 'property_wild'
+      ? card.wildColors ?? []
+      : card.kind === 'rent'
+        ? card.rentColors ?? []
+        : []
+  const visibleChipCount = chipLimit(size)
+  const hiddenChipCount = Math.max(0, chips.length - visibleChipCount)
+
+  const style: CSSVarStyle = {
+    '--card-pad': tokens.pad,
+    '--card-gap': tokens.gap,
+    '--card-radius': tokens.radius,
+    '--card-band': tokens.band,
+    '--card-kicker-size': tokens.kicker,
+    '--card-title-size': tokens.title,
+    '--card-meta-size': tokens.meta,
+    '--card-desc-size': tokens.desc,
+    '--card-badge-size': tokens.badge,
+    '--card-seal-size': tokens.seal,
+    '--card-chip-size': tokens.chip,
+    '--card-icon-stroke': tokens.iconStroke,
   }
 
-  const darkOverlay: CSSProperties = {
-    background:
-      'linear-gradient(180deg, rgba(255,255,255,0.10), transparent 52%), radial-gradient(circle at 30% 18%, rgba(242, 215, 179, 0.10), transparent 62%)',
-  }
-
-  const coinBase = [
-    'card-coin',
-    'absolute',
-    'rounded-full',
-    'flex',
-    'items-center',
-    'justify-center',
-    t.coin,
-    t.coinText,
-    'font-black',
-    'leading-none',
-  ].join(' ')
-
-  const nameMax =
-    size === 'fill' ? 28 : size === 'hand' ? 18 : size === 'md' ? 16 : size === 'sm' ? 14 : 12
-
-  const moneyValueText =
-    size === 'fill'
-      ? 'text-[18px]'
-      : size === 'hand'
-        ? 'text-[16px]'
-        : size === 'md'
-          ? 'text-[14px]'
-          : size === 'sm'
-            ? 'text-[12px]'
-            : 'text-[11px]'
-
-  // MONEY: colored background + coin center (always readable)
-  if (card.kind === 'money') {
-    return (
-      <div className={`${base} ${card.color}`} title={card.name}>
-        <div className="absolute inset-0 opacity-35" style={paperOverlay} />
-
-        <div className={`${coinBase} top-1 left-1`}>{card.bankValue}M</div>
-        <div className={`${coinBase} bottom-1 right-1`}>{card.bankValue}M</div>
-
-        <div className={`absolute inset-0 ${t.pad} flex items-center justify-center`}>
-          <div
-            className={[
-              'w-[88%]',
-              'aspect-square',
-              'rounded-full',
-              'card-medallion',
-              'flex',
-              'items-center',
-              'justify-center',
-              t.circlePad,
-            ].join(' ')}
-          >
-            <div className="text-center">
-              <div className={`${moneyValueText} font-black text-black`}>
-                ${card.bankValue}M
-              </div>
-              {size === 'fill' && (
-                <div className="mt-1 text-[10px] font-extrabold uppercase tracking-wide text-black/40">
-                  MONEY
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // PROPERTY / WILD PROPERTY: paper base + color header
-  if (card.kind === 'property' || card.kind === 'property_wild') {
-    const headerText =
-      card.kind === 'property'
-        ? groupDisplayNames[card.propertyGroup ?? ''] ?? 'Property'
-        : 'Wild'
-    const headerInk =
-      card.kind === 'property'
-        ? groupColorMap[card.propertyGroup ?? '']?.text ?? 'text-white'
-        : 'text-white'
-
-    const wildColors = card.wildColors ?? []
-
-    return (
-      <div className={`${base} bg-stone-50`} title={card.name}>
-        <div className="absolute inset-0 opacity-35" style={paperOverlay} />
-
-        <div className={`${card.color} relative px-1.5 py-1 flex items-center justify-between border-b border-black/20`}>
-          <span className={`${t.label} font-black uppercase tracking-wide ${headerInk} truncate`}>
-            {headerText}
-          </span>
-          <span className={`${t.label} font-black text-black/80 rounded px-1.5 leading-none card-value-chip`}>
-            {card.bankValue}M
-          </span>
-        </div>
-
-        <div className={`relative flex-1 ${t.pad} flex flex-col`}>
-          <div className="flex-1 flex items-center justify-center">
-            <div
-              className={[
-                'w-[92%]',
-                'aspect-square',
-                'rounded-full',
-                'card-medallion',
-                'flex',
-                'items-center',
-                'justify-center',
-                t.circlePad,
-              ].join(' ')}
-            >
-              <span className={`${t.name} font-black text-center leading-tight text-black`}>
-                {cap(card.name, nameMax)}
-              </span>
-            </div>
-          </div>
-
-          {card.kind === 'property_wild' && wildColors.length > 0 && (
-            <div className="pt-1 flex items-center justify-center gap-1">
-              {wildColors.slice(0, size === 'fill' ? 10 : 4).map((c) => (
-                <span
-                  key={c}
-                  className={`${groupColorMap[c]?.color ?? 'bg-slate-400'} w-3 h-3 rounded-sm border border-black/20`}
-                  title={groupDisplayNames[c] ?? c}
-                />
-              ))}
-              {wildColors.length > (size === 'fill' ? 10 : 4) && (
-                <span className={`${t.label} font-black text-black/40`}>
-                  +{wildColors.length - (size === 'fill' ? 10 : 4)}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // RENT: dark base + accent line + chips
-  if (card.kind === 'rent') {
-    const rentColors = card.rentColors ?? []
-    return (
-      <div className={`${base} bg-slate-950`} title={card.name}>
-        <div className="absolute inset-0 opacity-45" style={darkOverlay} />
-        <div className={`${card.color} absolute left-0 right-0 top-0 h-[6px]`} />
-
-        <div className={`${coinBase} top-1 left-1`}>{card.bankValue}M</div>
-        <div className={`${coinBase} bottom-1 right-1`}>{card.bankValue}M</div>
-
-        <div className={`relative ${t.pad} h-full flex flex-col`}>
-          <div className="flex items-center justify-center">
-            <span className={`${t.label} font-black uppercase tracking-[0.18em] text-white/70`}>
-              RENT
-            </span>
-          </div>
-
-          <div className="flex-1 flex items-center justify-center">
-            <div
-              className={[
-                'w-[92%]',
-                'aspect-square',
-                'rounded-full',
-                'card-medallion-dark',
-                'flex',
-                'items-center',
-                'justify-center',
-                t.circlePad,
-              ].join(' ')}
-            >
-              <span className={`${t.name} font-black text-center leading-tight text-white/95`}>
-                {cap(card.name, nameMax)}
-              </span>
-            </div>
-          </div>
-
-          {rentColors.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-1 pt-1">
-              {rentColors.slice(0, size === 'fill' ? 10 : 6).map((c) => (
-                <span
-                  key={c}
-                  className={`${groupColorMap[c]?.color ?? 'bg-slate-500'} w-3 h-3 rounded-sm border border-black/30`}
-                  title={groupDisplayNames[c] ?? c}
-                />
-              ))}
-            </div>
-          )}
-
-          {size === 'fill' && card.description && (
-            <p className="mt-2 text-[11px] text-center text-white/55 leading-snug">{card.description}</p>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // ACTION: paper base + accent line + classic "paper action" look
   return (
-    <div className={`${base} ${card.lighterColor}`} title={card.name}>
-      <div className="absolute inset-0 opacity-35" style={paperOverlay} />
-      <div className={`${card.color} absolute left-0 right-0 top-0 h-[6px]`} />
-      <div className={`${card.color} absolute left-0 right-0 bottom-0 h-[6px] opacity-70`} />
-
-      <div className={`${coinBase} top-1 left-1`}>{card.bankValue}M</div>
-      <div className={`${coinBase} bottom-1 right-1`}>{card.bankValue}M</div>
-
-      <div className={`relative ${t.pad} h-full flex flex-col`}>
-        <div className="flex items-center justify-center">
-          <span className={`${t.label} font-black uppercase tracking-[0.18em] text-black/45`}>
-            ACTION
-          </span>
+    <div
+      className={[
+        'catalog-card',
+        `catalog-card-tone-${card.kind}`,
+        sizeClass,
+        'aspect-[5/7]',
+        className,
+      ].filter(Boolean).join(' ')}
+      style={style}
+      title={card.name}
+    >
+      <div className="catalog-card-frame">
+        <div className={`catalog-card-band ${bandClass}`} />
+        <div className="catalog-card-topline">
+          <span className="catalog-card-kicker">{accentLabel}</span>
+          <span className="catalog-card-bank">${card.bankValue}M</span>
         </div>
 
-        <div className="flex-1 flex items-center justify-center">
-          <div
-            className={[
-              'w-[92%]',
-              'aspect-square',
-              'rounded-full',
-              'card-medallion',
-              'flex',
-              'items-center',
-              'justify-center',
-              t.circlePad,
-            ].join(' ')}
-          >
-            <span className={`${t.name} font-black text-center leading-tight text-black`}>
-              {cap(card.name, nameMax)}
-            </span>
+        <div className="catalog-card-core">
+          <div className="catalog-card-seal">
+            <div className="catalog-card-glyph">
+              {iconForKind(card.kind)}
+            </div>
+          </div>
+
+          <div className="catalog-card-copy">
+            <div className="catalog-card-title">{cap(card.name, maxName)}</div>
+            <div className="catalog-card-meta">{kindMeta(card.kind)}</div>
           </div>
         </div>
+
+        {chips.length > 0 && (
+          <div className="catalog-card-chip-row">
+            {chips.slice(0, visibleChipCount).map(color => (
+              <span
+                key={color}
+                className={[
+                  'catalog-card-chip',
+                  groupColorMap[color]?.color ?? 'bg-slate-500',
+                ].join(' ')}
+                title={groupDisplayNames[color] ?? color}
+              />
+            ))}
+            {hiddenChipCount > 0 && (
+              <span className="catalog-card-chip-more">+{hiddenChipCount}</span>
+            )}
+          </div>
+        )}
 
         {size === 'fill' && card.description && (
-          <p className="mt-2 text-[11px] text-center text-black/55 leading-snug">{card.description}</p>
+          <p className="catalog-card-description">{card.description}</p>
         )}
 
-        {size === 'fill' && (
-          <div className="mt-2 text-[10px] font-extrabold uppercase tracking-wide text-black/35 text-center">
-            {kindLabel(card.kind)}
-          </div>
-        )}
+        <div className="catalog-card-footer">
+          <span className="catalog-card-footer-line" />
+          <span className="catalog-card-footer-label">
+            {card.kind === 'property'
+              ? groupDisplayNames[card.propertyGroup ?? ''] ?? 'Property'
+              : card.kind === 'property_wild'
+                ? 'Flexible'
+                : card.kind === 'rent'
+                  ? 'Collect'
+                  : card.kind === 'money'
+                    ? 'Bank'
+                    : 'Execute'}
+          </span>
+        </div>
       </div>
     </div>
   )

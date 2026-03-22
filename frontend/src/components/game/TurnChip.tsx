@@ -21,6 +21,7 @@ export function TurnChip() {
   const currentId = view.current_player_id
   const color = currentId ? getPlayerColor(currentId, allPlayerIds) : 'blue'
   const bgClass = colorBgMap[color]
+  const isViewerHost = view.host_id === state.playerId
 
   const hasPendingPrompts = view.pending_prompts.length > 0
   const phase = hasPendingPrompts
@@ -38,7 +39,19 @@ export function TurnChip() {
       </div>
 
       <div className="turn-chip-text">
-        <span className="turn-chip-name">{isMyTurn ? 'Your turn' : currentId ?? '?'}</span>
+        <span className="turn-chip-name">
+          {isMyTurn ? 'Your turn' : currentId ?? '?'}
+          {isViewerHost && (
+            <span className="host-badge host-badge-compact turn-chip-host-badge" title="You are the host">
+              <span className="host-crown" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 18h18l-1.6 3H4.6L3 18Zm2.1-10.2 3.7 3.3 3.2-5.1 3.2 5.1 3.7-3.3 1.9 8.1H3.2l1.9-8.1Z" fill="currentColor" />
+                </svg>
+              </span>
+              Host
+            </span>
+          )}
+        </span>
         <span className="turn-chip-phase">{phase}</span>
       </div>
 

@@ -5,26 +5,33 @@ import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import type { GameSummary } from '@/types/api'
 import CardBack from '@/components/CardBack'
+import { CatalogCard } from '@/components/game/CatalogCard'
+
+const MAX_PLAYERS = 5
 
 export default function LobbyPage() {
   const router = useRouter()
   const [games, setGames] = useState<GameSummary[]>([])
   const [loadingGames, setLoadingGames] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  // Create game state
   const [creating, setCreating] = useState(false)
   const [hostName, setHostName] = useState('')
-
-  // Join game state
   const [joiningGameId, setJoiningGameId] = useState<string | null>(null)
   const [joinName, setJoinName] = useState('')
   const [joining, setJoining] = useState(false)
+  const [storedPlayers, setStoredPlayers] = useState<Record<string, string>>({})
+
+  const joiningGame =
+    joiningGameId
+      ? games.find(game => game.game_id === joiningGameId) ?? null
+      : null
+
+  const openGames = games.filter(game => !game.started).length
+  const liveGames = games.filter(game => game.started).length
 
   const fetchGames = useCallback(async () => {
     try {
       const data = await api.listGames()
-      // Ensure we always have an array
       setGames(Array.isArray(data) ? data : [])
     } catch {
       setGames([])
@@ -39,17 +46,28 @@ export default function LobbyPage() {
     return () => clearInterval(interval)
   }, [fetchGames])
 
-  // ─── Create Game ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (typeof window === 'undefined') return
 
-  async function handleCreate(e: React.SyntheticEvent<HTMLFormElement>) {
-    e.preventDefault()
+    const nextStoredPlayers: Record<string, string> = {}
+    for (const game of games) {
+      const storedPlayerId = localStorage.getItem(`player_id_${game.game_id}`)
+      if (storedPlayerId) nextStoredPlayers[game.game_id] = storedPlayerId
+    }
+    setStoredPlayers(nextStoredPlayers)
+  }, [games])
+
+  async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
     const name = hostName.trim()
     if (!name) {
-      setError('Enter your name to host a lobby.')
+      setError('Enter your name to host a table.')
       return
     }
+
     setCreating(true)
     setError(null)
+
     try {
       const game = await api.createGame(name)
       localStorage.setItem(`player_id_${game.game_id}`, name)
@@ -60,33 +78,37 @@ export default function LobbyPage() {
     }
   }
 
-  // ─── Join Game ────────────────────────────────────────────────────────────
-
-  async function handleJoin(e: React.SyntheticEvent<HTMLFormElement>) {
-    e.preventDefault()
+  async function handleJoin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
     if (!joiningGameId || !joinName.trim()) return
+
+    if ((joiningGame?.player_ids.length ?? 0) >= MAX_PLAYERS) {
+      setError('That table is already full.')
+      return
+    }
+
     setJoining(true)
     setError(null)
+
     try {
       const res = await api.joinGame(joiningGameId, joinName.trim())
-      const pid = res.player_id
-      localStorage.setItem(`player_id_${joiningGameId}`, pid)
-      router.push(`/game/${joiningGameId}?player_id=${encodeURIComponent(pid)}`)
+      const playerId = res.player_id
+      localStorage.setItem(`player_id_${joiningGameId}`, playerId)
+      router.push(`/game/${joiningGameId}?player_id=${encodeURIComponent(playerId)}`)
     } catch (err) {
       setError((err as Error).message)
       setJoining(false)
     }
   }
 
-  // ─── Quick Start (dev helper) ─────────────────────────────────────────────
-
   async function handleQuickStart() {
     setCreating(true)
     setError(null)
+
     try {
       const game = await api.createGame('Alice')
       await api.joinGame(game.game_id, 'Bob')
-      await api.startGame(game.game_id)
+      await api.startGame(game.game_id, 'Alice')
       localStorage.setItem(`player_id_${game.game_id}`, 'Alice')
       router.push(`/game/${game.game_id}?player_id=Alice`)
     } catch (err) {
@@ -96,166 +118,230 @@ export default function LobbyPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 gap-8">
-      {/* Header */}
-      <div className="zone w-full max-w-3xl p-5 flex items-center justify-between gap-6">
-        <div className="min-w-0">
-          <h1 className="text-4xl font-bold tracking-tight text-white mb-1">
-            Monopoly Deal
-          </h1>
-          <p className="text-white/50 text-sm">
-            Host a lobby, invite friends, then start the game.
+    <div className="lobby-shell">
+      <div className="lobby-shell-glow" aria-hidden="true" />
+
+      <section className="lobby-hero">
+        <div className="lobby-hero-copy">
+          <span className="lobby-eyebrow">Premium Digital Table</span>
+          <h1 className="lobby-title-display">Monopoly Deal</h1>
+          <p className="lobby-hero-text">
+            Open a private table, seat up to five players, and drop straight into a premium black-and-gold game board built for tactical card play.
           </p>
-        </div>
-        <div className="hidden sm:block pile-visual pile-visual-deck" style={{ width: 76 }}>
-          <CardBack />
-        </div>
-      </div>
 
-      <div className="w-full max-w-2xl flex flex-col gap-6">
-        {/* Error Banner */}
-        {error && (
-          <div className="zone border-red-500/50 bg-red-900/20 text-red-300 p-3 text-sm rounded-lg animate-fade-in">
-            {error}
-          </div>
-        )}
-
-        {/* Create Game */}
-        <div className="zone p-5">
-          <h2 className="text-lg font-semibold mb-4 text-white/90">Host Lobby</h2>
-          <form onSubmit={handleCreate} className="flex flex-col gap-3">
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-2 items-center">
-                <span className="text-white/40 text-sm w-16 shrink-0">You</span>
-                <input
-                  type="text"
-                  value={hostName}
-                  onChange={e => setHostName(e.target.value)}
-                  placeholder="Your name"
-                  maxLength={20}
-                  aria-label="Your name"
-                  className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30"
-                />
-              </div>
+          <div className="lobby-stat-row">
+            <div className="lobby-stat">
+              <span className="lobby-stat-label">Open Tables</span>
+              <span className="lobby-stat-value">{openGames}</span>
             </div>
+            <div className="lobby-stat">
+              <span className="lobby-stat-label">Live Games</span>
+              <span className="lobby-stat-value">{liveGames}</span>
+            </div>
+            <div className="lobby-stat">
+              <span className="lobby-stat-label">Seats</span>
+              <span className="lobby-stat-value">Up to {MAX_PLAYERS}</span>
+            </div>
+          </div>
+        </div>
 
-            <div className="flex gap-2 mt-1">
+        <div className="lobby-hero-visual" aria-hidden="true">
+          <div className="lobby-hero-deck">
+            <div className="lobby-hero-card lobby-hero-card-back lobby-hero-card-a">
+              <CardBack />
+            </div>
+            <div className="lobby-hero-card lobby-hero-card-b">
+              <CatalogCard cardId="action_forced_deal" size="fill" />
+            </div>
+            <div className="lobby-hero-card lobby-hero-card-c">
+              <CatalogCard cardId="prop_dark_blue_boardwalk" size="fill" />
+            </div>
+            <div className="lobby-hero-card lobby-hero-card-d">
+              <CatalogCard cardId="action_sly_deal" size="fill" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {error && (
+        <div className="lobby-alert">
+          <span className="lobby-alert-kicker">Table Notice</span>
+          <span className="lobby-alert-text">{error}</span>
+        </div>
+      )}
+
+      <div className="lobby-grid">
+        <section className="lobby-panel">
+          <div className="lobby-panel-head">
+            <div>
+              <span className="lobby-section-kicker">Host Table</span>
+              <h2 className="lobby-panel-title">Open a new lobby</h2>
+            </div>
+            <span className="lobby-panel-meta">Seat the room, then launch</span>
+          </div>
+
+          <form onSubmit={handleCreate} className="lobby-form">
+            <label className="lobby-field">
+              <span className="lobby-field-label">Host Name</span>
+              <input
+                type="text"
+                value={hostName}
+                onChange={event => setHostName(event.target.value)}
+                placeholder="Enter your table name"
+                maxLength={20}
+                aria-label="Your name"
+                className="lobby-input"
+              />
+            </label>
+
+            <div className="lobby-action-row">
               <button
                 type="submit"
                 disabled={creating || !hostName.trim()}
-                className="btn btn-primary flex-1"
+                className="btn btn-primary"
               >
-                {creating ? 'Creating…' : 'Create Lobby'}
+                {creating ? 'Creating Table...' : 'Create Lobby'}
+              </button>
+              <button
+                type="button"
+                onClick={handleQuickStart}
+                disabled={creating}
+                className="btn btn-ghost"
+              >
+                Quick Start
               </button>
             </div>
           </form>
+        </section>
 
-          <div className="mt-3 pt-3 border-t border-white/5">
-            <button
-              onClick={handleQuickStart}
-              disabled={creating}
-              className="btn btn-ghost w-full text-xs text-white/40"
-            >
-              Quick Start (Alice vs Bob) — dev helper
-            </button>
-          </div>
-        </div>
-
-        {/* Active Games */}
-        <div className="zone p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-white/90">Active Games</h2>
+        <section className="lobby-panel">
+          <div className="lobby-panel-head">
+            <div>
+              <span className="lobby-section-kicker">Live Tables</span>
+              <h2 className="lobby-panel-title">Available rooms</h2>
+            </div>
             <button
               onClick={fetchGames}
-              className="text-white/30 hover:text-white/70 text-xs transition-colors"
+              className="btn btn-ghost lobby-refresh-btn"
               aria-label="Refresh games list"
             >
-              ↻ Refresh
+              Refresh
             </button>
           </div>
 
           {loadingGames ? (
-            <p className="text-white/30 text-sm text-center py-4">Loading…</p>
+            <div className="lobby-empty-state">Loading active tables...</div>
           ) : games.length === 0 ? (
-            <p className="text-white/30 text-sm text-center py-4">No active games. Create one above.</p>
+            <div className="lobby-empty-state">No tables are open yet. Create one to start.</div>
           ) : (
-            <div className="flex flex-col gap-2">
-              {games.map(game => (
-                <div
-                  key={game.game_id}
-                  className="flex items-center justify-between bg-white/5 rounded-lg px-4 py-3 hover:bg-white/8 transition-colors"
-                >
-                  <div className="flex flex-col">
-                    <span className="text-sm text-white font-medium font-mono">
-                      {game.game_id.slice(0, 8)}…
-                    </span>
-                    <span className="text-xs text-white/40">
-                      {game.started ? 'active' : 'lobby'} · {game.player_ids.join(', ')}
-                    </span>
-                  </div>
+            <div className="lobby-table-list">
+              {games.map(game => {
+                const isFull = game.player_ids.length >= MAX_PLAYERS
+                const storedPlayerId = storedPlayers[game.game_id] ?? null
 
-                  <div className="flex gap-2 items-center">
-                    <span className={`w-2 h-2 rounded-full ${game.started ? 'bg-green-400' : 'bg-yellow-400'}`} />
-                    {!game.started && (
-                      <button
-                        onClick={() => {
-                          setJoiningGameId(game.game_id)
-                          setJoinName('')
-                        }}
-                        className="btn btn-ghost text-xs"
-                      >
-                        Join
-                      </button>
-                    )}
-                    {/* Rejoin if localStorage has player_id */}
-                    {typeof window !== 'undefined' && localStorage.getItem(`player_id_${game.game_id}`) && (
-                      <button
-                        onClick={() => {
-                          const pid = localStorage.getItem(`player_id_${game.game_id}`)!
-                          router.push(`/game/${game.game_id}?player_id=${encodeURIComponent(pid)}`)
-                        }}
-                        className="btn btn-primary text-xs"
-                      >
-                        Rejoin
-                      </button>
-                    )}
+                return (
+                  <div key={game.game_id} className="lobby-table-row">
+                    <div className="lobby-table-copy">
+                      <div className="lobby-table-title-row">
+                        <span className="lobby-table-id">{game.game_id.slice(0, 8)}</span>
+                        <span className={`lobby-table-status ${game.started ? 'lobby-table-status-live' : 'lobby-table-status-open'}`}>
+                          {game.started ? 'Live' : 'Lobby'}
+                        </span>
+                      </div>
+                      <div className="lobby-table-meta">
+                        {game.player_ids.length}/{MAX_PLAYERS} seated
+                      </div>
+                      <div className="lobby-table-players">
+                        {game.player_ids.join(' - ')}
+                      </div>
+                    </div>
+
+                    <div className="lobby-table-actions">
+                      {!game.started && (
+                        <button
+                          onClick={() => {
+                            setJoiningGameId(game.game_id)
+                            setJoinName('')
+                          }}
+                          disabled={isFull}
+                          className="btn btn-ghost"
+                        >
+                          {isFull ? 'Full' : 'Join'}
+                        </button>
+                      )}
+
+                      {storedPlayerId && (
+                        <button
+                          onClick={() => {
+                            router.push(`/game/${game.game_id}?player_id=${encodeURIComponent(storedPlayerId)}`)
+                          }}
+                          className="btn btn-primary"
+                        >
+                          Rejoin
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
-        </div>
+        </section>
+      </div>
 
-        {/* Join Modal */}
-        {joiningGameId && (
-          <div className="modal-backdrop" onClick={() => setJoiningGameId(null)}>
-            <div className="modal-panel" onClick={e => e.stopPropagation()}>
-              <h3 className="text-lg font-semibold mb-1">Join Game</h3>
-              <p className="text-white/40 text-xs mb-4 font-mono">{joiningGameId}</p>
-              <form onSubmit={handleJoin} className="flex flex-col gap-3">
+      {joiningGameId && (
+        <div className="modal-backdrop" onClick={() => setJoiningGameId(null)}>
+          <div className="modal-panel lobby-join-modal" onClick={event => event.stopPropagation()}>
+            <div className="lobby-panel-head">
+              <div>
+                <span className="lobby-section-kicker">Join Table</span>
+                <h3 className="lobby-panel-title">Take a seat</h3>
+              </div>
+              <span className="lobby-panel-meta">{joiningGameId.slice(0, 8)}</span>
+            </div>
+
+            {joiningGame && (
+              <div className="lobby-join-summary">
+                <span>{joiningGame.player_ids.length}/{MAX_PLAYERS} seated</span>
+                <span>{joiningGame.player_ids.join(' - ')}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleJoin} className="lobby-form">
+              <label className="lobby-field">
+                <span className="lobby-field-label">Player Name</span>
                 <input
                   type="text"
                   value={joinName}
-                  onChange={e => setJoinName(e.target.value)}
-                  placeholder="Your player name"
+                  onChange={event => setJoinName(event.target.value)}
+                  placeholder="Enter your player name"
                   maxLength={20}
                   autoFocus
                   aria-label="Your player name"
-                  className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-white/30"
+                  className="lobby-input"
                 />
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setJoiningGameId(null)} className="btn btn-ghost flex-1">
-                    Cancel
-                  </button>
-                  <button type="submit" disabled={joining || !joinName.trim()} className="btn btn-primary flex-1">
-                    {joining ? 'Joining…' : 'Join Game'}
-                  </button>
-                </div>
-              </form>
-            </div>
+              </label>
+
+              <div className="lobby-action-row">
+                <button type="button" onClick={() => setJoiningGameId(null)} className="btn btn-ghost">
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={joining || !joinName.trim() || (joiningGame?.player_ids.length ?? 0) >= MAX_PLAYERS}
+                  className="btn btn-primary"
+                >
+                  {joining
+                    ? 'Joining...'
+                    : (joiningGame?.player_ids.length ?? 0) >= MAX_PLAYERS
+                      ? 'Table Full'
+                      : 'Join Lobby'}
+                </button>
+              </div>
+            </form>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

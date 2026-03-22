@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, model_validator
 from typing import Any, Dict, List, Optional
-from ..engine.state import GameState
+from ..engine.state import GameState, resolve_host_id
 
 
 class PendingActionPrompt(BaseModel):
@@ -15,6 +15,22 @@ class TurnActionView(BaseModel):
     player_id: str
     action_type: str
     card_ids: List[str] = Field(default_factory=list)
+
+
+class PaymentParticipantView(BaseModel):
+    player_id: str
+    amount: int
+    status: str
+    request_id: Optional[str] = None
+    paid_amount: int = 0
+
+
+class PaymentTrackerView(BaseModel):
+    group_id: str
+    receiver_id: str
+    source_player_id: str
+    card_id: Optional[str] = None
+    participants: List[PaymentParticipantView] = Field(default_factory=list)
 
 
 class PlayerPublicView(BaseModel):
@@ -36,10 +52,12 @@ class PlayerPrivateView(PlayerPublicView):
 
 class PlayerView(BaseModel):
     game_id: str
+    host_id: Optional[str] = None
     you: PlayerPrivateView
     others: List[PlayerPublicView] = Field(default_factory=list)
     pending_prompts: List[PendingActionPrompt] = Field(default_factory=list)
     turn_actions: List[TurnActionView] = Field(default_factory=list)
+    payment_trackers: List[PaymentTrackerView] = Field(default_factory=list)
     deck_count: int
     discard_pile: List[str] = Field(default_factory=list)
     current_player_id: Optional[str] = None
@@ -72,6 +90,7 @@ def build_player_view(state: GameState, player_id: str) -> PlayerView:
         others.append(player_public_view)
 
     pending_prompts: List[PendingActionPrompt] = []
+    host_id = resolve_host_id(state)
     for pending_id, pending in state.pending_actions.items():
         if pending.get("awaiting_player") != player_id:
             continue
@@ -91,17 +110,25 @@ def build_player_view(state: GameState, player_id: str) -> PlayerView:
             )
         )
 
+    turn_actions = [
+        TurnActionView.model_validate(a.model_dump() if hasattr(a, "model_dump") else a)
+        for a in (state.turn_actions or [])
+    ]
+    payment_trackers = []
+    for tracker in (state.payment_trackers or []):
+        tracker_payload = tracker.model_dump() if hasattr(tracker, "model_dump") else tracker
+        if not tracker_payload.get("participants"):
+            continue
+        payment_trackers.append(PaymentTrackerView.model_validate(tracker_payload))
+
     return PlayerView(
         game_id=game_id,
+        host_id=host_id,
         you=player_private_view,
         others=others,
         pending_prompts=pending_prompts,
-        turn_actions=[
-            TurnActionView.model_validate(
-                a.model_dump() if hasattr(a, "model_dump") else a
-            )
-            for a in (state.turn_actions or [])
-        ],
+        turn_actions=turn_actions,
+        payment_trackers=payment_trackers,
         deck_count=len(state.deck.draw_pile),
         discard_pile=state.deck.discard_pile,
         current_player_id=state.current_player_id,

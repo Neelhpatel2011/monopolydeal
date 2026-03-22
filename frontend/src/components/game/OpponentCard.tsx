@@ -2,7 +2,7 @@
 
 import { useGame } from '@/contexts/GameContext'
 import { colorBgMap } from '@/lib/tailwind-parsing'
-import { sumBankValue, groupColorMap, groupSetSizes } from '@/data/cardCatalog'
+import { sumBankValue, groupSetSizes, groupDisplayNames, groupColorMap } from '@/data/cardCatalog'
 import type { PlayerPublicView } from '@/types/api'
 import type { PlayerColor } from '@/types/player'
 
@@ -22,6 +22,7 @@ export function OpponentCard({ player, index, onHoverChange }: OpponentCardProps
   const color = PLAYER_COLORS[(index + 1) % PLAYER_COLORS.length]
   const bgClass = colorBgMap[color]
   const isCurrentTurn = view?.current_player_id === player.id
+  const isHost = view?.host_id === player.id
   const isTargeted = targetPlayerId === player.id
   const bankTotal = sumBankValue(player.bank)
 
@@ -31,14 +32,22 @@ export function OpponentCard({ player, index, onHoverChange }: OpponentCardProps
 
   const sets = Object.entries(player.properties)
     .filter(([, cards]) => cards.length > 0)
-    .map(([color, cards]) => ({
-      color,
+    .map(([colorKey, cards]) => ({
+      color: colorKey,
+      label: groupDisplayNames[colorKey] ?? colorKey,
       count: cards.length,
-      setSize: groupSetSizes[color] ?? 3,
-      isComplete: cards.length >= (groupSetSizes[color] ?? 3),
+      setSize: groupSetSizes[colorKey] ?? 3,
+      isComplete: cards.length >= (groupSetSizes[colorKey] ?? 3),
+      swatch: groupColorMap[colorKey]?.color ?? 'bg-gray-400',
     }))
+    .sort((left, right) => {
+      if (left.isComplete !== right.isComplete) return left.isComplete ? -1 : 1
+      if (left.count !== right.count) return right.count - left.count
+      return left.label.localeCompare(right.label)
+    })
 
-  const completedSets = sets.filter(s => s.isComplete).length
+  const visibleSets = sets.slice(0, 3)
+  const hiddenSetCount = Math.max(0, sets.length - visibleSets.length)
 
   const panelClass = [
     'opp-panel',
@@ -51,80 +60,63 @@ export function OpponentCard({ player, index, onHoverChange }: OpponentCardProps
       onClick={handleClick}
       onMouseEnter={() => onHoverChange?.(player.id)}
       onMouseLeave={() => onHoverChange?.(null)}
-      aria-label={`${player.id} — ${isTargeted ? 'selected as target, click to deselect' : 'click to target'}`}
+      aria-label={`${player.id} - ${isTargeted ? 'selected as target, click to deselect' : 'click to target'}`}
       aria-pressed={isTargeted}
       className={panelClass}
     >
-      {/* Header row: avatar + name + turn badge */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+      <div className="opp-panel-head">
         <div className={`opp-avatar ${bgClass}`}>
           {player.id[0]?.toUpperCase()}
         </div>
-        <span className="opp-name">{player.id}</span>
-        {isCurrentTurn && <span className="opp-turn-badge">TURN</span>}
+
+        <div className="opp-panel-copy">
+          <div className="opp-panel-name-row">
+            <span className="opp-name">{player.id}</span>
+            {isHost && (
+              <span className="host-badge host-badge-compact" title="Host">
+                <span className="host-crown" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M3 18h18l-1.6 3H4.6L3 18Zm2.1-10.2 3.7 3.3 3.2-5.1 3.2 5.1 3.7-3.3 1.9 8.1H3.2l1.9-8.1Z" fill="currentColor" />
+                  </svg>
+                </span>
+                Host
+              </span>
+            )}
+          </div>
+          <div className="opp-panel-bank">${bankTotal}M</div>
+        </div>
+
+        {isCurrentTurn && <span className="opp-turn-badge">Turn</span>}
       </div>
 
-      {/* Stats: hand count, bank, completed sets */}
-      <div className="opp-stats">
-        <span className="opp-stat" title="Hand">
-          <span className="opp-stat-ico" aria-hidden="true">🃏</span>
-          <span className="opp-stat-val">{player.hand_count}</span>
-        </span>
-        <span className="opp-stat" title="Bank total">
-          <span className="opp-stat-ico" aria-hidden="true">💰</span>
-          <span className="opp-stat-val">${bankTotal}M</span>
-        </span>
-        {completedSets > 0 && (
-          <span className="opp-sets-badge" title="Completed sets">
-            ✓{completedSets}
-          </span>
-        )}
+      <div className="opp-panel-meta">
+        <span className="opp-meta-pill">{player.hand_count} in hand</span>
+        <span className="opp-meta-pill">{sets.length} set{sets.length === 1 ? '' : 's'}</span>
       </div>
 
-      {/* Property set dots */}
-      {sets.length > 0 ? (
-        <div className="opp-props">
-          {sets.map(({ color, count, setSize, isComplete }) => {
-            const colorDef = groupColorMap[color]
-            return (
-              <div
-                key={color}
-                title={`${color}: ${count}/${setSize}`}
-                className={`opp-prop-bar ${isComplete ? 'opp-prop-bar-complete' : ''}`}
-              >
-                {Array.from({ length: setSize }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={[
-                      'opp-prop-pip',
-                      i < count ? (colorDef?.color ?? 'bg-gray-400') : 'opp-prop-pip-empty',
-                    ].join(' ')}
-                  />
-                ))}
+      {visibleSets.length > 0 ? (
+        <div className="opp-progress-list">
+          {visibleSets.map(set => (
+            <div key={set.color} className="opp-progress-row">
+              <div className="opp-progress-copy">
+                <span className="opp-progress-label">{set.label}</span>
+                <span className="opp-progress-value">{set.count}/{set.setSize}</span>
               </div>
-            )
-          })}
+              <div className="opp-progress-track">
+                <div
+                  className={`opp-progress-fill ${set.swatch}`}
+                  style={{ width: `${Math.min(100, (set.count / set.setSize) * 100)}%` }}
+                />
+              </div>
+            </div>
+          ))}
+          {hiddenSetCount > 0 && (
+            <span className="opp-progress-more">+{hiddenSetCount} more</span>
+          )}
         </div>
       ) : (
-        <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.18)' }}>No properties</span>
-      )}
-
-      {/* Target indicator */}
-      {isTargeted && (
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: 13,
-          border: '2px solid var(--accent)',
-          pointerEvents: 'none',
-        }} />
-      )}
-      {isTargeted && (
-        <span style={{ fontSize: 9, fontWeight: 800, color: 'var(--accent)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-          TARGET ✓
-        </span>
+        <span className="opp-progress-empty">No properties</span>
       )}
     </button>
   )
 }
-
