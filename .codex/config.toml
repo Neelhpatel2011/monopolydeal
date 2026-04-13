@@ -1,0 +1,18 @@
+
+# .codex/config.toml
+
+# Treat a git repo as the project root.
+project_root_markers = [".git"]
+
+# Keep room for both root and nested AGENTS.md files.
+project_doc_max_bytes = 65536
+
+[agents]
+# Enough parallelism to be useful without causing chaos.
+max_threads = 4
+
+# Allow only one layer of spawned child agents.
+max_depth = 1
+
+# Optional safety timeout for longer spawned jobs.
+job_max_runtime_seconds = 1800

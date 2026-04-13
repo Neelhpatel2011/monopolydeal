@@ -1,0 +1,55 @@
+import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
+import type { LocalHandCard } from "../../board/model/localPlayer";
+import { HandCard } from "./HandCard";
+
+type HandTrayProps = {
+  cards: LocalHandCard[];
+  selectedCardId: string | null;
+  draggingCardId: string | null;
+  viewportRef: RefObject<HTMLDivElement>;
+  onCardPress: (cardId: string) => void;
+  onCardPointerDown: (cardId: string, event: ReactPointerEvent<HTMLButtonElement>) => void;
+};
+
+export function HandTray({
+  cards,
+  selectedCardId,
+  draggingCardId,
+  viewportRef,
+  onCardPress,
+  onCardPointerDown,
+}: HandTrayProps) {
+  return (
+    <section className="hand-tray" aria-label="Cards in hand">
+      <div className="hand-tray__header">
+        <div>
+          <p className="hand-tray__eyebrow">Cards in hand</p>
+          <h2 className="hand-tray__title">{cards.length} ready to play</h2>
+        </div>
+        <p className="hand-tray__hint">Swipe to browse</p>
+      </div>
+
+      <div className="hand-tray__viewport">
+        <div className="hand-tray__cards" role="list" aria-label="Hand cards" ref={viewportRef}>
+          {cards.map((card) => (
+            <div
+              key={card.id}
+              className={`hand-tray__card-slot${
+                draggingCardId === card.id ? " hand-tray__card-slot--drag-origin" : ""
+              }`}
+              role="listitem"
+            >
+              <HandCard
+                card={card}
+                isSelected={selectedCardId === card.id}
+                isDragOrigin={draggingCardId === card.id}
+                onPress={() => onCardPress(card.id)}
+                onPointerDown={(event) => onCardPointerDown(card.id, event)}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}

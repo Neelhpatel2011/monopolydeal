@@ -1,36 +1,32 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend Docs
 
-## Getting Started
+## Current Scope
+The current frontend focus is the Monopoly Deal board screen.
 
-First, run the development server:
+## Read In This Order
+1. `AGENTS.md`
+2. `spec.md`
+3. `plans.md`
+4. `implement.md`
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## What Each File Covers
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### `spec.md`
+Product and UX requirements for the board screen.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### `plans.md`
+Target file structure, ownership boundaries, build order, and rollout plan.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### `implement.md`
+Execution rules for board work, including the interaction model and implementation order.
 
-## Learn More
+## Current Direction Summary
+The board should be a mobile-first, premium-feeling screen driven by backend `PlayerView` data.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Core principles:
+- local player is the visual focus
+- opponents stay compact by default
+- the center area stays stable
+- drag and targeting states must be explicit
+- blocking flows take priority over normal play
+- end-turn must be intentionally safe
