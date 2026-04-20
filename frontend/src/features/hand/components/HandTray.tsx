@@ -6,6 +6,7 @@ type HandTrayProps = {
   cards: LocalHandCard[];
   selectedCardId: string | null;
   draggingCardId: string | null;
+  invalidCardId?: string | null;
   viewportRef: RefObject<HTMLDivElement>;
   onCardPress: (cardId: string) => void;
   onCardPointerDown: (cardId: string, event: ReactPointerEvent<HTMLButtonElement>) => void;
@@ -15,6 +16,7 @@ export function HandTray({
   cards,
   selectedCardId,
   draggingCardId,
+  invalidCardId = null,
   viewportRef,
   onCardPress,
   onCardPointerDown,
@@ -36,6 +38,8 @@ export function HandTray({
               key={card.id}
               className={`hand-tray__card-slot${
                 draggingCardId === card.id ? " hand-tray__card-slot--drag-origin" : ""
+              }${
+                invalidCardId === card.id ? " hand-tray__card-slot--invalid" : ""
               }`}
               role="listitem"
             >
@@ -43,6 +47,7 @@ export function HandTray({
                 card={card}
                 isSelected={selectedCardId === card.id}
                 isDragOrigin={draggingCardId === card.id}
+                isInvalid={invalidCardId === card.id}
                 onPress={() => onCardPress(card.id)}
                 onPointerDown={(event) => onCardPointerDown(card.id, event)}
               />

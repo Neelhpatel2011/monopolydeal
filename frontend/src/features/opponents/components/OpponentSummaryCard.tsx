@@ -1,20 +1,51 @@
 import type { OpponentSummary } from "../model/opponentExpansion";
+import { getOpponentTargetId } from "../../drag-targeting/model/target-preview";
 
 type OpponentSummaryCardProps = {
   opponent: OpponentSummary;
   onOpen?: (opponentId: string) => void;
+  browseSuppressed?: boolean;
+  isTargetable?: boolean;
+  isInvalid?: boolean;
+  isPreviewed?: boolean;
 };
 
-export function OpponentSummaryCard({ opponent, onOpen }: OpponentSummaryCardProps) {
+export function OpponentSummaryCard({
+  opponent,
+  onOpen,
+  browseSuppressed = false,
+  isTargetable = false,
+  isInvalid = false,
+  isPreviewed = false,
+}: OpponentSummaryCardProps) {
   const statsLabel = `${opponent.handCount} cards in hand, ${opponent.bankTotal} banked`;
+  const className = `opponent-summary-card${
+    opponent.isCurrentPlayer ? " opponent-summary-card--current" : ""
+  }${isTargetable ? " opponent-summary-card--targetable" : ""}${
+    isInvalid ? " opponent-summary-card--invalid" : ""
+  }${
+    isPreviewed ? " opponent-summary-card--previewed" : ""
+  }${browseSuppressed ? " opponent-summary-card--browse-suppressed" : ""}`;
 
   return (
     <button
-      className={`opponent-summary-card${opponent.isCurrentPlayer ? " opponent-summary-card--current" : ""}`}
+      className={className}
       type="button"
       aria-current={opponent.isCurrentPlayer ? "true" : undefined}
-      aria-label={`Open ${opponent.name} details`}
-      onClick={() => onOpen?.(opponent.id)}
+      aria-label={
+        browseSuppressed
+          ? `${opponent.name} summary`
+          : `Open ${opponent.name} details`
+      }
+      aria-disabled={browseSuppressed || undefined}
+      data-board-target-id={getOpponentTargetId(opponent.id)}
+      onClick={() => {
+        if (browseSuppressed) {
+          return;
+        }
+
+        onOpen?.(opponent.id);
+      }}
     >
       <div className="opponent-summary-card__toolbar">
         {opponent.isCurrentPlayer ? (

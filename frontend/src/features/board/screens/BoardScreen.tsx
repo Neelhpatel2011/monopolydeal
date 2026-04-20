@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import type { LocalBankCard, LocalPlayerState, LocalPropertySet } from "../model/localPlayer";
 import { BoardShell } from "../components/BoardShell";
 import {
@@ -5,6 +6,7 @@ import {
   type OpponentSummary,
   toOpponentSummary,
 } from "../../opponents/model/opponentExpansion";
+import type { BoardBlockingState } from "../model/blocking-overlays";
 
 const opponents: OpponentDetail[] = [
   {
@@ -243,7 +245,7 @@ const bankCards: LocalBankCard[] = [
   { id: "bank-4", label: "Money", amount: "1", tone: "paper" },
 ];
 
-const localPlayer: LocalPlayerState = {
+const localPlayerTemplate: LocalPlayerState = {
   name: "Player",
   isCurrentTurn: true,
   handCount: 6,
@@ -263,6 +265,16 @@ const localPlayer: LocalPlayerState = {
 const opponentSummaries: OpponentSummary[] = opponents.map(toOpponentSummary);
 
 export function BoardScreen() {
+  const [isCurrentTurn, setIsCurrentTurn] = useState(localPlayerTemplate.isCurrentTurn);
+  const blockingState: BoardBlockingState | null = null;
+  const localPlayer = useMemo(
+    () => ({
+      ...localPlayerTemplate,
+      isCurrentTurn,
+    }),
+    [isCurrentTurn],
+  );
+
   return (
     <BoardShell
       roundLabel="Round 5 / 12"
@@ -270,6 +282,10 @@ export function BoardScreen() {
       opponentSummaries={opponentSummaries}
       opponentDetails={opponents}
       localPlayer={localPlayer}
+      blockingState={blockingState}
+      onConfirmEndTurn={() => {
+        setIsCurrentTurn(false);
+      }}
     />
   );
 }

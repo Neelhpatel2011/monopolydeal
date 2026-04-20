@@ -1,14 +1,32 @@
 import type { CSSProperties } from "react";
 import type { LocalBankCard } from "../../board/model/localPlayer";
+import { LOCAL_BANK_TARGET_ID } from "../../drag-targeting/model/target-preview";
 
 type BankStripProps = {
   cards: LocalBankCard[];
   total: string;
+  isTargetable?: boolean;
+  isPreviewed?: boolean;
+  isInvalid?: boolean;
 };
 
-export function BankStrip({ cards, total }: BankStripProps) {
+export function BankStrip({
+  cards,
+  total,
+  isTargetable = false,
+  isPreviewed = false,
+  isInvalid = false,
+}: BankStripProps) {
   return (
-    <section className="bank-strip" aria-label="Banked cards">
+    <section
+      className={`bank-strip${isTargetable ? " bank-strip--targetable" : ""}${
+        isPreviewed ? " bank-strip--previewed" : ""
+      }${
+        isInvalid ? " bank-strip--invalid" : ""
+      }`}
+      aria-label="Banked cards"
+      data-board-target-id={LOCAL_BANK_TARGET_ID}
+    >
       <div className="bank-strip__header">
         <div>
           <p className="bank-strip__eyebrow">Bank</p>

@@ -1,13 +1,39 @@
 import type { CSSProperties } from "react";
 import type { LocalPropertySet } from "../../board/model/localPlayer";
+import {
+  LOCAL_TABLEAU_TARGET_ID,
+  getLocalTableauSetTargetId,
+} from "../../drag-targeting/model/target-preview";
 
 type TableauPanelProps = {
   sets: LocalPropertySet[];
+  isTargetable?: boolean;
+  isPreviewed?: boolean;
+  isInvalid?: boolean;
+  targetableSetIds?: string[];
+  previewedSetId?: string | null;
+  invalidSetId?: string | null;
 };
 
-export function TableauPanel({ sets }: TableauPanelProps) {
+export function TableauPanel({
+  sets,
+  isTargetable = false,
+  isPreviewed = false,
+  isInvalid = false,
+  targetableSetIds = [],
+  previewedSetId = null,
+  invalidSetId = null,
+}: TableauPanelProps) {
+  const targetableSetIdSet = new Set(targetableSetIds);
+
   return (
-    <section className="tableau-panel" aria-label="Played property sets">
+    <section
+      className={`tableau-panel${isTargetable ? " tableau-panel--targetable" : ""}${
+        isPreviewed ? " tableau-panel--previewed" : ""
+      }${isInvalid ? " tableau-panel--invalid" : ""}`}
+      aria-label="Played property sets"
+      data-board-target-id={LOCAL_TABLEAU_TARGET_ID}
+    >
       <div className="tableau-panel__header">
         <div>
           <p className="tableau-panel__eyebrow">Tableau</p>
@@ -20,12 +46,24 @@ export function TableauPanel({ sets }: TableauPanelProps) {
         {sets.map((set) => {
           const count = set.cards.length;
           const isComplete = count >= set.targetSize;
-          const remaining = Math.max(set.targetSize - count, 0);
 
           return (
             <article
               key={set.id}
-              className={`property-set${isComplete ? " property-set--complete" : ""}`}
+              className={`property-set${isComplete ? " property-set--complete" : ""}${
+                targetableSetIdSet.has(getLocalTableauSetTargetId(set.id))
+                  ? " property-set--targetable"
+                  : ""
+              }${
+                previewedSetId === getLocalTableauSetTargetId(set.id)
+                  ? " property-set--previewed"
+                  : ""
+              }${
+                invalidSetId === getLocalTableauSetTargetId(set.id)
+                  ? " property-set--invalid"
+                  : ""
+              }`}
+              data-board-target-id={getLocalTableauSetTargetId(set.id)}
             >
               <div className="property-set__header">
                 <div className="property-set__title-group">

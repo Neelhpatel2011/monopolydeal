@@ -11,6 +11,7 @@ import type {
   PayingInteractionState,
   TargetScope,
 } from "./interaction-types";
+import { createHandDraftActionIntent } from "./card-intents";
 
 const baseTransientState: BoardInteractionTransientState = {
   expandedOpponentId: null,
@@ -52,15 +53,6 @@ function toSelected(
     origin,
     intent,
     ...mergeTransient(state, overrides),
-  };
-}
-
-function createSelectionIntent(cardId: string): DraftActionIntent {
-  return {
-    cardId,
-    actionType: "handSelection",
-    chosen: {},
-    missing: [],
   };
 }
 
@@ -109,7 +101,17 @@ function buildTargetingState(
   focusField: keyof DraftActionIntent["chosen"] | null,
   previewTargetId: string | null,
 ): BoardInteractionState | null {
-  if (state.mode !== "selected" && state.mode !== "dragging") {
+  if (state.mode === "targeting") {
+    return {
+      ...state,
+      targetScope,
+      focusField,
+      previewTargetId,
+      ...mergeTransient(state, closeBrowsingWhileActing({ invalidFeedback: null })),
+    };
+  }
+
+  if (state.mode !== "dragging") {
     return null;
   }
 
@@ -118,6 +120,8 @@ function buildTargetingState(
     selectedCardId: state.selectedCardId,
     origin: state.origin,
     intent: state.intent,
+    pointerId: state.pointerId,
+    preview: state.preview,
     targetScope,
     focusField,
     previewTargetId,
@@ -219,7 +223,7 @@ export function boardInteractionReducer(
     }
 
     case "UPDATE_DRAG_PREVIEW":
-      if (state.mode !== "dragging") {
+      if (state.mode !== "dragging" && state.mode !== "targeting") {
         return state;
       }
 
@@ -243,14 +247,14 @@ export function boardInteractionReducer(
       };
 
     case "CANCEL_DRAG":
-      if (state.mode !== "dragging") {
+      if (state.mode !== "dragging" && state.mode !== "targeting") {
         return state;
       }
 
       return toSelected(state, state.origin, state.intent, { invalidFeedback: null });
 
     case "INVALID_DRAG_RELEASE":
-      if (state.mode !== "dragging") {
+      if (state.mode !== "dragging" && state.mode !== "targeting") {
         return state;
       }
 
@@ -274,12 +278,41 @@ export function boardInteractionReducer(
         return state;
       }
 
+      if (event.targetId === null) {
+        return {
+          mode: "dragging",
+          selectedCardId: state.selectedCardId,
+          intent: state.intent,
+          pointerId: state.pointerId,
+          origin: state.origin,
+          hoverTargetId: null,
+          preview: state.preview,
+          ...mergeTransient(state, closeBrowsingWhileActing({ invalidFeedback: null })),
+        };
+      }
+
       return {
         ...state,
         previewTargetId: event.targetId,
       };
 
-    case "CONFIRM_TARGET":
+    case "LEAVE_TARGETING":
+      if (state.mode !== "targeting") {
+        return state;
+      }
+
+      return {
+        mode: "dragging",
+        selectedCardId: state.selectedCardId,
+        intent: state.intent,
+        pointerId: state.pointerId,
+        origin: state.origin,
+        hoverTargetId: null,
+        preview: state.preview,
+        ...mergeTransient(state, closeBrowsingWhileActing({ invalidFeedback: null })),
+      };
+
+    case "CONFIRM_TARGET": {
       if (state.mode !== "targeting") {
         return state;
       }
@@ -304,6 +337,7 @@ export function boardInteractionReducer(
         previewTargetId:
           event.targetId ?? (typeof event.value === "string" ? event.value : state.previewTargetId),
       };
+    }
 
     case "CANCEL_TARGETING":
       if (state.mode !== "targeting") {
@@ -313,7 +347,7 @@ export function boardInteractionReducer(
       return toSelected(state, state.origin, state.intent, { invalidFeedback: null });
 
     case "OPEN_END_TURN_CONFIRM":
-      if (state.mode !== "idle") {
+      if (state.mode !== "idle" || state.expandedOpponentId !== null) {
         return state;
       }
 
@@ -388,6 +422,22 @@ export function boardInteractionReducer(
       }
 
       return toIdle(state, { invalidFeedback: null });
+
+    case "SUBMIT_END_TURN_REJECTED":
+      if (state.mode !== "submittingEndTurn") {
+        return {
+          ...state,
+          invalidFeedback: event.feedback ?? state.invalidFeedback,
+        };
+      }
+
+      return {
+        mode: "idle",
+        ...mergeTransient(state, {
+          invalidFeedback: event.feedback ?? null,
+          endTurnConfirmOpen: true,
+        }),
+      };
 
     case "ENTER_AWAITING_PROMPT":
       return {
@@ -476,20 +526,31 @@ export function boardInteractionReducer(
       });
 
     case "TURN_OWNERSHIP_LOST":
-      if (
-        state.mode !== "selected" &&
-        state.mode !== "dragging" &&
-        state.mode !== "targeting"
-      ) {
-        return state;
+      if (state.mode === "idle") {
+        return {
+          ...state,
+          expandedOpponentId: null,
+          endTurnConfirmOpen: false,
+          invalidFeedback: event.feedback ?? null,
+        };
       }
 
-      if (state.origin !== "hand") {
-        return state;
+      if (state.mode === "selected" || state.mode === "dragging" || state.mode === "targeting") {
+        if (state.origin !== "hand") {
+          return state;
+        }
+
+        return toIdle(state, {
+          invalidFeedback: event.feedback ?? null,
+          expandedOpponentId: null,
+          endTurnConfirmOpen: false,
+        });
       }
 
       return toIdle(state, {
         invalidFeedback: event.feedback ?? null,
+        expandedOpponentId: null,
+        endTurnConfirmOpen: false,
       });
 
     case "RESET_TO_IDLE":
@@ -556,7 +617,7 @@ export function seedDraggingState(
 export function createInvalidFeedback(
   kind: InvalidFeedback["kind"],
   message: string,
-  extra?: Pick<InvalidFeedback, "cardId" | "targetId">,
+  extra?: Pick<InvalidFeedback, "cardId" | "detail" | "targetId">,
 ): InvalidFeedback {
   return {
     kind,
@@ -565,6 +626,6 @@ export function createInvalidFeedback(
   };
 }
 
-export function createHandSelectionIntent(cardId: string): DraftActionIntent {
-  return createSelectionIntent(cardId);
+export function createHandSelectionIntent(cardId: string, label: string): DraftActionIntent {
+  return createHandDraftActionIntent(cardId, label);
 }

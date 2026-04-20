@@ -5,6 +5,7 @@ type HandCardProps = {
   card: LocalHandCard;
   isSelected: boolean;
   isDragOrigin?: boolean;
+  isInvalid?: boolean;
   renderMode?: "interactive" | "ghost";
   style?: CSSProperties;
   onPress: () => void;
@@ -128,6 +129,7 @@ export function HandCard({
   card,
   isSelected,
   isDragOrigin = false,
+  isInvalid = false,
   renderMode = "interactive",
   style,
   onPress,
@@ -141,6 +143,7 @@ export function HandCard({
     `${presentation.kind === "wild" ? " hand-card--wild" : ""}` +
     `${isSelected ? " hand-card--selected" : ""}` +
     `${isDragOrigin ? " hand-card--drag-origin" : ""}` +
+    `${isInvalid ? " hand-card--invalid" : ""}` +
     `${renderMode === "ghost" ? " hand-card--drag-preview" : ""}`;
 
   const body = renderHandCardBody(presentation);
@@ -157,6 +160,7 @@ export function HandCard({
     <button
       className={className}
       type="button"
+      draggable={false}
       aria-pressed={isSelected}
       aria-label={`${card.label}${isSelected ? ", selected" : ""}`}
       onClick={onPress}

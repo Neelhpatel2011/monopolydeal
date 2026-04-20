@@ -1,10 +1,15 @@
 import { useEffect, useRef } from "react";
 import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 import type {
+  ActionFieldKey,
   BoardInteractionEvent,
   BoardInteractionState,
   DragPreviewState,
+  InvalidFeedback,
 } from "../model/interaction-types";
+import type { LocalHandCard, LocalPlayerState } from "../model/localPlayer";
+import type { OpponentSummary } from "../../opponents/model/opponentExpansion";
+import type { DragTargetDefinition } from "../../drag-targeting/model/target-preview";
 
 const MOVE_THRESHOLD_PX = 8;
 const TOUCH_HOLD_DELAY_MS = 140;
@@ -24,7 +29,18 @@ type HandDragSession = {
 type UseHandDragControllerArgs = {
   interactionState: BoardInteractionState;
   dispatch: (event: BoardInteractionEvent) => void;
+  activeCard: LocalHandCard | null;
   isCurrentTurn: boolean;
+  localPlayer: LocalPlayerState;
+  opponents: OpponentSummary[];
+  validTargets: Map<string, DragTargetDefinition>;
+  createInvalidFeedback: (args: {
+    card: LocalHandCard;
+    targetId: string | null;
+    validTargets: DragTargetDefinition[];
+    localPlayer: LocalPlayerState;
+    opponents: OpponentSummary[];
+  }) => InvalidFeedback;
 };
 
 type UseHandDragControllerResult = {
@@ -53,25 +69,63 @@ function createPreviewState(
   };
 }
 
+function normalizePointerType(pointerType: string): DragPreviewState["pointerType"] {
+  if (pointerType === "mouse" || pointerType === "pen") {
+    return pointerType;
+  }
+
+  return "touch";
+}
+
 export function useHandDragController({
   interactionState,
   dispatch,
+  activeCard,
   isCurrentTurn,
+  localPlayer,
+  opponents,
+  validTargets,
+  createInvalidFeedback,
 }: UseHandDragControllerArgs): UseHandDragControllerResult {
   const viewportRef = useRef<HTMLDivElement>(null);
   const pendingSessionRef = useRef<HandDragSession | null>(null);
   const suppressClickCardIdRef = useRef<string | null>(null);
   const detachListenersRef = useRef<(() => void) | null>(null);
   const interactionStateRef = useRef(interactionState);
+  const activeCardRef = useRef(activeCard);
   const isCurrentTurnRef = useRef(isCurrentTurn);
+  const localPlayerRef = useRef(localPlayer);
+  const opponentsRef = useRef(opponents);
+  const validTargetsRef = useRef(validTargets);
+  const createInvalidFeedbackRef = useRef(createInvalidFeedback);
 
   useEffect(() => {
     interactionStateRef.current = interactionState;
   }, [interactionState]);
 
   useEffect(() => {
+    activeCardRef.current = activeCard;
+  }, [activeCard]);
+
+  useEffect(() => {
     isCurrentTurnRef.current = isCurrentTurn;
   }, [isCurrentTurn]);
+
+  useEffect(() => {
+    localPlayerRef.current = localPlayer;
+  }, [localPlayer]);
+
+  useEffect(() => {
+    opponentsRef.current = opponents;
+  }, [opponents]);
+
+  useEffect(() => {
+    validTargetsRef.current = validTargets;
+  }, [validTargets]);
+
+  useEffect(() => {
+    createInvalidFeedbackRef.current = createInvalidFeedback;
+  }, [createInvalidFeedback]);
 
   function removeWindowListeners(
     listeners: Array<[string, EventListener, boolean | AddEventListenerOptions | undefined]>,
@@ -82,9 +136,11 @@ export function useHandDragController({
   }
 
   function finishPendingSession() {
+    const pendingSession = pendingSessionRef.current;
     detachListenersRef.current?.();
     detachListenersRef.current = null;
     pendingSessionRef.current = null;
+    return pendingSession;
   }
 
   function suppressNextClick(cardId: string) {
@@ -97,23 +153,20 @@ export function useHandDragController({
     }, CLICK_SUPPRESSION_MS);
   }
 
-  function cancelDragIfNeeded() {
-    if (
-      pendingSessionRef.current?.started ||
-      interactionStateRef.current.mode === "dragging"
-    ) {
-      dispatch({ type: "CANCEL_DRAG" });
-    }
-  }
-
   useEffect(() => {
     if (isCurrentTurn) {
       return;
     }
 
-    finishPendingSession();
-    cancelDragIfNeeded();
-  }, [isCurrentTurn]);
+    const pendingSession = finishPendingSession();
+    if (
+      pendingSession?.started ||
+      interactionStateRef.current.mode === "dragging" ||
+      interactionStateRef.current.mode === "targeting"
+    ) {
+      dispatch({ type: "CANCEL_DRAG" });
+    }
+  }, [dispatch, isCurrentTurn]);
 
   useEffect(() => {
     const pendingSession = pendingSessionRef.current;
@@ -128,13 +181,40 @@ export function useHandDragController({
     }
 
     if (
-      (interactionState.mode === "selected" || interactionState.mode === "dragging") &&
+      (
+        interactionState.mode === "selected" ||
+        interactionState.mode === "dragging" ||
+        interactionState.mode === "targeting"
+      ) &&
       interactionState.origin === "hand" &&
       interactionState.selectedCardId !== pendingSession.cardId
     ) {
       finishPendingSession();
     }
   }, [interactionState]);
+
+  function resolveTargetField(target: DragTargetDefinition): ActionFieldKey | null {
+    return target.field;
+  }
+
+  function resolveBoardTargetId(clientX: number, clientY: number): string | null {
+    return (
+      document
+        .elementFromPoint(clientX, clientY)
+        ?.closest<HTMLElement>("[data-board-target-id]")
+        ?.dataset.boardTargetId ?? null
+    );
+  }
+
+  function resolveDragTarget(clientX: number, clientY: number): DragTargetDefinition | null {
+    const targetId = resolveBoardTargetId(clientX, clientY);
+
+    if (!targetId) {
+      return null;
+    }
+
+    return validTargetsRef.current.get(targetId) ?? null;
+  }
 
   function beginDrag(session: HandDragSession) {
     const latestState = interactionStateRef.current;
@@ -200,6 +280,30 @@ export function useHandDragController({
         clientX: pointerEvent.clientX,
         clientY: pointerEvent.clientY,
       });
+
+      const target = resolveDragTarget(pointerEvent.clientX, pointerEvent.clientY);
+      const latestState = interactionStateRef.current;
+
+      if (target) {
+        if (
+          latestState.mode !== "targeting" ||
+          latestState.previewTargetId !== target.id ||
+          latestState.targetScope !== target.scope
+        ) {
+          dispatch({
+            type: "ENTER_TARGETING",
+            targetScope: target.scope,
+            focusField: resolveTargetField(target),
+            previewTargetId: target.id,
+          });
+        }
+
+        return;
+      }
+
+      if (latestState.mode === "targeting") {
+        dispatch({ type: "LEAVE_TARGETING" });
+      }
     };
 
     const endSession = () => {
@@ -214,7 +318,35 @@ export function useHandDragController({
 
       if (session.started) {
         suppressNextClick(session.cardId);
-        dispatch({ type: "CANCEL_DRAG" });
+        const target = resolveDragTarget(pointerEvent.clientX, pointerEvent.clientY);
+
+        if (target) {
+          dispatch({ type: "CANCEL_DRAG" });
+        } else {
+          const card = activeCardRef.current;
+          const targetId = resolveBoardTargetId(pointerEvent.clientX, pointerEvent.clientY);
+
+          dispatch({
+            type: "INVALID_DRAG_RELEASE",
+            feedback:
+              card === null
+                ? {
+                    kind: "invalidTarget",
+                    message: "That target is not available",
+                    detail:
+                      "Keep the card selected and release over one of the highlighted targets.",
+                    cardId: session.cardId,
+                    targetId: targetId ?? undefined,
+                  }
+                : createInvalidFeedbackRef.current({
+                    card,
+                    targetId,
+                    validTargets: Array.from(validTargetsRef.current.values()),
+                    localPlayer: localPlayerRef.current,
+                    opponents: opponentsRef.current,
+                  }),
+          });
+        }
       }
 
       endSession();
@@ -243,17 +375,17 @@ export function useHandDragController({
       endSession();
     }
 
-    const onInterrupt = (_event?: Event) => {
+    const onInterrupt = () => {
       interruptSession();
     };
 
-    const onVisibilityChange = (_event?: Event) => {
+    const onVisibilityChange = () => {
       if (document.visibilityState !== "visible") {
         interruptSession();
       }
     };
 
-    const onViewportScroll = (_event?: Event) => {
+    const onViewportScroll = () => {
       if (!pendingSessionRef.current) {
         return;
       }
@@ -267,6 +399,7 @@ export function useHandDragController({
       ["pointercancel", onPointerCancel, undefined],
       ["blur", onInterrupt, undefined],
       ["orientationchange", onInterrupt, undefined],
+      ["pagehide", onInterrupt, undefined],
       ["scroll", onInterrupt, true],
       ["visibilitychange", onVisibilityChange, undefined],
     );
@@ -295,20 +428,25 @@ export function useHandDragController({
       return;
     }
 
+    if (!event.isPrimary) {
+      return;
+    }
+
     if (event.pointerType === "mouse" && event.button !== 0) {
       return;
     }
 
     finishPendingSession();
+    const pointerType = normalizePointerType(event.pointerType);
 
     const session: HandDragSession = {
       cardId,
       pointerId: event.pointerId,
-      pointerType: event.pointerType as DragPreviewState["pointerType"],
+      pointerType,
       startedAt: performance.now(),
       startClientX: event.clientX,
       startClientY: event.clientY,
-      preview: createPreviewState(event, event.pointerType as DragPreviewState["pointerType"]),
+      preview: createPreviewState(event, pointerType),
       started: false,
     };
 
@@ -320,7 +458,11 @@ export function useHandDragController({
     return suppressClickCardIdRef.current === cardId;
   }
 
-  useEffect(() => () => finishPendingSession(), []);
+  useEffect(() => {
+    return () => {
+      finishPendingSession();
+    };
+  }, []);
 
   return {
     viewportRef,

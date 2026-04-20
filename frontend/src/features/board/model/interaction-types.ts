@@ -34,6 +34,7 @@ export type DraftActionIntent = {
 export type InvalidFeedback = {
   kind: "invalidTarget" | "rejected" | "blocked";
   message: string;
+  detail?: string;
   cardId?: string;
   targetId?: string;
 };
@@ -80,6 +81,8 @@ export type TargetingInteractionState = BoardInteractionTransientState & {
   selectedCardId: string;
   origin: InteractionOrigin;
   intent: DraftActionIntent;
+  pointerId: string;
+  preview: DragPreviewState;
   targetScope: TargetScope;
   focusField: ActionFieldKey | null;
   previewTargetId: string | null;
@@ -150,6 +153,7 @@ export type BoardInteractionEvent =
       previewTargetId?: string | null;
     }
   | { type: "UPDATE_TARGET_PREVIEW"; targetId: string | null }
+  | { type: "LEAVE_TARGETING" }
   | {
       type: "CONFIRM_TARGET";
       field: ActionFieldKey;
@@ -164,6 +168,7 @@ export type BoardInteractionEvent =
   | { type: "SUBMIT_ACTION_REJECTED"; feedback: InvalidFeedback; preserveSelection?: boolean }
   | { type: "SUBMIT_END_TURN_START"; submissionId: string }
   | { type: "SUBMIT_END_TURN_RESOLVE" }
+  | { type: "SUBMIT_END_TURN_REJECTED"; feedback?: InvalidFeedback }
   | { type: "ENTER_AWAITING_PROMPT"; promptKind: string }
   | { type: "ENTER_PAYING"; paymentRequestId: string; selectedCardIds?: string[] }
   | { type: "TOGGLE_PAYMENT_CARD"; cardId: string }

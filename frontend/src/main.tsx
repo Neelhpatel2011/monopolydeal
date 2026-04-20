@@ -1,6 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import GameDeckView from "./components/cards/GameDeckView";
 import { BoardScreen } from "./features/board/screens/BoardScreen";
+import "./styles/cards.css";
 import "./styles/global.css";
 import "./styles/board.css";
 
@@ -12,6 +14,6 @@ if (!root) {
 
 createRoot(root).render(
   <StrictMode>
-    <BoardScreen />
+    {window.location.pathname.startsWith("/cards") ? <GameDeckView /> : <BoardScreen />}
   </StrictMode>,
 );

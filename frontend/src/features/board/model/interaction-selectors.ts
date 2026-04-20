@@ -7,7 +7,6 @@ import type {
 } from "./interaction-types";
 
 const blockingModes: InteractionMode[] = ["awaitingPrompt", "paying", "discarding"];
-const actionableModes: InteractionMode[] = ["selected", "dragging", "targeting"];
 
 export function selectInteractionMode(state: BoardInteractionState): InteractionMode {
   return state.mode;
@@ -80,7 +79,7 @@ export function selectCanStartDrag(state: BoardInteractionState): boolean {
 }
 
 export function selectCanEnterTargeting(state: BoardInteractionState): boolean {
-  return state.mode === "selected" || state.mode === "dragging";
+  return state.mode === "dragging" || state.mode === "targeting";
 }
 
 export function selectTargetPreviewId(state: BoardInteractionState): string | null {
@@ -92,15 +91,27 @@ export function selectTargetFocusField(state: BoardInteractionState) {
 }
 
 export function selectHoveredDragTargetId(state: BoardInteractionState): string | null {
-  return state.mode === "dragging" ? state.hoverTargetId : null;
+  if (state.mode === "dragging") {
+    return state.hoverTargetId;
+  }
+
+  if (state.mode === "targeting") {
+    return state.previewTargetId;
+  }
+
+  return null;
 }
 
 export function selectDraggedCardId(state: BoardInteractionState): string | null {
-  return state.mode === "dragging" ? state.selectedCardId : null;
+  return state.mode === "dragging" || state.mode === "targeting" ? state.selectedCardId : null;
 }
 
 export function selectDragPreview(state: BoardInteractionState): DragPreviewState | null {
-  return state.mode === "dragging" ? state.preview : null;
+  return state.mode === "dragging" || state.mode === "targeting" ? state.preview : null;
+}
+
+export function selectIsTargeting(state: BoardInteractionState): boolean {
+  return state.mode === "targeting";
 }
 
 export function selectSubmissionPending(state: BoardInteractionState): boolean {
