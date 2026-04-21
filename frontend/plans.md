@@ -12,6 +12,19 @@ Note:
 ## Current Objective
 Create the board-screen foundation for the Monopoly Deal frontend without breaking backend ownership or overloading the main screen.
 
+## Visual System Update
+The board visual direction now has an approved bold graphic variant for gameplay surfaces.
+
+Design cues for current board work:
+- off-white paper background with visible grid structure
+- strong black framing and chunkier shadows
+- oversized display typography for key turn and action moments
+- white framed gameplay panels with limited accent colors
+- darker, more dramatic hand dock
+- card faces that still use the reusable system, but with bolder outlines and more graphic contrast
+
+Keep this visual system focused on the gameplay screen unless the user explicitly requests matching updates for lobby or other routes.
+
 ## Recommended File Structure
 Target this structure as board work proceeds:
 

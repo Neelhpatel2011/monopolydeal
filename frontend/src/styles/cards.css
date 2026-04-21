@@ -606,3 +606,357 @@
     gap: 30px;
   }
 }
+
+/* Bold graphic board/card redesign */
+
+.card-catalog-page {
+  background:
+    linear-gradient(rgba(24, 22, 20, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(24, 22, 20, 0.06) 1px, transparent 1px),
+    var(--board-bg);
+  background-size: 28px 28px, 28px 28px, auto;
+  color: var(--ink-strong);
+}
+
+.card-catalog-shell {
+  gap: 24px;
+}
+
+.card-catalog-hero {
+  gap: 10px;
+  padding: 18px 18px 20px;
+  border: 4px solid var(--ink-strong);
+  border-radius: 28px;
+  background: var(--surface-paper-strong);
+  box-shadow: var(--graphic-shadow);
+}
+
+.card-catalog-hero h1,
+.card-catalog-section__header h2 {
+  font-family: var(--display-font);
+  text-transform: uppercase;
+  letter-spacing: -0.05em;
+  color: var(--ink-strong);
+}
+
+.card-catalog-hero h1 {
+  max-width: 11ch;
+  font-size: clamp(1.9rem, 5vw, 3.2rem);
+  line-height: 0.92;
+}
+
+.card-catalog-hero__detail {
+  max-width: 38rem;
+  color: var(--ink-soft);
+  font-size: 0.94rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.card-catalog-section {
+  gap: 12px;
+}
+
+.card-catalog-section__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card-catalog-section__header::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  border: 4px solid var(--ink-strong);
+  background: var(--accent-red);
+  transform: rotate(45deg);
+  box-shadow: 3px 3px 0 var(--ink-strong);
+}
+
+.card-catalog-section__header h2 {
+  font-size: 1.55rem;
+}
+
+.card-catalog-section__rail {
+  gap: 16px;
+  padding-bottom: 10px;
+}
+
+.monopoly-card {
+  border: 4px solid var(--ink-strong);
+  border-radius: 30px;
+  background: #fff8ee;
+  box-shadow: 8px 8px 0 rgba(24, 22, 20, 0.9);
+}
+
+.monopoly-card__inner {
+  inset: 8px;
+  border: 3px solid var(--ink-strong);
+  border-radius: 24px;
+}
+
+.monopoly-card__line {
+  border-width: 2px;
+}
+
+.monopoly-card__line--mid {
+  border-color: rgba(24, 22, 20, 0.24);
+}
+
+.monopoly-card__line--inner {
+  border-color: rgba(255, 250, 241, 0.72);
+}
+
+.monopoly-card__money-badge {
+  left: 16px;
+  top: 16px;
+  width: 56px;
+  height: 56px;
+  border: 3px solid #fff8ee;
+  background: #3c5b9b;
+  box-shadow:
+    0 0 0 3px var(--ink-strong),
+    4px 4px 0 rgba(24, 22, 20, 0.75);
+}
+
+.monopoly-card__money-badge span {
+  font-family: var(--display-font);
+  font-size: 0.92rem;
+  letter-spacing: -0.05em;
+}
+
+.monopoly-card__chip {
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 3px solid var(--ink-strong);
+  border-radius: 10px;
+  background: #fffaf2;
+  box-shadow: 4px 4px 0 rgba(24, 22, 20, 0.18);
+  color: var(--ink-strong);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.monopoly-card__content--action {
+  padding: 92px 22px 20px;
+}
+
+.action-card__label,
+.rent-card__label,
+.wild-card__label,
+.property-card__header-label,
+.property-card__section-label {
+  color: #223041;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+}
+
+.action-card__stage {
+  margin-top: 26px;
+  background: #fff4df;
+  border: 4px solid var(--ink-strong);
+  box-shadow:
+    inset 0 0 0 6px #fffef9,
+    0 10px 0 rgba(24, 22, 20, 0.08);
+}
+
+.action-card__title,
+.rent-card__title,
+.wild-card__title,
+.property-card__header-title,
+.money-card__title {
+  font-family: var(--display-font);
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+}
+
+.action-card__title {
+  font-size: 22px;
+  line-height: 0.94;
+}
+
+.action-card__description,
+.rent-card__description {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.34;
+  color: rgba(24, 22, 20, 0.84);
+}
+
+.monopoly-card__content--rent,
+.monopoly-card__content--wild {
+  padding: 92px 18px 16px;
+}
+
+.rent-card__medallion {
+  border: 3px solid var(--ink-strong);
+  background: rgba(255, 249, 236, 0.92);
+  box-shadow: 4px 4px 0 rgba(24, 22, 20, 0.14);
+}
+
+.rent-card__description {
+  margin: 18px auto 0;
+  max-width: 13ch;
+}
+
+.rent-card__footer,
+.wild-card__chips {
+  margin-top: auto;
+  padding-bottom: 6px;
+}
+
+.rent-card__chip-list,
+.wild-card__chip-list,
+.property-card__color-chip-list {
+  justify-content: center;
+  gap: 8px;
+}
+
+.property-card__header {
+  border-bottom: 3px solid var(--ink-strong);
+}
+
+.property-card__header-copy {
+  padding-right: 8px;
+}
+
+.property-card__header-title {
+  font-size: 19px;
+  line-height: 0.96;
+}
+
+.property-card__body {
+  background: #ece7dc;
+}
+
+.property-card__rent-count {
+  border: 2px solid rgba(24, 22, 20, 0.16);
+  color: #1f3144;
+  font-weight: 900;
+}
+
+.property-card__rent-line {
+  border-bottom-width: 2px;
+}
+
+.property-card__rent-value {
+  font-family: var(--display-font);
+  font-size: 0.96rem;
+  letter-spacing: -0.04em;
+}
+
+.property-card__color-panel {
+  border: 3px solid rgba(24, 22, 20, 0.12);
+  background: rgba(255, 249, 239, 0.62);
+}
+
+.property-card__section-label--panel {
+  text-align: center;
+}
+
+.monopoly-card--wild .monopoly-card__inner {
+  background-image:
+    linear-gradient(135deg, rgba(255, 248, 234, 0.16) 0%, rgba(255, 248, 234, 0) 32%),
+    var(--card-face-background);
+}
+
+.wild-card__icon {
+  filter: drop-shadow(2px 4px 0 rgba(24, 22, 20, 0.18));
+}
+
+.wild-card__title {
+  margin-top: 18px;
+  font-size: 21px;
+  line-height: 0.96;
+}
+
+.monopoly-card--money .monopoly-card__inner {
+  background-image:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0) 32%),
+    var(--card-face-background);
+}
+
+.monopoly-card__icon-orb--money {
+  border: 4px solid var(--ink-strong);
+  background: rgba(255, 251, 240, 0.22);
+  box-shadow: 6px 6px 0 rgba(24, 22, 20, 0.14);
+}
+
+.money-card__title {
+  font-size: 3rem;
+  line-height: 0.9;
+}
+
+@media (max-width: 760px) {
+  .card-catalog-hero {
+    padding: 14px 14px 16px;
+    border-width: 3px;
+    border-radius: 22px;
+    box-shadow: 5px 5px 0 rgba(24, 22, 20, 0.95);
+  }
+
+  .card-catalog-hero h1 {
+    font-size: clamp(1.75rem, 10vw, 2.5rem);
+  }
+
+  .card-catalog-section__header::before {
+    width: 14px;
+    height: 14px;
+    border-width: 3px;
+  }
+
+  .card-catalog-section__header h2 {
+    font-size: 1.28rem;
+  }
+
+  .monopoly-card {
+    border-width: 3px;
+    border-radius: 24px;
+    box-shadow: 6px 6px 0 rgba(24, 22, 20, 0.95);
+  }
+
+  .monopoly-card__inner {
+    inset: 7px;
+    border-width: 2px;
+    border-radius: 18px;
+  }
+
+  .monopoly-card__money-badge {
+    left: 14px;
+    top: 14px;
+    width: 48px;
+    height: 48px;
+  }
+
+  .monopoly-card__money-badge span {
+    font-size: 0.82rem;
+  }
+
+  .monopoly-card__chip {
+    min-height: 28px;
+    padding: 4px 10px;
+    border-width: 2px;
+    border-radius: 9px;
+    box-shadow: 3px 3px 0 rgba(24, 22, 20, 0.18);
+    font-size: 0.72rem;
+  }
+
+  .action-card__stage {
+    border-width: 3px;
+    box-shadow: inset 0 0 0 4px #fffef9;
+  }
+
+  .property-card__header {
+    border-bottom-width: 2px;
+  }
+
+  .property-card__color-panel {
+    border-width: 2px;
+  }
+
+  .monopoly-card__icon-orb--money {
+    border-width: 3px;
+    box-shadow: 4px 4px 0 rgba(24, 22, 20, 0.14);
+  }
+}

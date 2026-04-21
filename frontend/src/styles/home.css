@@ -1,0 +1,309 @@
+.home-screen {
+  min-height: 100svh;
+  padding: 22px 16px 32px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7) 0%, rgba(255, 255, 255, 0) 18%),
+    var(--game-bg);
+}
+
+.home-shell {
+  width: min(100%, 1100px);
+  margin: 0 auto;
+  display: grid;
+  gap: 22px;
+}
+
+.home-hero,
+.home-panel,
+.home-utility__button {
+  border: 4px solid var(--ink-strong);
+  box-shadow: var(--graphic-shadow);
+}
+
+.home-hero {
+  position: relative;
+  overflow: hidden;
+  padding: 28px 22px 24px;
+  border-radius: 34px;
+  background:
+    radial-gradient(circle at top, rgba(214, 74, 52, 0.08) 0%, rgba(214, 74, 52, 0) 22%),
+    var(--surface-paper);
+}
+
+.home-hero__masthead {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+
+.home-hero__tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 3px solid var(--ink-strong);
+  border-radius: 999px;
+  background: var(--accent-gold);
+  color: var(--ink-strong);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.home-hero__logo {
+  margin: 0;
+  max-width: 7ch;
+  color: var(--ink-strong);
+  font-family: var(--display-font);
+  font-size: clamp(3.6rem, 11vw, 7rem);
+  line-height: 0.9;
+  text-transform: uppercase;
+  letter-spacing: -0.08em;
+}
+
+.home-hero__logo span {
+  color: var(--accent-red);
+}
+
+.home-hero__subhead {
+  margin: 0;
+  max-width: 18ch;
+  color: var(--ink-soft);
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.home-hero__card-line {
+  position: absolute;
+  inset: auto 18px 14px auto;
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+
+.home-hero__card {
+  width: 94px;
+  transform-origin: bottom center;
+  filter: drop-shadow(0 12px 18px rgba(26, 22, 18, 0.18));
+}
+
+.home-hero__card .monopoly-card {
+  transform: scale(0.44);
+  transform-origin: top left;
+}
+
+.home-hero__card--1 {
+  transform: translateY(10px) rotate(-8deg);
+}
+
+.home-hero__card--2 {
+  transform: translateY(0) rotate(2deg);
+}
+
+.home-hero__card--3 {
+  transform: translateY(16px) rotate(9deg);
+}
+
+.home-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.home-panel {
+  display: grid;
+  gap: 18px;
+  padding: 22px 18px 18px;
+  border-radius: 28px;
+  background: var(--surface-paper);
+}
+
+.home-panel--olive {
+  box-shadow:
+    0 0 0 6px rgba(95, 122, 64, 0.18),
+    var(--graphic-shadow);
+}
+
+.home-panel--blue {
+  box-shadow:
+    0 0 0 6px rgba(74, 103, 179, 0.16),
+    var(--graphic-shadow);
+}
+
+.home-panel__header {
+  display: grid;
+  gap: 6px;
+}
+
+.home-panel__eyebrow {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.home-panel__header h2 {
+  margin: 0;
+  font-family: var(--display-font);
+  font-size: 1.9rem;
+  line-height: 0.95;
+  text-transform: uppercase;
+  letter-spacing: -0.05em;
+}
+
+.home-field {
+  display: grid;
+  gap: 8px;
+}
+
+.home-field span {
+  color: var(--ink-soft);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.home-field input {
+  width: 100%;
+  min-height: 58px;
+  padding: 0 16px;
+  border: 3px solid var(--ink-strong);
+  border-radius: 18px;
+  background: #fff;
+  color: var(--ink-strong);
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: inset 0 -2px 0 rgba(25, 23, 20, 0.08);
+}
+
+.home-field input::placeholder {
+  color: rgba(30, 27, 24, 0.46);
+}
+
+.home-cta {
+  min-height: 64px;
+  border: 4px solid var(--ink-strong);
+  border-radius: 20px;
+  color: #fffdf9;
+  font-family: var(--display-font);
+  font-size: 1.25rem;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  box-shadow: var(--graphic-shadow);
+}
+
+.home-cta--olive {
+  background: var(--accent-olive);
+}
+
+.home-cta--blue {
+  background: var(--accent-blue);
+}
+
+.home-utility {
+  display: grid;
+  gap: 14px;
+}
+
+.home-utility__button {
+  min-height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0 20px;
+  border-radius: 24px;
+  color: #fffdf9;
+  font-family: var(--display-font);
+  font-size: 1.2rem;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+}
+
+.home-utility__button--dark {
+  background: #1f1d1b;
+}
+
+.home-utility__button--gold {
+  color: var(--ink-strong);
+  background: var(--accent-gold);
+}
+
+@media (max-width: 760px) {
+  .home-screen {
+    padding: 14px 12px 24px;
+  }
+
+  .home-shell {
+    gap: 16px;
+  }
+
+  .home-hero {
+    padding: 20px 16px 132px;
+    border-radius: 24px;
+  }
+
+  .home-hero__tag {
+    min-height: 28px;
+    padding: 0 10px;
+    font-size: 0.62rem;
+  }
+
+  .home-hero__logo {
+    max-width: 6.5ch;
+    font-size: clamp(2.8rem, 16vw, 4.6rem);
+  }
+
+  .home-hero__subhead {
+    max-width: 15ch;
+    font-size: 0.82rem;
+  }
+
+  .home-hero__card-line {
+    left: 12px;
+    right: 12px;
+    bottom: 10px;
+    justify-content: center;
+    gap: 2px;
+  }
+
+  .home-hero__card {
+    width: 76px;
+  }
+
+  .home-hero__card .monopoly-card {
+    transform: scale(0.36);
+  }
+
+  .home-actions {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .home-panel {
+    gap: 14px;
+    padding: 16px 14px 14px;
+    border-radius: 22px;
+  }
+
+  .home-panel__header h2 {
+    font-size: 1.48rem;
+  }
+
+  .home-field input {
+    min-height: 52px;
+    font-size: 0.94rem;
+  }
+
+  .home-cta,
+  .home-utility__button {
+    min-height: 58px;
+    font-size: 1rem;
+  }
+}

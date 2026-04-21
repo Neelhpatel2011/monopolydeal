@@ -8,7 +8,6 @@ type BoardHeaderProps = {
 };
 
 export function BoardHeader({
-  roundLabel,
   turnControlState,
   onRequestEndTurn,
 }: BoardHeaderProps) {
@@ -22,11 +21,7 @@ export function BoardHeader({
         </span>
       </button>
 
-      <div className="board-header__center">
-        <div className="board-round-banner">
-          <h1>{roundLabel}</h1>
-        </div>
-      </div>
+      <div className="board-header__center" aria-hidden="true" />
 
       <div className="board-header__turn">
         <TurnControlsDock

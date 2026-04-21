@@ -1,29 +1,42 @@
 :root {
-  font-family: "Avenir Next", "Helvetica Neue", "Noto Sans", sans-serif;
+  font-family: "Inter", "Avenir Next", "Helvetica Neue", "Noto Sans", sans-serif;
+  --display-font: "Arial Black", "Avenir Next Condensed", Impact, sans-serif;
   line-height: 1.4;
   font-weight: 500;
-  color: #1e1d1a;
-  background: #ebe7df;
+  color: #181614;
+  background: #f5efe3;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --board-bg: #ebe7df;
-  --board-surface: #f7f4ee;
-  --board-surface-strong: #ffffff;
-  --board-border: rgba(90, 76, 56, 0.12);
-  --board-shadow: 0 10px 28px rgba(88, 74, 52, 0.12);
-  --board-shadow-tight: 0 6px 14px rgba(88, 74, 52, 0.1);
-  --text-primary: #1f1d19;
-  --text-secondary: #5f574d;
-  --tray-bg: #3c382f;
-  --tray-bg-strong: #2f2b24;
-  --tray-border: rgba(255, 255, 255, 0.1);
-  --button-bg: #2d2a24;
-  --button-text: #faf8f3;
+  --board-bg: #f5efe3;
+  --board-surface: #fff7ea;
+  --board-surface-strong: #fffdf7;
+  --board-border: #181614;
+  --board-shadow: 8px 8px 0 rgba(24, 22, 20, 0.98);
+  --board-shadow-tight: 5px 5px 0 rgba(24, 22, 20, 0.98);
+  --text-primary: #181614;
+  --text-secondary: #544f48;
+  --tray-bg: #26211d;
+  --tray-bg-strong: #171411;
+  --tray-border: rgba(255, 255, 255, 0.14);
+  --button-bg: #1a1815;
+  --button-text: #fff9f0;
   --radius-panel: 28px;
   --radius-card: 24px;
   --radius-tight: 16px;
+  --surface-paper: #fffaf0;
+  --surface-paper-strong: #ffffff;
+  --game-bg: #f5efe3;
+  --ink-strong: #181614;
+  --ink-soft: #4f4941;
+  --accent-red: #d74b34;
+  --accent-blue: #4d6dca;
+  --accent-olive: #5e7a2c;
+  --accent-gold: #d9a833;
+  --accent-cream: #f7e8cb;
+  --graphic-shadow: 8px 8px 0 rgba(24, 22, 20, 0.98);
+  --graphic-shadow-tight: 4px 4px 0 rgba(24, 22, 20, 0.98);
 }
 
 * {
@@ -40,8 +53,12 @@ body {
   margin: 0;
   color: var(--text-primary);
   background:
-    radial-gradient(circle at top, rgba(255, 255, 255, 0.72), transparent 34%),
+    linear-gradient(rgba(24, 22, 20, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(24, 22, 20, 0.06) 1px, transparent 1px),
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.92) 0%, rgba(255, 255, 255, 0) 34%),
     var(--board-bg);
+  background-size: 28px 28px, 28px 28px, auto, auto;
+  background-position: -1px -1px, -1px -1px, 0 0, 0 0;
 }
 
 button,
@@ -53,4 +70,17 @@ select {
 
 button {
   cursor: pointer;
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease,
+    background-color 120ms ease,
+    color 120ms ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translate(-1px, -1px);
+}
+
+button:active:not(:disabled) {
+  transform: translate(1px, 1px);
 }
