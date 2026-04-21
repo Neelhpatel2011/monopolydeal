@@ -23,14 +23,6 @@ export function HandTray({
 }: HandTrayProps) {
   return (
     <section className="hand-tray" aria-label="Cards in hand">
-      <div className="hand-tray__header">
-        <div>
-          <p className="hand-tray__eyebrow">Cards in hand</p>
-          <h2 className="hand-tray__title">{cards.length} ready to play</h2>
-        </div>
-        <p className="hand-tray__hint">Swipe to browse</p>
-      </div>
-
       <div className="hand-tray__viewport">
         <div className="hand-tray__cards" role="list" aria-label="Hand cards" ref={viewportRef}>
           {cards.map((card) => (

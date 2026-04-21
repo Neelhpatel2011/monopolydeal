@@ -23,7 +23,9 @@ export function BoardHeader({
       </button>
 
       <div className="board-header__center">
-        <h1>{roundLabel}</h1>
+        <div className="board-round-banner">
+          <h1>{roundLabel}</h1>
+        </div>
       </div>
 
       <div className="board-header__turn">

@@ -11,14 +11,15 @@ export function ActionHintBar({
   detail,
   tone = "default",
 }: ActionHintBarProps) {
+  const accessibleLabel = [eyebrow, title, detail].filter(Boolean).join(". ");
+
   return (
-    <div className={`action-hint-bar action-hint-bar--${tone}`}>
-      <div className="action-hint-bar__copy">
-        <span className="action-hint-bar__eyebrow">{eyebrow}</span>
-        <p className="action-hint-bar__title">{title}</p>
-        <p className="action-hint-bar__detail">{detail}</p>
-      </div>
-      <button className="action-hint-bar__info" type="button" aria-label="About turn actions">
+    <div className={`action-hint-bar action-hint-bar--compact action-hint-bar--${tone}`}>
+      <button
+        className="action-hint-bar__info"
+        type="button"
+        aria-label={accessibleLabel || "About turn actions"}
+      >
         i
       </button>
     </div>

@@ -1,3 +1,9 @@
+import type {
+  BoardHandCardRef,
+  BoardMoneyCardRef,
+  BoardPropertyCardRef,
+} from "../../../components/cards/renderRefs";
+
 export type TableauColor =
   | "brown"
   | "light-blue"
@@ -9,10 +15,7 @@ export type TableauColor =
   | "red"
   | "wild";
 
-export type LocalPropertyCard = {
-  id: string;
-  kind: "property" | "wild";
-};
+export type LocalPropertyCard = BoardPropertyCardRef;
 
 export type LocalPropertySet = {
   id: string;
@@ -25,17 +28,9 @@ export type LocalPropertySet = {
   buildings?: Array<"House" | "Hotel">;
 };
 
-export type LocalBankCard = {
-  id: string;
-  label: string;
-  amount: string;
-  tone: "paper" | "sand" | "sky" | "sage";
-};
+export type LocalBankCard = BoardMoneyCardRef;
 
-export type LocalHandCard = {
-  id: string;
-  label: string;
-};
+export type LocalHandCard = BoardHandCardRef;
 
 export type LocalPlayerState = {
   name: string;

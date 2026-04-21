@@ -1,5 +1,8 @@
 import type { CSSProperties } from "react";
 import type { LocalPropertySet } from "../../board/model/localPlayer";
+import { ScaledMonopolyCard } from "../../../components/cards/ScaledMonopolyCard";
+import { boardCardSurfacePresets } from "../../../components/cards/boardCardSurfaces";
+import { getPropertySetRenderCards } from "../../../components/cards/boardCardAdapters";
 import {
   LOCAL_TABLEAU_TARGET_ID,
   getLocalTableauSetTargetId,
@@ -25,6 +28,7 @@ export function TableauPanel({
   invalidSetId = null,
 }: TableauPanelProps) {
   const targetableSetIdSet = new Set(targetableSetIds);
+  const surfacePreset = boardCardSurfacePresets.tableau;
 
   return (
     <section
@@ -46,6 +50,7 @@ export function TableauPanel({
         {sets.map((set) => {
           const count = set.cards.length;
           const isComplete = count >= set.targetSize;
+          const renderCards = getPropertySetRenderCards(set);
 
           return (
             <article
@@ -80,15 +85,20 @@ export function TableauPanel({
                 <span className="property-set__count">{isComplete ? "Full set" : "In play"}</span>
               </div>
 
-              <div className="property-set__stack" aria-hidden="true">
+              <div className="property-set__stack" aria-label={`${set.name} cards`}>
                 {set.cards.map((card, index) => (
-                  <span
+                  <div
                     key={card.id}
-                    className={`tableau-mini-card tableau-mini-card--${set.color}${
-                      card.kind === "wild" ? " tableau-mini-card--wild" : ""
-                    }`}
+                    className="property-set__card"
                     style={{ "--stack-index": index } as CSSProperties}
-                  />
+                  >
+                    <ScaledMonopolyCard
+                      card={renderCards[index]}
+                      size={surfacePreset.size}
+                      scale={surfacePreset.scale}
+                      className="property-set__scaled-card"
+                    />
+                  </div>
                 ))}
               </div>
 

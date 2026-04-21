@@ -19,9 +19,9 @@ export function TurnControlsDock({
         onClick={onRequestEndTurn}
       >
         <span>{controlState.buttonLabel}</span>
-        <span aria-hidden="true">{controlState.emphasis === "pending" ? "..." : ">"}</span>
+        <span aria-hidden="true">{controlState.emphasis === "pending" ? "..." : "›"}</span>
       </button>
-      <p>{controlState.helperText}</p>
+      <p className="turn-controls-dock__helper">{controlState.helperText}</p>
     </div>
   );
 }

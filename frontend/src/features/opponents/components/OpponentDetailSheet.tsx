@@ -1,5 +1,12 @@
 import { useEffect } from "react";
 import type { CSSProperties } from "react";
+import { BoardMicroCard } from "../../../components/cards/BoardMicroCard";
+import { ScaledMonopolyCard } from "../../../components/cards/ScaledMonopolyCard";
+import { boardCardSurfacePresets } from "../../../components/cards/boardCardSurfaces";
+import {
+  getBankRenderCard,
+  getPropertySetRenderCards,
+} from "../../../components/cards/boardCardAdapters";
 import { OpponentQuickSwitch } from "./OpponentQuickSwitch";
 import type { OpponentDetail } from "../model/opponentExpansion";
 
@@ -16,6 +23,9 @@ export function OpponentDetailSheet({
   onClose,
   onSelectOpponent,
 }: OpponentDetailSheetProps) {
+  const propertySurfacePreset = boardCardSurfacePresets["opponent-property"];
+  const moneySurfacePreset = boardCardSurfacePresets["opponent-money"];
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -71,6 +81,7 @@ export function OpponentDetailSheet({
             {opponent.propertySets.map((propertySet) => {
               const count = propertySet.cards.length;
               const isComplete = count >= propertySet.targetSize;
+              const renderCards = getPropertySetRenderCards(propertySet);
 
               return (
                 <article
@@ -81,16 +92,21 @@ export function OpponentDetailSheet({
                 >
                   <div
                     className={`opponent-detail-property__stack opponent-detail-property__stack--${propertySet.color}`}
-                    aria-hidden="true"
+                    aria-label={`${propertySet.name} cards`}
                   >
                     {propertySet.cards.map((card, index) => (
-                      <span
+                      <div
                         key={card.id}
-                        className={`opponent-detail-property__card${
-                          card.kind === "wild" ? " opponent-detail-property__card--wild" : ""
-                        }`}
+                        className="opponent-detail-property__card"
                         style={{ "--detail-stack-index": index } as CSSProperties}
-                      />
+                      >
+                        <ScaledMonopolyCard
+                          card={renderCards[index]}
+                          size={propertySurfacePreset.size}
+                          scale={propertySurfacePreset.scale}
+                          className="opponent-detail-property__scaled-card"
+                        />
+                      </div>
                     ))}
                   </div>
 
@@ -129,14 +145,18 @@ export function OpponentDetailSheet({
 
           <div className="opponent-detail-money">
             {opponent.moneyCards.map((card) => (
-              <article
+              <div
                 key={card.id}
-                className={`opponent-detail-money__card opponent-detail-money__card--${card.tone}`}
+                className="opponent-detail-money__card"
                 aria-label={`${card.amount} ${card.label}`}
               >
-                <span className="opponent-detail-money__amount">{card.amount}</span>
-                <span className="opponent-detail-money__label">{card.label}</span>
-              </article>
+                {moneySurfacePreset.renderMode === "micro" ? (
+                  <BoardMicroCard
+                    card={getBankRenderCard(card)}
+                    className="opponent-detail-money__micro-card"
+                  />
+                ) : null}
+              </div>
             ))}
           </div>
         </section>

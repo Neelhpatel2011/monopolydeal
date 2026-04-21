@@ -1,3 +1,8 @@
+import type {
+  BoardMoneyCardRef,
+  BoardPropertyCardRef,
+} from "../../../components/cards/renderRefs";
+
 export type OpponentPropertyColor =
   | "brown"
   | "light-blue"
@@ -16,10 +21,7 @@ export type OpponentPropertyProgress = {
   isComplete?: boolean;
 };
 
-export type OpponentPropertyCard = {
-  id: string;
-  kind: "property" | "wild";
-};
+export type OpponentPropertyCard = BoardPropertyCardRef;
 
 export type OpponentPropertySet = {
   id: string;
@@ -30,12 +32,7 @@ export type OpponentPropertySet = {
   buildings?: Array<"House" | "Hotel">;
 };
 
-export type OpponentMoneyCard = {
-  id: string;
-  label: string;
-  amount: string;
-  tone: "paper" | "sand" | "sky" | "sage";
-};
+export type OpponentMoneyCard = BoardMoneyCardRef;
 
 export type OpponentAvatarTone = "sky" | "rose" | "gold" | "sage";
 

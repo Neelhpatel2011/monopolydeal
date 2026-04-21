@@ -27,8 +27,8 @@ const opponents: OpponentDetail[] = [
         color: "brown",
         targetSize: 2,
         cards: [
-          { id: "sam-brown-1", kind: "property" },
-          { id: "sam-brown-2", kind: "property" },
+          { id: "sam-brown-1", kind: "property", catalogCardId: "property-brown" },
+          { id: "sam-brown-2", kind: "property", catalogCardId: "property-brown" },
         ],
       },
       {
@@ -37,15 +37,15 @@ const opponents: OpponentDetail[] = [
         color: "light-blue",
         targetSize: 3,
         cards: [
-          { id: "sam-light-blue-1", kind: "property" },
-          { id: "sam-light-blue-2", kind: "property" },
+          { id: "sam-light-blue-1", kind: "property", catalogCardId: "property-light-blue" },
+          { id: "sam-light-blue-2", kind: "property", catalogCardId: "property-light-blue" },
         ],
       },
     ],
     moneyCards: [
-      { id: "sam-money-1", label: "Money", amount: "1", tone: "sand" },
-      { id: "sam-money-2", label: "Money", amount: "2", tone: "sky" },
-      { id: "sam-money-3", label: "Rent", amount: "3", tone: "sage" },
+      { id: "sam-money-1", label: "Money", amount: "1", tone: "sand", catalogCardId: "money-1" },
+      { id: "sam-money-2", label: "Money", amount: "2", tone: "sky", catalogCardId: "money-2" },
+      { id: "sam-money-3", label: "Rent", amount: "3", tone: "sage", catalogCardId: "rent-wild" },
     ],
   },
   {
@@ -68,8 +68,8 @@ const opponents: OpponentDetail[] = [
         color: "brown",
         targetSize: 2,
         cards: [
-          { id: "emily-brown-1", kind: "property" },
-          { id: "emily-brown-2", kind: "property" },
+          { id: "emily-brown-1", kind: "property", catalogCardId: "property-brown" },
+          { id: "emily-brown-2", kind: "property", catalogCardId: "property-brown" },
         ],
       },
       {
@@ -78,9 +78,9 @@ const opponents: OpponentDetail[] = [
         color: "light-blue",
         targetSize: 3,
         cards: [
-          { id: "emily-light-blue-1", kind: "property" },
-          { id: "emily-light-blue-2", kind: "property" },
-          { id: "emily-light-blue-3", kind: "property" },
+          { id: "emily-light-blue-1", kind: "property", catalogCardId: "property-light-blue" },
+          { id: "emily-light-blue-2", kind: "property", catalogCardId: "property-light-blue" },
+          { id: "emily-light-blue-3", kind: "property", catalogCardId: "property-light-blue" },
         ],
         buildings: ["House"],
       },
@@ -90,9 +90,9 @@ const opponents: OpponentDetail[] = [
         color: "green",
         targetSize: 3,
         cards: [
-          { id: "emily-green-1", kind: "property" },
-          { id: "emily-green-2", kind: "property" },
-          { id: "emily-green-3", kind: "property" },
+          { id: "emily-green-1", kind: "property", catalogCardId: "property-green" },
+          { id: "emily-green-2", kind: "property", catalogCardId: "property-green" },
+          { id: "emily-green-3", kind: "property", catalogCardId: "property-green" },
         ],
         buildings: ["House"],
       },
@@ -102,9 +102,9 @@ const opponents: OpponentDetail[] = [
         color: "yellow",
         targetSize: 3,
         cards: [
-          { id: "emily-yellow-1", kind: "property" },
-          { id: "emily-yellow-2", kind: "property" },
-          { id: "emily-yellow-3", kind: "property" },
+          { id: "emily-yellow-1", kind: "property", catalogCardId: "property-yellow" },
+          { id: "emily-yellow-2", kind: "property", catalogCardId: "property-yellow" },
+          { id: "emily-yellow-3", kind: "property", catalogCardId: "property-yellow" },
         ],
         buildings: ["House"],
       },
@@ -114,15 +114,15 @@ const opponents: OpponentDetail[] = [
         color: "red",
         targetSize: 3,
         cards: [
-          { id: "emily-red-1", kind: "property" },
-          { id: "emily-red-2", kind: "property" },
+          { id: "emily-red-1", kind: "property", catalogCardId: "property-red" },
+          { id: "emily-red-2", kind: "property", catalogCardId: "property-red" },
         ],
       },
     ],
     moneyCards: [
-      { id: "emily-money-1", label: "Money", amount: "1", tone: "sand" },
-      { id: "emily-money-2", label: "Money", amount: "2", tone: "sky" },
-      { id: "emily-money-3", label: "Rent", amount: "3", tone: "sage" },
+      { id: "emily-money-1", label: "Money", amount: "1", tone: "sand", catalogCardId: "money-1" },
+      { id: "emily-money-2", label: "Money", amount: "2", tone: "sky", catalogCardId: "money-2" },
+      { id: "emily-money-3", label: "Rent", amount: "3", tone: "sage", catalogCardId: "rent-wild" },
     ],
   },
   {
@@ -144,7 +144,7 @@ const opponents: OpponentDetail[] = [
         name: "Purple",
         color: "purple",
         targetSize: 3,
-        cards: [{ id: "max-purple-1", kind: "property" }],
+        cards: [{ id: "max-purple-1", kind: "property", catalogCardId: "property-pink" }],
       },
       {
         id: "max-orange-set",
@@ -152,8 +152,8 @@ const opponents: OpponentDetail[] = [
         color: "orange",
         targetSize: 3,
         cards: [
-          { id: "max-orange-1", kind: "property" },
-          { id: "max-orange-2", kind: "property" },
+          { id: "max-orange-1", kind: "property", catalogCardId: "property-orange" },
+          { id: "max-orange-2", kind: "property", catalogCardId: "property-orange" },
         ],
       },
       {
@@ -162,8 +162,8 @@ const opponents: OpponentDetail[] = [
         color: "blue",
         targetSize: 2,
         cards: [
-          { id: "max-blue-1", kind: "property" },
-          { id: "max-blue-2", kind: "property" },
+          { id: "max-blue-1", kind: "property", catalogCardId: "property-dark-blue" },
+          { id: "max-blue-2", kind: "property", catalogCardId: "property-dark-blue" },
         ],
       },
       {
@@ -172,17 +172,17 @@ const opponents: OpponentDetail[] = [
         color: "red",
         targetSize: 3,
         cards: [
-          { id: "max-red-1", kind: "property" },
-          { id: "max-red-2", kind: "property" },
-          { id: "max-red-3", kind: "property" },
+          { id: "max-red-1", kind: "property", catalogCardId: "property-red" },
+          { id: "max-red-2", kind: "property", catalogCardId: "property-red" },
+          { id: "max-red-3", kind: "property", catalogCardId: "property-red" },
         ],
         buildings: ["House", "Hotel"],
       },
     ],
     moneyCards: [
-      { id: "max-money-1", label: "Money", amount: "1", tone: "sand" },
-      { id: "max-money-2", label: "Money", amount: "2", tone: "sky" },
-      { id: "max-money-3", label: "Rent", amount: "3", tone: "sage" },
+      { id: "max-money-1", label: "Money", amount: "1", tone: "sand", catalogCardId: "money-1" },
+      { id: "max-money-2", label: "Money", amount: "2", tone: "sky", catalogCardId: "money-2" },
+      { id: "max-money-3", label: "Rent", amount: "3", tone: "sage", catalogCardId: "rent-wild" },
     ],
   },
 ];
@@ -196,8 +196,8 @@ const propertySets: LocalPropertySet[] = [
     isComplete: true,
     targetSize: 2,
     cards: [
-      { id: "brown-1", kind: "property" },
-      { id: "brown-2", kind: "property" },
+      { id: "brown-1", kind: "property", catalogCardId: "property-brown" },
+      { id: "brown-2", kind: "property", catalogCardId: "property-brown" },
     ],
     buildings: ["House"],
   },
@@ -209,9 +209,9 @@ const propertySets: LocalPropertySet[] = [
     isComplete: true,
     targetSize: 3,
     cards: [
-      { id: "light-blue-1", kind: "property" },
-      { id: "light-blue-2", kind: "property" },
-      { id: "light-blue-3", kind: "property" },
+      { id: "light-blue-1", kind: "property", catalogCardId: "property-light-blue" },
+      { id: "light-blue-2", kind: "property", catalogCardId: "property-light-blue" },
+      { id: "light-blue-3", kind: "property", catalogCardId: "property-light-blue" },
     ],
   },
   {
@@ -221,8 +221,8 @@ const propertySets: LocalPropertySet[] = [
     count: 2,
     targetSize: 3,
     cards: [
-      { id: "green-1", kind: "property" },
-      { id: "green-2", kind: "wild" },
+      { id: "green-1", kind: "property", catalogCardId: "property-green" },
+      { id: "green-2", kind: "wild", catalogCardId: "wild-green-darkblue" },
     ],
   },
   {
@@ -232,17 +232,17 @@ const propertySets: LocalPropertySet[] = [
     count: 2,
     targetSize: 3,
     cards: [
-      { id: "red-1", kind: "property" },
-      { id: "red-2", kind: "property" },
+      { id: "red-1", kind: "property", catalogCardId: "property-red" },
+      { id: "red-2", kind: "property", catalogCardId: "property-red" },
     ],
   },
 ];
 
 const bankCards: LocalBankCard[] = [
-  { id: "bank-1", label: "Money", amount: "1", tone: "sand" },
-  { id: "bank-2", label: "Money", amount: "2", tone: "sky" },
-  { id: "bank-3", label: "Rent", amount: "3", tone: "sage" },
-  { id: "bank-4", label: "Money", amount: "1", tone: "paper" },
+  { id: "bank-1", label: "Money", amount: "1", tone: "sand", catalogCardId: "money-1" },
+  { id: "bank-2", label: "Money", amount: "2", tone: "sky", catalogCardId: "money-2" },
+  { id: "bank-3", label: "Rent", amount: "3", tone: "sage", catalogCardId: "rent-wild" },
+  { id: "bank-4", label: "Money", amount: "1", tone: "paper", catalogCardId: "money-1" },
 ];
 
 const localPlayerTemplate: LocalPlayerState = {
@@ -251,12 +251,12 @@ const localPlayerTemplate: LocalPlayerState = {
   handCount: 6,
   bankTotal: "$7M",
   handCards: [
-    { id: "hand-deal-breaker", label: "Deal Breaker" },
-    { id: "hand-just-say-no", label: "Just Say No!" },
-    { id: "hand-brown-property", label: "Brown Property" },
-    { id: "hand-light-blue-property", label: "Light Blue Property" },
-    { id: "hand-rent", label: "Rent" },
-    { id: "hand-wild", label: "Wild" },
+    { id: "hand-deal-breaker", label: "Deal Breaker", catalogCardId: "action-deal-breaker" },
+    { id: "hand-just-say-no", label: "Just Say No!", catalogCardId: "action-just-say-no" },
+    { id: "hand-brown-property", label: "Brown Property", catalogCardId: "property-brown" },
+    { id: "hand-light-blue-property", label: "Light Blue Property", catalogCardId: "property-light-blue" },
+    { id: "hand-rent", label: "Rent", catalogCardId: "rent-wild" },
+    { id: "hand-wild", label: "Wild", catalogCardId: "wild-any" },
   ],
   propertySets,
   bankCards,

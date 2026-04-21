@@ -1,6 +1,9 @@
 import type { CSSProperties } from "react";
 import type { LocalBankCard } from "../../board/model/localPlayer";
 import { LOCAL_BANK_TARGET_ID } from "../../drag-targeting/model/target-preview";
+import { BoardMicroCard } from "../../../components/cards/BoardMicroCard";
+import { getBankRenderCard } from "../../../components/cards/boardCardAdapters";
+import { boardCardSurfacePresets } from "../../../components/cards/boardCardSurfaces";
 
 type BankStripProps = {
   cards: LocalBankCard[];
@@ -17,6 +20,8 @@ export function BankStrip({
   isPreviewed = false,
   isInvalid = false,
 }: BankStripProps) {
+  const surfacePreset = boardCardSurfacePresets.bank;
+
   return (
     <section
       className={`bank-strip${isTargetable ? " bank-strip--targetable" : ""}${
@@ -37,15 +42,19 @@ export function BankStrip({
 
       <div className="bank-strip__cards">
         {cards.map((card, index) => (
-          <article
+          <div
             key={card.id}
-            className={`bank-note bank-note--${card.tone}`}
+            className="bank-note"
             aria-label={`${card.amount} ${card.label}`}
             style={{ "--bank-index": index } as CSSProperties}
           >
-            <span className="bank-note__corner">{card.amount}</span>
-            <span className="bank-note__label">{card.label}</span>
-          </article>
+            {surfacePreset.renderMode === "micro" ? (
+              <BoardMicroCard
+                card={getBankRenderCard(card)}
+                className="bank-note__micro-card"
+              />
+            ) : null}
+          </div>
         ))}
       </div>
     </section>
