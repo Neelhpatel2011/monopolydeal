@@ -39,13 +39,16 @@ export function PropertyIcon({
 export function MoneyIcon({
   className = "monopoly-card-icon",
   stroke = "currentColor",
-  fill = "none",
+  fill = "currentColor",
 }: IconProps) {
   return (
     <svg viewBox="0 0 24 24" className={className} fill={fill} xmlns="http://www.w3.org/2000/svg">
-      <rect x="3.5" y="6.5" width="17" height="11" rx="2" stroke={stroke} strokeWidth="1.8" />
-      <circle cx="12" cy="12" r="2.6" stroke={stroke} strokeWidth="1.8" />
-      <path d="M7 9H7.01M17 15H17.01" stroke={stroke} strokeWidth="2.2" strokeLinecap="round" />
+      <path
+        d="M4.7 18.7L6.9 5.2H10.1L12 11.2L13.9 5.2H17.1L19.3 18.7H15.9L14.9 12.1L12 18L9.1 12.1L8.1 18.7H4.7Z"
+        fill={fill}
+      />
+      <path d="M3.8 9.2H20.2" stroke={stroke} strokeWidth="1.9" strokeLinecap="square" />
+      <path d="M3.4 12.8H20.6" stroke={stroke} strokeWidth="1.9" strokeLinecap="square" />
     </svg>
   );
 }

@@ -281,15 +281,6 @@
   text-wrap: balance;
 }
 
-.rent-card__chip-panel {
-  width: fit-content;
-  max-width: min(182px, 100%);
-  border-radius: 18px;
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  background: rgba(247, 243, 236, 0.18);
-  padding: 10px 12px;
-}
-
 .rent-card__chip-list,
 .wild-card__chip-list {
   display: flex;
@@ -299,7 +290,8 @@
 
 .rent-card__chip-list {
   flex-wrap: nowrap;
-  max-width: 100%;
+  width: fit-content;
+  max-width: min(182px, 100%);
 }
 
 .rent-card__footer {
@@ -484,33 +476,31 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 88px 20px 28px;
+  justify-content: center;
+  padding: 76px 20px 28px;
 }
 
-.monopoly-card__eyebrow--money {
-  margin: 0;
-  color: #26402a;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
+.monopoly-card__icon-orb--money {
+  width: 84px;
+  height: 84px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(23, 53, 27, 0.9);
+}
+
+.monopoly-card__icon-orb--money .monopoly-card-icon {
+  width: 76px;
+  height: 76px;
 }
 
 .money-card__core {
-  flex: 1;
   display: flex;
   width: 100%;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-}
-
-.money-card__title-block {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
+  gap: 18px;
 }
 
 .money-card__title {
@@ -521,21 +511,6 @@
   line-height: 0.94;
   letter-spacing: -0.05em;
   text-transform: uppercase;
-}
-
-.money-card__rule {
-  width: 58px;
-  height: 2px;
-  border-radius: 999px;
-  background: rgba(23, 53, 27, 0.18);
-}
-
-.money-card__description {
-  margin: 0;
-  color: rgba(22, 50, 27, 0.82);
-  font-size: 0.84rem;
-  font-weight: 560;
-  text-align: center;
 }
 
 .monopoly-card--sm .monopoly-card__money-badge {

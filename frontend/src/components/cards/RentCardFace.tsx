@@ -44,12 +44,10 @@ export function RentCardFace({ card, size = "md" }: RentCardFaceProps) {
 
           {card.rentColors?.length ? (
             <div className="rent-card__footer">
-              <div className="rent-card__chip-panel">
-                <div className="rent-card__chip-list">
-                  {card.rentColors.map((color) => (
-                    <CardChip key={color}>{formatCardColorLabel(color)}</CardChip>
-                  ))}
-                </div>
+              <div className="rent-card__chip-list">
+                {card.rentColors.map((color) => (
+                  <CardChip key={color}>{formatCardColorLabel(color)}</CardChip>
+                ))}
               </div>
             </div>
           ) : null}
