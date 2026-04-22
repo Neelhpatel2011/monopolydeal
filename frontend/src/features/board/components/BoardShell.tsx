@@ -46,6 +46,7 @@ type BoardShellProps = {
   opponentSummaries: OpponentSummary[];
   opponentDetails: OpponentDetail[];
   localPlayer: LocalPlayerState;
+  discardTopCardId?: string;
   blockingState?: BoardBlockingState | null;
   onConfirmEndTurn?: () => void | Promise<void>;
 };
@@ -56,6 +57,7 @@ export function BoardShell({
   opponentSummaries,
   opponentDetails,
   localPlayer,
+  discardTopCardId,
   blockingState = null,
   onConfirmEndTurn,
 }: BoardShellProps) {
@@ -384,7 +386,7 @@ export function BoardShell({
             dispatch({ type: "OPEN_OPPONENT_DETAIL", opponentId });
           }}
         />
-        <BoardCenterStage drawCount={8} discardCount={5} />
+        <BoardCenterStage drawCount={8} discardCount={5} discardTopCardId={discardTopCardId} />
         <LocalPlayerPanel
           {...localPlayer}
           selectedHandCardId={selectedOrigin === "hand" ? selectedCardId : null}

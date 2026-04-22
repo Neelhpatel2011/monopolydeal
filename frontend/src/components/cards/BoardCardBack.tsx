@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
 import { cardSizeMap } from "./cardUtils";
 import type { MonopolyDealCardSize } from "../../types/monopolyDeal";
+import greedCardBackIcon from "../../assets/card_back_greed_icon_svg.svg";
 
 type BoardCardBackProps = {
-  label: string;
+  label?: string;
   tone?: "deck" | "discard";
   size?: MonopolyDealCardSize;
   scale?: number;
@@ -36,8 +37,10 @@ export function BoardCardBack({
         aria-hidden="true"
       >
         <div className="board-card-back__frame">
-          <div className="board-card-back__crest">MD</div>
-          <div className="board-card-back__label">{label}</div>
+          <div className="board-card-back__crest">
+            <img src={greedCardBackIcon} className="board-card-back__crest-image" alt="" aria-hidden="true" />
+          </div>
+          {label ? <div className="board-card-back__label">{label}</div> : null}
         </div>
       </div>
     </div>

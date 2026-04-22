@@ -3,7 +3,6 @@ import { HandTray } from "../../hand/components/HandTray";
 import { BankStrip } from "../../bank/components/BankStrip";
 import { TableauPanel } from "../../tableau/components/TableauPanel";
 import type { LocalPlayerState } from "../model/localPlayer";
-import { ActionHintBar } from "./ActionHintBar";
 import type { ActionHintCopy } from "../../drag-targeting/model/target-preview";
 
 type LocalPlayerPanelProps = LocalPlayerState & {
@@ -26,7 +25,6 @@ type LocalPlayerPanelProps = LocalPlayerState & {
 };
 
 export function LocalPlayerPanel({
-  name,
   handCount,
   bankTotal,
   handCards,
@@ -36,7 +34,6 @@ export function LocalPlayerPanel({
   draggingHandCardId,
   invalidHandCardId,
   handTrayViewportRef,
-  actionHint,
   isTableauTargetable,
   isTableauPreviewed,
   isTableauInvalid,
@@ -52,35 +49,6 @@ export function LocalPlayerPanel({
   return (
     <section className="local-player-panel" aria-label="Local player area">
       <div className="local-player-panel__committed-surface">
-        <div className="local-player-summary">
-          <div className="local-player-summary__identity">
-            <div className="avatar avatar--player">P</div>
-            <div className="local-player-summary__name-block">
-              <button className="local-player-summary__name" type="button">
-                <span>{name}</span>
-                <span aria-hidden="true">v</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="local-player-summary__meta">
-            <div className="local-player-summary__stats" aria-label="Player summary">
-              <div>
-                <strong>{handCount}</strong>
-                <span>Cards</span>
-              </div>
-              <div>
-                <strong>{bankTotal}</strong>
-                <span>Bank</span>
-              </div>
-            </div>
-
-            <button className="secondary-pill-button secondary-pill-button--quiet" type="button">
-              Game Log
-            </button>
-          </div>
-        </div>
-
         <div className="local-player-panel__board-state">
           <TableauPanel
             sets={propertySets}
@@ -102,7 +70,6 @@ export function LocalPlayerPanel({
       </div>
 
       <div className="local-player-panel__hand-region">
-        <ActionHintBar {...actionHint} />
         <HandTray
           cards={handCards}
           selectedCardId={selectedHandCardId}

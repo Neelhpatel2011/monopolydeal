@@ -282,6 +282,7 @@ export function BoardScreen() {
       opponentSummaries={opponentSummaries}
       opponentDetails={opponents}
       localPlayer={localPlayer}
+      discardTopCardId="action-just-say-no"
       blockingState={blockingState}
       onConfirmEndTurn={() => {
         setIsCurrentTurn(false);

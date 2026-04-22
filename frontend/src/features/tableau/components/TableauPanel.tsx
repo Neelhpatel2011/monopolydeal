@@ -29,6 +29,10 @@ export function TableauPanel({
 }: TableauPanelProps) {
   const targetableSetIdSet = new Set(targetableSetIds);
   const surfacePreset = boardCardSurfacePresets.tableau;
+  const buildingEmoji: Record<string, string> = {
+    House: "🏠",
+    Hotel: "🏨",
+  };
 
   return (
     <section
@@ -38,14 +42,6 @@ export function TableauPanel({
       aria-label="Played property sets"
       data-board-target-id={LOCAL_TABLEAU_TARGET_ID}
     >
-      <div className="tableau-panel__header">
-        <div>
-          <p className="tableau-panel__eyebrow">Tableau</p>
-          <h2>Properties</h2>
-        </div>
-        <p className="tableau-panel__total">{sets.length} sets</p>
-      </div>
-
       <div className="tableau-panel__sets" aria-label="Property sets">
         {sets.map((set) => {
           const count = set.cards.length;
@@ -103,23 +99,15 @@ export function TableauPanel({
               </div>
 
               <div className="property-set__footer">
-                <span className="property-set__meter">
-                  {count}/{set.targetSize}
-                </span>
-
                 {set.buildings?.length ? (
                   <div className="property-set__buildings">
                     {set.buildings.map((building) => (
                       <span key={building} className="property-set__building-chip">
-                        {building}
+                        <span aria-hidden="true">{buildingEmoji[building] ?? "🃏"}</span>
                       </span>
                     ))}
                   </div>
-                ) : (
-                  <div className="property-set__footnote" aria-hidden="true">
-                    <span>{isComplete ? "Ready" : "In progress"}</span>
-                  </div>
-                )}
+                ) : null}
               </div>
             </article>
           );

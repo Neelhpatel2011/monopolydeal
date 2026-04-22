@@ -166,6 +166,8 @@
 .monopoly-card-icon {
   width: 28px;
   height: 28px;
+  object-fit: contain;
+  display: block;
 }
 
 .monopoly-card__content--action {

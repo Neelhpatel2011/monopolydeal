@@ -1,3 +1,5 @@
+import greedMoneyIcon from "../../assets/greed_money_icon_svg.svg";
+
 type IconProps = {
   className?: string;
   stroke?: string;
@@ -38,19 +40,8 @@ export function PropertyIcon({
 
 export function MoneyIcon({
   className = "monopoly-card-icon",
-  stroke = "currentColor",
-  fill = "currentColor",
 }: IconProps) {
-  return (
-    <svg viewBox="0 0 24 24" className={className} fill={fill} xmlns="http://www.w3.org/2000/svg">
-      <path
-        d="M4.7 18.7L6.9 5.2H10.1L12 11.2L13.9 5.2H17.1L19.3 18.7H15.9L14.9 12.1L12 18L9.1 12.1L8.1 18.7H4.7Z"
-        fill={fill}
-      />
-      <path d="M3.8 9.2H20.2" stroke={stroke} strokeWidth="1.9" strokeLinecap="square" />
-      <path d="M3.4 12.8H20.6" stroke={stroke} strokeWidth="1.9" strokeLinecap="square" />
-    </svg>
-  );
+  return <img src={greedMoneyIcon} className={className} alt="" aria-hidden="true" />;
 }
 
 export function RentIcon({
