@@ -10,6 +10,10 @@ export type CardSizeTokens = {
 };
 
 export const cardSizeMap: Record<MonopolyDealCardSize, CardSizeTokens> = {
+  xs: {
+    cardWidth: 176,
+    cardHeight: 281,
+  },
   sm: {
     cardWidth: 194,
     cardHeight: 310,

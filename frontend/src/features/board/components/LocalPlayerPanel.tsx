@@ -25,7 +25,6 @@ type LocalPlayerPanelProps = LocalPlayerState & {
 };
 
 export function LocalPlayerPanel({
-  handCount,
   bankTotal,
   handCards,
   propertySets,

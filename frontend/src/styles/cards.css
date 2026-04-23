@@ -515,6 +515,73 @@
   text-transform: uppercase;
 }
 
+.monopoly-card--xs .monopoly-card__money-badge {
+  left: 13px;
+  top: 13px;
+  width: 42px;
+  height: 42px;
+}
+
+.monopoly-card--xs .monopoly-card__money-badge span {
+  font-size: 0.74rem;
+}
+
+.monopoly-card--xs .monopoly-card__chip {
+  min-height: 24px;
+  padding: 4px 9px;
+  font-size: 0.66rem;
+}
+
+.monopoly-card--xs .action-card__stage {
+  width: 134px;
+}
+
+.monopoly-card--xs .action-card__title {
+  font-size: 1.14rem;
+}
+
+.monopoly-card--xs .monopoly-card__content--rent,
+.monopoly-card--xs .monopoly-card__content--wild {
+  padding: 76px 12px 10px;
+}
+
+.monopoly-card--xs .monopoly-card__content--rent {
+  padding: 72px 12px 16px;
+}
+
+.monopoly-card--xs .rent-card__medallion {
+  width: 44px;
+  height: 44px;
+}
+
+.monopoly-card--xs .rent-card__description {
+  margin-top: 10px;
+  max-width: 11ch;
+  font-size: 0.68rem;
+  line-height: 1.14;
+}
+
+.monopoly-card--xs .rent-card__footer,
+.monopoly-card--xs .wild-card__chips {
+  padding-bottom: 0;
+}
+
+.monopoly-card--xs .rent-card__chip-list .monopoly-card__chip {
+  min-height: 22px;
+  padding: 3px 8px;
+  font-size: 0.62rem;
+}
+
+.monopoly-card--xs .rent-card__chip-list,
+.monopoly-card--xs .wild-card__chip-list,
+.monopoly-card--xs .property-card__color-chip-list {
+  gap: 4px;
+}
+
+.monopoly-card--xs .wild-card__title {
+  font-size: 0.8rem;
+}
+
 .monopoly-card--sm .monopoly-card__money-badge {
   left: 16px;
   top: 16px;
@@ -547,14 +614,6 @@
   font-size: 0.86rem;
 }
 
-.monopoly-card--sm .property-card__header-title {
-  font-size: 0.98rem;
-}
-
-.monopoly-card--sm .property-card__rent-value {
-  font-size: 0.86rem;
-}
-
 .monopoly-card--lg .monopoly-card__money-badge {
   width: 58px;
   height: 58px;
@@ -574,10 +633,6 @@
 
 .monopoly-card--lg .rent-card__title {
   font-size: 2.08rem;
-}
-
-.monopoly-card--lg .property-card__header-title {
-  font-size: 1.16rem;
 }
 
 @media (max-width: 640px) {
@@ -714,11 +769,11 @@
   top: 16px;
   width: 56px;
   height: 56px;
-  border: 3px solid #fff8ee;
-  background: #3c5b9b;
+  border: 4px solid #fff9ef;
+  background: #1e2f5f;
   box-shadow:
     0 0 0 3px var(--ink-strong),
-    4px 4px 0 rgba(24, 22, 20, 0.75);
+    4px 4px 0 rgba(24, 22, 20, 0.88);
 }
 
 .monopoly-card__money-badge span {
@@ -961,4 +1016,291 @@
     border-width: 3px;
     box-shadow: 4px 4px 0 rgba(24, 22, 20, 0.14);
   }
+}
+
+/* Final property-card size source of truth */
+
+.monopoly-card--property {
+  --property-shell-border: clamp(3px, calc(var(--card-width-base) * 0.018), 4px);
+  --property-shell-radius: calc(var(--card-width-base) * 0.136);
+  --property-shell-shadow: calc(var(--card-width-base) * 0.036);
+  --property-inner-inset: calc(var(--card-width-base) * 0.036);
+  --property-inner-border: clamp(2px, calc(var(--card-width-base) * 0.013), 3px);
+  --property-inner-radius: calc(var(--card-width-base) * 0.109);
+  --property-badge-top: calc(var(--card-width-base) * 0.068);
+  --property-badge-left: calc(var(--card-width-base) * 0.068);
+  --property-badge-size: calc(var(--card-width-base) * 0.235);
+  --property-badge-inner-ring: clamp(4px, calc(var(--card-width-base) * 0.022), 7px);
+  --property-badge-outer-ring: clamp(2px, calc(var(--card-width-base) * 0.012), 4px);
+  --property-badge-shadow: calc(var(--card-width-base) * 0.024);
+  --property-badge-font: calc(var(--card-width-base) * 0.066);
+  --property-header-height: calc(var(--card-height-base) * 0.325);
+  --property-header-pad-top: calc(var(--card-height-base) * 0.028);
+  --property-header-pad-x: calc(var(--card-width-base) * 0.05);
+  --property-header-pad-bottom: calc(var(--card-height-base) * 0.022);
+  --property-header-border: var(--property-shell-border);
+  --property-header-radius: 0 0 calc(var(--card-width-base) * 0.1) calc(var(--card-width-base) * 0.1);
+  --property-copy-width: calc(var(--card-width-base) * 0.62);
+  --property-copy-top-space: calc(var(--property-header-height) * 0.47);
+  --property-copy-gap: calc(var(--card-height-base) * 0.008);
+  --property-label-size: calc(var(--card-width-base) * 0.024);
+  --property-label-spacing: 0.12em;
+  --property-title-size: calc(var(--card-width-base) * 0.051);
+  --property-title-spacing: -0.018em;
+  --property-title-line-height: 0.9;
+  --property-meter-gap: calc(var(--card-width-base) * 0.022);
+  --property-meter-line-height: calc(var(--card-width-base) * 0.011);
+  --property-meter-font: calc(var(--card-width-base) * 0.042);
+  --property-body-pad-top: calc(var(--property-header-height) + calc(var(--card-height-base) * 0.03));
+  --property-body-pad-x: calc(var(--card-width-base) * 0.05);
+  --property-body-pad-bottom: calc(var(--card-height-base) * 0.06);
+  --property-rent-gap: calc(var(--card-height-base) * 0.028);
+  --property-rent-row-gap: calc(var(--card-width-base) * 0.045);
+  --property-rent-count-size: calc(var(--card-width-base) * 0.15);
+  --property-rent-count-border: clamp(2px, calc(var(--card-width-base) * 0.014), 4px);
+  --property-rent-count-font: calc(var(--card-width-base) * 0.05);
+  --property-rent-line-weight: clamp(2px, calc(var(--card-width-base) * 0.015), 6px);
+  --property-rent-font: calc(var(--card-width-base) * 0.06);
+  --property-rent-full-font: calc(var(--card-width-base) * 0.066);
+  --property-color-top-gap: calc(var(--card-height-base) * 0.024);
+  --property-color-panel-border: clamp(2px, calc(var(--card-width-base) * 0.013), 4px);
+  --property-color-panel-radius: calc(var(--card-width-base) * 0.1);
+  --property-color-panel-pad-top: calc(var(--card-height-base) * 0.024);
+  --property-color-panel-pad-x: calc(var(--card-width-base) * 0.05);
+  --property-color-panel-pad-bottom: calc(var(--card-height-base) * 0.022);
+  --property-color-label-font: calc(var(--card-width-base) * 0.024);
+  --property-color-label-spacing: 0.14em;
+  --property-color-chip-gap: calc(var(--card-width-base) * 0.018);
+  --property-color-chip-height: calc(var(--card-height-base) * 0.12);
+  --property-color-chip-pad-x: calc(var(--card-width-base) * 0.07);
+  --property-color-chip-border: clamp(2px, calc(var(--card-width-base) * 0.018), 5px);
+  --property-color-chip-radius: calc(var(--card-width-base) * 0.07);
+  --property-color-chip-shadow: calc(var(--card-width-base) * 0.02);
+  --property-color-chip-font: calc(var(--card-width-base) * 0.04);
+  border: var(--property-shell-border) solid var(--ink-strong);
+  border-radius: var(--property-shell-radius);
+  background: #fff9ef;
+  box-shadow: var(--property-shell-shadow) var(--property-shell-shadow) 0 rgba(24, 22, 20, 0.92);
+}
+
+.monopoly-card--property .monopoly-card__inner {
+  inset: var(--property-inner-inset);
+  border: var(--property-inner-border) solid var(--ink-strong);
+  border-radius: var(--property-inner-radius);
+  background: #f8f2e6;
+}
+
+.monopoly-card--property .monopoly-card__money-badge {
+  left: var(--property-badge-left);
+  top: var(--property-badge-top);
+  width: var(--property-badge-size);
+  height: var(--property-badge-size);
+  border-width: var(--property-badge-inner-ring);
+  box-shadow:
+    0 0 0 var(--property-badge-outer-ring) var(--ink-strong),
+    var(--property-badge-shadow) var(--property-badge-shadow) 0 rgba(24, 22, 20, 0.88);
+}
+
+.monopoly-card--property .monopoly-card__money-badge span {
+  font-family: var(--display-font);
+  font-size: var(--property-badge-font);
+  font-weight: 900;
+  letter-spacing: -0.05em;
+}
+
+.monopoly-card--property .property-card__header {
+  position: absolute;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--property-header-height);
+  padding: var(--property-header-pad-top) var(--property-header-pad-x) var(--property-header-pad-bottom);
+  border: var(--property-header-border) solid var(--ink-strong);
+  border-radius: var(--property-header-radius);
+  background: var(--property-top-color);
+}
+
+.monopoly-card--property .property-card__header-copy {
+  width: min(100%, var(--property-copy-width));
+  margin: 0 auto;
+  padding: var(--property-copy-top-space) 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--property-copy-gap);
+  text-align: center;
+}
+
+.monopoly-card--property .property-card__header-label {
+  color: var(--property-heading-color);
+  font-size: var(--property-label-size);
+  font-weight: 900;
+  letter-spacing: var(--property-label-spacing);
+  line-height: 1.1;
+}
+
+.monopoly-card--property .property-card__header-title {
+  margin: 0;
+  max-width: 100%;
+  color: var(--property-heading-color);
+  font-size: var(--property-title-size);
+  font-weight: 900;
+  line-height: var(--property-title-line-height);
+  letter-spacing: var(--property-title-spacing);
+  text-align: center;
+  white-space: normal;
+  text-wrap: balance;
+  overflow-wrap: anywhere;
+}
+
+.monopoly-card--property .property-card__header-title br {
+  display: none;
+}
+
+.monopoly-card--property .property-card__header-meter {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--property-meter-gap);
+}
+
+.monopoly-card--property .property-card__header-meter-line {
+  flex: 1 1 auto;
+  height: var(--property-meter-line-height);
+  border-radius: 999px;
+  background: var(--property-meter-line);
+}
+
+.monopoly-card--property .property-card__header-meter-count {
+  color: var(--property-heading-color);
+  font-family: var(--display-font);
+  font-size: var(--property-meter-font);
+  font-weight: 900;
+  line-height: 0.92;
+  letter-spacing: -0.04em;
+}
+
+.monopoly-card--property .property-card__body {
+  position: relative;
+  z-index: 0;
+  background: #f8f2e6;
+  padding: var(--property-body-pad-top) var(--property-body-pad-x) var(--property-body-pad-bottom);
+}
+
+.monopoly-card--property .property-card__section-label {
+  display: none;
+}
+
+.monopoly-card--property .property-card__rent-list {
+  gap: var(--property-rent-gap);
+}
+
+.monopoly-card--property .property-card__rent-row {
+  gap: var(--property-rent-row-gap);
+}
+
+.monopoly-card--property .property-card__rent-row--full .property-card__rent-line {
+  opacity: 0;
+}
+
+.monopoly-card--property .property-card__rent-count {
+  width: var(--property-rent-count-size);
+  height: var(--property-rent-count-size);
+  border: var(--property-rent-count-border) solid rgba(24, 22, 20, 0.18);
+  background: #fff9ef;
+  color: #142349;
+  font-family: var(--display-font);
+  font-size: var(--property-rent-count-font);
+  font-weight: 900;
+}
+
+.monopoly-card--property .property-card__rent-line {
+  border-bottom: var(--property-rent-line-weight) dotted rgba(24, 22, 20, 0.34);
+}
+
+.monopoly-card--property .property-card__rent-value {
+  color: #102046;
+  font-family: var(--display-font);
+  font-size: var(--property-rent-font);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.monopoly-card--property .property-card__rent-value--full {
+  font-size: var(--property-rent-full-font);
+}
+
+.monopoly-card--property .property-card__color-block {
+  margin-top: auto;
+  display: flex;
+  justify-content: center;
+  padding: var(--property-color-top-gap) 0 calc(var(--card-height-base) * 0.012);
+}
+
+.monopoly-card--property .property-card__color-panel {
+  width: min(100%, calc(var(--card-width-base) * 0.82));
+  border: var(--property-color-panel-border) solid rgba(24, 22, 20, 0.14);
+  border-radius: var(--property-color-panel-radius);
+  background: rgba(255, 251, 242, 0.95);
+  padding:
+    var(--property-color-panel-pad-top)
+    var(--property-color-panel-pad-x)
+    var(--property-color-panel-pad-bottom);
+}
+
+.monopoly-card--property .property-card__section-label--panel {
+  display: block;
+  color: #122349;
+  font-size: var(--property-color-label-font);
+  font-weight: 900;
+  letter-spacing: var(--property-color-label-spacing);
+  text-align: center;
+}
+
+.monopoly-card--property .property-card__color-chip-list {
+  margin-top: calc(var(--card-height-base) * 0.012);
+  gap: var(--property-color-chip-gap);
+}
+
+.monopoly-card--property .property-card__color-chip {
+  min-height: var(--property-color-chip-height);
+  padding: 0 var(--property-color-chip-pad-x);
+  border: var(--property-color-chip-border) solid var(--ink-strong);
+  border-radius: var(--property-color-chip-radius);
+  background: var(--property-chip-background);
+  box-shadow: var(--property-color-chip-shadow) var(--property-color-chip-shadow) 0 rgba(24, 22, 20, 0.14);
+  color: var(--property-chip-text);
+  font-family: var(--display-font);
+  font-size: var(--property-color-chip-font);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.monopoly-card--property-railroad {
+  --property-header-height: calc(var(--card-height-base) * 0.302);
+  --property-body-pad-top: calc(var(--property-header-height) + calc(var(--card-height-base) * 0.022));
+  --property-label-size: calc(var(--card-width-base) * 0.022);
+  --property-title-size: calc(var(--card-width-base) * 0.046);
+  --property-meter-font: calc(var(--card-width-base) * 0.038);
+  --property-rent-gap: calc(var(--card-height-base) * 0.018);
+  --property-rent-row-gap: calc(var(--card-width-base) * 0.032);
+  --property-rent-count-size: calc(var(--card-width-base) * 0.128);
+  --property-rent-count-font: calc(var(--card-width-base) * 0.046);
+  --property-rent-font: calc(var(--card-width-base) * 0.052);
+  --property-rent-full-font: calc(var(--card-width-base) * 0.055);
+  --property-color-top-gap: calc(var(--card-height-base) * 0.012);
+  --property-color-panel-pad-top: calc(var(--card-height-base) * 0.014);
+  --property-color-panel-pad-bottom: calc(var(--card-height-base) * 0.014);
+  --property-color-label-font: calc(var(--card-width-base) * 0.022);
+  --property-color-chip-height: calc(var(--card-height-base) * 0.094);
+  --property-color-chip-pad-x: calc(var(--card-width-base) * 0.058);
+  --property-color-chip-font: calc(var(--card-width-base) * 0.033);
+}
+
+.monopoly-card--property-railroad .property-card__color-chip-list {
+  margin-top: calc(var(--card-height-base) * 0.006);
 }

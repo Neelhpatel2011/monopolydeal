@@ -68,4 +68,4 @@ export type MonopolyDealCardByType<TType extends CardType> = Extract<
   { type: TType }
 >;
 
-export type MonopolyDealCardSize = "sm" | "md" | "lg";
+export type MonopolyDealCardSize = "xs" | "sm" | "md" | "lg";

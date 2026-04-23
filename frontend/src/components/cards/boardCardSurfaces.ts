@@ -15,13 +15,13 @@ export type BoardCardSurfaceName =
 
 export const boardCardSurfacePresets: Record<BoardCardSurfaceName, BoardCardSurfacePreset> = {
   hand: {
-    size: "sm",
-    scale: 0.58,
+    size: "md",
+    scale: 0.8,
     renderMode: "full",
   },
   tableau: {
-    size: "sm",
-    scale: 0.37,
+    size: "md",
+    scale: 0.42,
     renderMode: "full",
   },
   bank: {
@@ -30,8 +30,8 @@ export const boardCardSurfacePresets: Record<BoardCardSurfaceName, BoardCardSurf
     renderMode: "micro",
   },
   "opponent-property": {
-    size: "sm",
-    scale: 0.36,
+    size: "md",
+    scale: 0.32,
     renderMode: "full",
   },
   "opponent-money": {

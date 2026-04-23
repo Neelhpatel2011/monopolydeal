@@ -21,7 +21,7 @@ export function BoardCenterStage({
       <div className="pile-card">
         <div className="pile-card__stack pile-card__stack--deck">
           <div className="pile-card__face pile-card__face--deck">
-            <BoardCardBack tone="deck" size="sm" scale={0.34} className="pile-card__card-back" />
+            <BoardCardBack tone="deck" size="sm" scale={0.24} className="pile-card__card-back" />
           </div>
         </div>
         <p className="pile-card__label">Deck</p>
@@ -38,7 +38,7 @@ export function BoardCenterStage({
             <ScaledMonopolyCard
               card={getRenderCardByCatalogId(discardTopCardId)}
               size="sm"
-              scale={0.34}
+              scale={0.24}
               className="pile-card__discard-card"
             />
           </div>
