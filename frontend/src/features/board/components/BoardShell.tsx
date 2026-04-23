@@ -82,8 +82,14 @@ export function BoardShell({
     () => resolveBoardBlockingOverlay(blockingState),
     [blockingState],
   );
+  const hasOpponentDetailOpen = expandedOpponentId !== null;
   const canBrowseOpponents =
     selectCanBrowseOpponents(interactionState) && activeBlockingOverlay === null;
+  const hasModalOverlayOpen =
+    activeBlockingOverlay !== null ||
+    endTurnConfirmOpen ||
+    interactionState.mode === "submittingEndTurn" ||
+    hasOpponentDetailOpen;
   const shouldSuspendBoardAffordances =
     activeBlockingOverlay !== null ||
     endTurnConfirmOpen ||
@@ -363,7 +369,7 @@ export function BoardShell({
   return (
     <main className="board-page">
       <div
-        className={`board-shell${shouldSuspendBoardAffordances ? " board-shell--modal-active" : ""}${
+        className={`board-shell${hasModalOverlayOpen ? " board-shell--modal-active" : ""}${
           activeBlockingOverlay ? " board-shell--blocked" : ""
         }`}
       >
@@ -432,7 +438,10 @@ export function BoardShell({
         />
       ) : null}
 
-      {expandedOpponent && !shouldSuspendBoardAffordances ? (
+      {expandedOpponent &&
+      activeBlockingOverlay === null &&
+      !endTurnConfirmOpen &&
+      interactionState.mode !== "submittingEndTurn" ? (
         <OpponentDetailSheet
           opponent={expandedOpponent}
           opponents={opponentDetails}

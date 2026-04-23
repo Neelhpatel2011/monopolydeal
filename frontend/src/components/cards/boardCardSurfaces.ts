@@ -16,7 +16,7 @@ export type BoardCardSurfaceName =
 export const boardCardSurfacePresets: Record<BoardCardSurfaceName, BoardCardSurfacePreset> = {
   hand: {
     size: "md",
-    scale: 0.8,
+    scale: 0.44,
     renderMode: "full",
   },
   tableau: {

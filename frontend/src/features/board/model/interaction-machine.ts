@@ -145,7 +145,7 @@ export function boardInteractionReducer(
 ): BoardInteractionState {
   switch (event.type) {
     case "OPEN_OPPONENT_DETAIL":
-      if (state.mode !== "idle") {
+      if (state.mode !== "idle" && state.mode !== "selected") {
         return state;
       }
 

@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import type { CSSProperties } from "react";
+import { BuildingIcon } from "../../../components/BuildingIcon";
 import { BoardMicroCard } from "../../../components/cards/BoardMicroCard";
 import { ScaledMonopolyCard } from "../../../components/cards/ScaledMonopolyCard";
 import { boardCardSurfacePresets } from "../../../components/cards/boardCardSurfaces";
@@ -125,8 +126,15 @@ export function OpponentDetailSheet({
                     {propertySet.buildings?.length ? (
                       <div className="opponent-detail-property__buildings">
                         {propertySet.buildings.map((building) => (
-                          <span key={building} className="opponent-detail-property__building-chip">
-                            {building}
+                          <span
+                            key={building}
+                            className="opponent-detail-property__building-chip"
+                            aria-label={building}
+                          >
+                            <BuildingIcon
+                              building={building}
+                              className="opponent-detail-property__building-icon"
+                            />
                           </span>
                         ))}
                       </div>

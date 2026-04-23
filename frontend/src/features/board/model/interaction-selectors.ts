@@ -25,7 +25,11 @@ export function selectIsBlockingFlow(state: BoardInteractionState): boolean {
 }
 
 export function selectCanBrowseOpponents(state: BoardInteractionState): boolean {
-  return state.mode === "idle" && !state.endTurnConfirmOpen && state.expandedOpponentId === null;
+  return (
+    (state.mode === "idle" || state.mode === "selected") &&
+    !state.endTurnConfirmOpen &&
+    state.expandedOpponentId === null
+  );
 }
 
 export function selectCanOpenEndTurnConfirm(state: BoardInteractionState): boolean {
