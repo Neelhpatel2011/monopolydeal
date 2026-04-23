@@ -26,8 +26,8 @@ export const boardCardSurfacePresets: Record<BoardCardSurfaceName, BoardCardSurf
   },
   bank: {
     size: "sm",
-    scale: 0.34,
-    renderMode: "micro",
+    scale: 0.24,
+    renderMode: "full",
   },
   "opponent-property": {
     size: "md",
@@ -36,7 +36,7 @@ export const boardCardSurfacePresets: Record<BoardCardSurfaceName, BoardCardSurf
   },
   "opponent-money": {
     size: "sm",
-    scale: 0.34,
-    renderMode: "micro",
+    scale: 0.28,
+    renderMode: "full",
   },
 };

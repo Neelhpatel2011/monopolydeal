@@ -1,9 +1,10 @@
-import type { CSSProperties } from "react";
+import { useState } from "react";
 import type { LocalBankCard } from "../../board/model/localPlayer";
 import { LOCAL_BANK_TARGET_ID } from "../../drag-targeting/model/target-preview";
-import { BoardMicroCard } from "../../../components/cards/BoardMicroCard";
+import { ScaledMonopolyCard } from "../../../components/cards/ScaledMonopolyCard";
 import { getBankRenderCard } from "../../../components/cards/boardCardAdapters";
 import { boardCardSurfacePresets } from "../../../components/cards/boardCardSurfaces";
+import { BankDetailSheet } from "./BankDetailSheet";
 
 type BankStripProps = {
   cards: LocalBankCard[];
@@ -20,43 +21,69 @@ export function BankStrip({
   isPreviewed = false,
   isInvalid = false,
 }: BankStripProps) {
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const surfacePreset = boardCardSurfacePresets.bank;
+  const interactionLocked = isTargetable || isPreviewed || isInvalid;
 
   return (
-    <section
-      className={`bank-strip${isTargetable ? " bank-strip--targetable" : ""}${
-        isPreviewed ? " bank-strip--previewed" : ""
-      }${
-        isInvalid ? " bank-strip--invalid" : ""
-      }`}
-      aria-label="Banked cards"
-      data-board-target-id={LOCAL_BANK_TARGET_ID}
-    >
-      <div className="bank-strip__header">
-        <div>
-          <p className="bank-strip__eyebrow">Bank</p>
-          <h3>{total}</h3>
-        </div>
-        <p className="bank-strip__summary">{cards.length} cards</p>
-      </div>
-
-      <div className="bank-strip__cards">
-        {cards.map((card, index) => (
-          <div
-            key={card.id}
-            className="bank-note"
-            aria-label={`${card.amount} ${card.label}`}
-            style={{ "--bank-index": index } as CSSProperties}
-          >
-            {surfacePreset.renderMode === "micro" ? (
-              <BoardMicroCard
-                card={getBankRenderCard(card)}
-                className="bank-note__micro-card"
-              />
-            ) : null}
+    <>
+      <section
+        className={`bank-strip${isTargetable ? " bank-strip--targetable" : ""}${
+          isPreviewed ? " bank-strip--previewed" : ""
+        }${
+          isInvalid ? " bank-strip--invalid" : ""
+        }`}
+        aria-label="Banked cards"
+        data-board-target-id={LOCAL_BANK_TARGET_ID}
+      >
+        <button
+          type="button"
+          className="bank-strip__button"
+          aria-label="Open bank details"
+          aria-disabled={interactionLocked}
+          data-board-target-id={LOCAL_BANK_TARGET_ID}
+          onClick={() => {
+            if (!interactionLocked) {
+              setIsDetailOpen(true);
+            }
+          }}
+        >
+          <div className="bank-strip__header">
+            <div>
+              <p className="bank-strip__eyebrow">Bank</p>
+              <h3>{total}</h3>
+            </div>
+            <p className="bank-strip__summary">{cards.length} cards</p>
           </div>
-        ))}
-      </div>
-    </section>
+
+          <div className="bank-strip__cards">
+            {cards.map((card) => (
+              <div
+                key={card.id}
+                className="bank-note"
+                aria-label={`${card.amount} ${card.label}`}
+              >
+                {surfacePreset.renderMode === "full" ? (
+                  <ScaledMonopolyCard
+                    card={getBankRenderCard(card)}
+                    size={surfacePreset.size}
+                    scale={surfacePreset.scale}
+                    className="bank-note__scaled-card"
+                  />
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </button>
+      </section>
+
+      {isDetailOpen ? (
+        <BankDetailSheet
+          cards={cards}
+          total={total}
+          onClose={() => setIsDetailOpen(false)}
+        />
+      ) : null}
+    </>
   );
 }

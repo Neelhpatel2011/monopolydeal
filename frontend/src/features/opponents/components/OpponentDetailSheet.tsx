@@ -1,13 +1,14 @@
 import { useEffect } from "react";
 import type { CSSProperties } from "react";
 import { BuildingIcon } from "../../../components/BuildingIcon";
-import { BoardMicroCard } from "../../../components/cards/BoardMicroCard";
 import { ScaledMonopolyCard } from "../../../components/cards/ScaledMonopolyCard";
 import { boardCardSurfacePresets } from "../../../components/cards/boardCardSurfaces";
 import {
   getBankRenderCard,
   getPropertySetRenderCards,
 } from "../../../components/cards/boardCardAdapters";
+import { getBankSummaryData } from "../../bank/model/bankSummary";
+import { getPropertySetSummaryData } from "../../tableau/model/propertySetSummary";
 import { OpponentQuickSwitch } from "./OpponentQuickSwitch";
 import type { OpponentDetail } from "../model/opponentExpansion";
 
@@ -26,6 +27,7 @@ export function OpponentDetailSheet({
 }: OpponentDetailSheetProps) {
   const propertySurfacePreset = boardCardSurfacePresets["opponent-property"];
   const moneySurfacePreset = boardCardSurfacePresets["opponent-money"];
+  const bankSummary = getBankSummaryData(opponent.moneyCards);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -83,6 +85,11 @@ export function OpponentDetailSheet({
               const count = propertySet.cards.length;
               const isComplete = count >= propertySet.targetSize;
               const renderCards = getPropertySetRenderCards(propertySet);
+              const propertySummary = getPropertySetSummaryData(propertySet);
+              const rentNote =
+                propertySummary.buildingBonusAmount > 0
+                  ? `${propertySummary.currentRentLabel} incl. +${propertySummary.buildingBonusAmount}M`
+                  : propertySummary.currentRentLabel;
 
               return (
                 <article
@@ -123,6 +130,10 @@ export function OpponentDetailSheet({
                       {isComplete ? "Full Set" : "In Progress"}
                     </p>
 
+                    <p className="opponent-detail-property__rent">
+                      Rent {rentNote}
+                    </p>
+
                     {propertySet.buildings?.length ? (
                       <div className="opponent-detail-property__buildings">
                         {propertySet.buildings.map((building) => (
@@ -151,6 +162,22 @@ export function OpponentDetailSheet({
             <h4>Money</h4>
           </div>
 
+          <div className="opponent-detail-money__breakdown" role="table" aria-label="Money breakdown">
+            <div className="opponent-detail-money__breakdown-head" role="row">
+              <span role="columnheader">Card</span>
+              <span role="columnheader">Count</span>
+              <span role="columnheader">Total</span>
+            </div>
+
+            {bankSummary.breakdownRows.map((row) => (
+              <div key={row.key} className="opponent-detail-money__breakdown-row" role="row">
+                <span role="cell">{row.label}</span>
+                <span role="cell">x{row.count}</span>
+                <strong role="cell">{row.totalLabel}</strong>
+              </div>
+            ))}
+          </div>
+
           <div className="opponent-detail-money">
             {opponent.moneyCards.map((card) => (
               <div
@@ -158,10 +185,12 @@ export function OpponentDetailSheet({
                 className="opponent-detail-money__card"
                 aria-label={`${card.amount} ${card.label}`}
               >
-                {moneySurfacePreset.renderMode === "micro" ? (
-                  <BoardMicroCard
+                {moneySurfacePreset.renderMode === "full" ? (
+                  <ScaledMonopolyCard
                     card={getBankRenderCard(card)}
-                    className="opponent-detail-money__micro-card"
+                    size={moneySurfacePreset.size}
+                    scale={moneySurfacePreset.scale}
+                    className="opponent-detail-money__scaled-card"
                   />
                 ) : null}
               </div>

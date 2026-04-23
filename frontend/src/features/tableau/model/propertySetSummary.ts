@@ -2,6 +2,7 @@ import { getPropertySetRenderCards } from "../../../components/cards/boardCardAd
 import { formatMoney } from "../../../components/cards/cardUtils";
 import type { MonopolyDealCardByType, MonopolyDealCardData } from "../../../types/monopolyDeal";
 import type { LocalPropertySet } from "../../board/model/localPlayer";
+import type { OpponentPropertySet } from "../../opponents/model/opponentExpansion";
 
 const BUILDING_RENT_BONUS: Record<"House" | "Hotel", number> = {
   House: 3,
@@ -30,17 +31,19 @@ export type PropertySetSummaryData = {
   cardValueLabels: string[];
 };
 
+type PropertySetLike = LocalPropertySet | OpponentPropertySet;
+
 function isPropertyCard(card: MonopolyDealCardData): card is MonopolyDealCardByType<"property"> {
   return card.type === "property";
 }
 
-export function getPropertySetSummaryData(set: LocalPropertySet): PropertySetSummaryData {
+export function getPropertySetSummaryData(set: PropertySetLike): PropertySetSummaryData {
   const renderCards = getPropertySetRenderCards(set);
-  const count = set.count ?? set.cards.length;
+  const count = "count" in set ? set.count ?? set.cards.length : set.cards.length;
   const targetSize = set.targetSize;
   const isComplete = count >= targetSize;
   const basePropertyCard = renderCards.find(isPropertyCard) ?? null;
-  const wildCount = set.cards.filter((card) => card.kind === "wild").length;
+  const wildCount = renderCards.filter((card) => card.type === "wild").length;
   const buildingKinds = set.buildings ?? [];
   const buildingBonusAmount = buildingKinds.reduce(
     (total, building) => total + BUILDING_RENT_BONUS[building],
