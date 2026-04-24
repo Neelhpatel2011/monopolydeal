@@ -207,6 +207,23 @@
   background: var(--accent-blue);
 }
 
+.home-cta:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
+.home-status {
+  margin: 0;
+  padding: 14px 16px;
+  border: 3px solid var(--ink-strong);
+  border-radius: 18px;
+  background: #fffaf0;
+  color: var(--ink-strong);
+  font-size: 0.86rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
 .home-utility {
   display: grid;
   gap: 14px;

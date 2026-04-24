@@ -8,6 +8,7 @@ from ..engine.state import (
     DeckState,
     GameState,
     PlayerState,
+    find_payment_tracker,
     find_payment_tracker_by_request_id,
     resolve_host_id,
     set_payment_tracker_status,
@@ -287,7 +288,7 @@ async def handle_action(
     add_game_over(response, state, catalog)
 
     if response.get("status") == "ok":
-        response["player_view"] = build_player_view(state, req.player_id)
+        response["player_view"] = build_player_view(state, req.player_id, catalog)
     response.pop("state", None)
     if state.winner_id:
         repo.delete_pending_payments_for_game(game_id)
@@ -343,7 +344,7 @@ async def handle_pending(
     add_game_over(response, state, catalog)
 
     if response.get("status") == "ok":
-        response["player_view"] = build_player_view(state, req.player_id)
+        response["player_view"] = build_player_view(state, req.player_id, catalog)
     response.pop("state", None)
     if state.winner_id:
         repo.delete_pending_payments_for_game(game_id)
@@ -368,21 +369,38 @@ async def handle_payment(
         }
 
     pending = repo.get_pending_payment(req.request_id)
-    if not pending:
+    tracker, participant = find_payment_tracker_by_request_id(state, req.request_id)
+
+    if tracker is None and participant is None:
+        tracker = find_payment_tracker(state, req.request_id)
+        if tracker is not None:
+            participant = next(
+                (
+                    entry
+                    for entry in tracker.participants
+                    if entry.player_id == req.payer_id and entry.status == "pending"
+                ),
+                None,
+            )
+
+    if pending:
+        receiver_id = pending["receiver_id"]
+        targets = pending.get("targets", {})
+
+        if pending.get("game_id") != game_id:
+            return {
+                "status": "error",
+                "response_type": "payment_applied",
+                "message": "Payment request does not belong to this game.",
+            }
+    elif tracker and participant:
+        receiver_id = tracker.receiver_id
+        targets = {participant.player_id: participant.amount}
+    else:
         return {
             "status": "error",
             "response_type": "payment_applied",
             "message": "Unknown payment request_id.",
-        }
-
-    receiver_id = pending["receiver_id"]
-    targets = pending.get("targets", {})
-
-    if pending.get("game_id") != game_id:
-        return {
-            "status": "error",
-            "response_type": "payment_applied",
-            "message": "Payment request does not belong to this game.",
         }
 
     if req.receiver_id != receiver_id:
@@ -410,7 +428,6 @@ async def handle_payment(
         }
 
     amount = targets[req.payer_id]
-    tracker, participant = find_payment_tracker_by_request_id(state, req.request_id)
 
     response = process_payment(
         state=state,
@@ -437,7 +454,7 @@ async def handle_payment(
             )
     add_game_over(response, state, catalog)
     if response.get("status") == "ok":
-        response["player_view"] = build_player_view(state, req.payer_id)
+        response["player_view"] = build_player_view(state, req.payer_id, catalog)
     response.pop("state", None)
     if state.winner_id:
         repo.delete_pending_payments_for_game(game_id)

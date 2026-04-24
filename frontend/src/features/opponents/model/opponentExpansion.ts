@@ -28,8 +28,18 @@ export type OpponentPropertySet = {
   name: string;
   color: OpponentPropertyColor;
   targetSize: number;
+  count?: number;
+  isComplete?: boolean;
+  currentRentAmount?: number | null;
+  buildingBonusAmount?: number;
+  wildCount?: number;
   cards: OpponentPropertyCard[];
   buildings?: Array<"House" | "Hotel">;
+  wildReassignments?: Array<{
+    cardId: string;
+    availableColors: string[];
+  }>;
+  backendColor: string;
 };
 
 export type OpponentMoneyCard = BoardMoneyCardRef;

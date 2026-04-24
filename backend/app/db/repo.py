@@ -1,6 +1,8 @@
 import uuid
 from typing import Any, Dict, List, Optional
 
+from postgrest.exceptions import APIError
+
 from ..engine.state import GameState
 from ..schemas.response import GameSummary
 from .supabase_client import supabase
@@ -80,14 +82,19 @@ def insert_pending_payment(
 
 
 def get_pending_payment(request_id: str) -> Optional[Dict[str, Any]]:
-    res = (
-        supabase.table("pending_payments")
-        .select("*")
-        .eq("request_id", request_id)
-        .single()
-        .execute()
-    )
-    return res.data
+    try:
+        res = (
+            supabase.table("pending_payments")
+            .select("*")
+            .eq("request_id", request_id)
+            .limit(1)
+            .execute()
+        )
+    except APIError:
+        return None
+
+    rows = res.data or []
+    return rows[0] if rows else None
 
 
 def delete_pending_payment(request_id: str) -> None:

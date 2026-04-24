@@ -22,6 +22,10 @@ type LocalPlayerPanelProps = LocalPlayerState & {
   isBankInvalid: boolean;
   onHandCardPress: (cardId: string) => void;
   onHandCardPointerDown: (cardId: string, event: ReactPointerEvent<HTMLButtonElement>) => void;
+  onTargetTableau?: () => void;
+  onTargetTableauSet?: (setId: string) => void;
+  onTargetBank?: () => void;
+  onChangeWild?: (cardId: string, newColor: string) => Promise<void>;
 };
 
 export function LocalPlayerPanel({
@@ -44,6 +48,10 @@ export function LocalPlayerPanel({
   isBankInvalid,
   onHandCardPress,
   onHandCardPointerDown,
+  onTargetTableau,
+  onTargetTableauSet,
+  onTargetBank,
+  onChangeWild,
 }: LocalPlayerPanelProps) {
   return (
     <section className="local-player-panel" aria-label="Local player area">
@@ -57,6 +65,9 @@ export function LocalPlayerPanel({
             targetableSetIds={targetableTableauSetIds}
             previewedSetId={previewedTableauSetId}
             invalidSetId={invalidTableauSetId}
+            onTargetTableau={onTargetTableau}
+            onTargetSet={onTargetTableauSet}
+            onChangeWild={onChangeWild}
           />
           <BankStrip
             cards={bankCards}
@@ -64,6 +75,7 @@ export function LocalPlayerPanel({
             isTargetable={isBankTargetable}
             isPreviewed={isBankPreviewed}
             isInvalid={isBankInvalid}
+            onTargetPress={onTargetBank}
           />
         </div>
       </div>

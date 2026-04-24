@@ -12,6 +12,7 @@ import type {
   TargetScope,
 } from "./interaction-types";
 import { createHandDraftActionIntent } from "./card-intents";
+import type { LocalHandCard } from "./localPlayer";
 
 const baseTransientState: BoardInteractionTransientState = {
   expandedOpponentId: null,
@@ -626,6 +627,8 @@ export function createInvalidFeedback(
   };
 }
 
-export function createHandSelectionIntent(cardId: string, label: string): DraftActionIntent {
-  return createHandDraftActionIntent(cardId, label);
+export function createHandSelectionIntent(
+  card: Pick<LocalHandCard, "id" | "backendCardId" | "label" | "actionOptions">,
+): DraftActionIntent {
+  return createHandDraftActionIntent(card);
 }

@@ -1,99 +1,52 @@
 import type { DraftActionIntent, ActionFieldKey, ActionFieldValue } from "./interaction-types";
 import type { TableauColor } from "./localPlayer";
+import { getBackendCardMeta, toTableauColor } from "../../../integration/backend/catalog";
+import type { LocalHandCard } from "./localPlayer";
 
 export type HandCardIntentProfile = {
-  actionType: "playProperty" | "rent" | "dealBreaker" | "bankOnly";
-  category: "property" | "wild" | "action";
+  actionType: string;
+  category: "money" | "property" | "wild" | "rent" | "action";
   chosen: Partial<Record<ActionFieldKey, ActionFieldValue>>;
   missing: ActionFieldKey[];
   propertyColor: TableauColor | null;
   canBank: boolean;
 };
 
-const propertyColorByLabelPrefix: Array<[string, TableauColor]> = [
-  ["Brown", "brown"],
-  ["Light Blue", "light-blue"],
-  ["Green", "green"],
-  ["Yellow", "yellow"],
-  ["Purple", "purple"],
-  ["Orange", "orange"],
-  ["Dark Blue", "blue"],
-  ["Blue", "blue"],
-  ["Red", "red"],
-];
-
-export function inferPropertyColor(label: string): TableauColor | null {
-  for (const [prefix, color] of propertyColorByLabelPrefix) {
-    if (label.startsWith(prefix)) {
-      return color;
-    }
+export function deriveHandCardIntentProfile(
+  card: Pick<LocalHandCard, "backendCardId" | "label" | "actionOptions">,
+): HandCardIntentProfile {
+  const profile = card.actionOptions;
+  if (!profile) {
+    throw new Error(`Missing backend action options for card ${card.backendCardId}`);
   }
-
-  return null;
-}
-
-export function deriveHandCardIntentProfile(label: string): HandCardIntentProfile {
-  if (label === "Wild") {
-    return {
-      actionType: "playProperty",
-      category: "wild",
-      chosen: {},
-      missing: ["property_color"],
-      propertyColor: null,
-      canBank: true,
-    };
-  }
-
-  if (label.includes("Property")) {
-    const propertyColor = inferPropertyColor(label);
-
-    return {
-      actionType: "playProperty",
-      category: "property",
-      chosen: propertyColor ? { property_color: propertyColor } : {},
-      missing: propertyColor ? [] : ["property_color"],
-      propertyColor,
-      canBank: true,
-    };
-  }
-
-  if (label === "Rent") {
-    return {
-      actionType: "rent",
-      category: "action",
-      chosen: {},
-      missing: ["target_player_id", "rent_color"],
-      propertyColor: null,
-      canBank: true,
-    };
-  }
-
-  if (label === "Deal Breaker") {
-    return {
-      actionType: "dealBreaker",
-      category: "action",
-      chosen: {},
-      missing: ["target_player_id"],
-      propertyColor: null,
-      canBank: true,
-    };
-  }
-
+  const meta = getBackendCardMeta(card.backendCardId);
+  const propertyColor = meta.propertyGroup ? (toTableauColor(meta.propertyGroup) as TableauColor) : null;
   return {
-    actionType: "bankOnly",
-    category: "action",
-    chosen: {},
-    missing: [],
-    propertyColor: null,
-    canBank: true,
+    actionType: profile.actionType,
+    category:
+      profile.cardKind === "money"
+        ? "money"
+        : profile.cardKind === "property"
+          ? "property"
+          : profile.cardKind === "property_wild"
+            ? "wild"
+            : profile.cardKind === "rent"
+              ? "rent"
+              : "action",
+    chosen: profile.chosenDefaults,
+    missing: profile.requiredFields as ActionFieldKey[],
+    propertyColor,
+    canBank: profile.canBank,
   };
 }
 
-export function createHandDraftActionIntent(cardId: string, label: string): DraftActionIntent {
-  const profile = deriveHandCardIntentProfile(label);
+export function createHandDraftActionIntent(
+  card: Pick<LocalHandCard, "id" | "backendCardId" | "label" | "actionOptions">,
+): DraftActionIntent {
+  const profile = deriveHandCardIntentProfile(card);
 
   return {
-    cardId,
+    cardId: card.id,
     actionType: profile.actionType,
     chosen: profile.chosen,
     missing: profile.missing,

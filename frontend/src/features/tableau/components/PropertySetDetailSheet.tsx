@@ -1,16 +1,55 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BuildingIcon } from "../../../components/BuildingIcon";
 import { ScaledMonopolyCard } from "../../../components/cards/ScaledMonopolyCard";
 import type { LocalPropertySet } from "../../board/model/localPlayer";
 import { getPropertySetSummaryData } from "../model/propertySetSummary";
+import {
+  formatColorLabel,
+  getBackendCardMeta,
+  getSupportedPropertyColorsForWild,
+} from "../../../integration/backend/catalog";
 
 type PropertySetDetailSheetProps = {
   set: LocalPropertySet;
+  allSets?: LocalPropertySet[];
+  onChangeWild?: (cardId: string, newColor: string) => Promise<void>;
   onClose: () => void;
 };
 
-export function PropertySetDetailSheet({ set, onClose }: PropertySetDetailSheetProps) {
+export function PropertySetDetailSheet({
+  set,
+  allSets = [],
+  onChangeWild,
+  onClose,
+}: PropertySetDetailSheetProps) {
   const summary = getPropertySetSummaryData(set);
+  const [activeWildCardId, setActiveWildCardId] = useState<string | null>(null);
+  const [isChangingWild, setIsChangingWild] = useState(false);
+  const wildCards = useMemo(
+    () =>
+      (set.wildReassignments ?? []).map((entry) => ({
+        cardId: entry.cardId,
+        availableColors: entry.availableColors,
+        label: getBackendCardMeta(entry.cardId).name,
+      })),
+    [set.wildReassignments],
+  );
+  const availableWildTargets = useMemo(() => {
+    if (!activeWildCardId) {
+      return [];
+    }
+    const wildCard = wildCards.find((entry) => entry.cardId === activeWildCardId);
+    const validColors = new Set(wildCard?.availableColors ?? getSupportedPropertyColorsForWild(activeWildCardId));
+    const currentSetColors = allSets
+      .map((propertySet) => propertySet.backendColor)
+      .filter((color) => validColors.has(color));
+    const fallbackColors = Array.from(validColors);
+    const options = currentSetColors.length > 0 ? currentSetColors : fallbackColors;
+    return options.map((color) => ({
+      value: color,
+      label: formatColorLabel(color),
+    }));
+  }, [activeWildCardId, allSets, wildCards]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -114,6 +153,60 @@ export function PropertySetDetailSheet({ set, onClose }: PropertySetDetailSheetP
             ))}
           </div>
         </section>
+
+        {wildCards.length > 0 && onChangeWild ? (
+          <section className="property-set-detail-sheet__section" aria-label="Change wild assignment">
+            <div className="property-set-detail-sheet__section-header">
+              <h3>Change Wild</h3>
+            </div>
+
+            <div className="board-option-list">
+              {wildCards.map((card, index) => (
+                <button
+                  key={card.cardId}
+                  type="button"
+                  className={`board-option-list__item${
+                    activeWildCardId === card.cardId ? " board-option-list__item--active" : ""
+                  }`}
+                  onClick={() => setActiveWildCardId(card.cardId)}
+                >
+                  <strong>Wild {index + 1}</strong>
+                  <span>{card.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {activeWildCardId ? (
+              <div className="board-check-section">
+                <p className="board-modal-sheet__copy">
+                  Move this wild to another eligible property set.
+                </p>
+                <div className="board-option-list">
+                  {availableWildTargets.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className="board-option-list__item"
+                      disabled={isChangingWild}
+                      onClick={async () => {
+                        setIsChangingWild(true);
+                        try {
+                          await onChangeWild(activeWildCardId, option.value);
+                          setActiveWildCardId(null);
+                        } finally {
+                          setIsChangingWild(false);
+                        }
+                      }}
+                    >
+                      <strong>{option.label}</strong>
+                      <span>Assign wild to this set</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         {summary.rentSteps.length ? (
           <section className="property-set-detail-sheet__section" aria-label="Rent ladder">

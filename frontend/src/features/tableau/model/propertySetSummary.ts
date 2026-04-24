@@ -4,11 +4,6 @@ import type { MonopolyDealCardByType, MonopolyDealCardData } from "../../../type
 import type { LocalPropertySet } from "../../board/model/localPlayer";
 import type { OpponentPropertySet } from "../../opponents/model/opponentExpansion";
 
-const BUILDING_RENT_BONUS: Record<"House" | "Hotel", number> = {
-  House: 3,
-  Hotel: 4,
-};
-
 export type PropertySetRentStep = {
   count: number;
   label: string;
@@ -41,17 +36,15 @@ export function getPropertySetSummaryData(set: PropertySetLike): PropertySetSumm
   const renderCards = getPropertySetRenderCards(set);
   const count = "count" in set ? set.count ?? set.cards.length : set.cards.length;
   const targetSize = set.targetSize;
-  const isComplete = count >= targetSize;
+  const isComplete = set.isComplete ?? (count >= targetSize);
   const basePropertyCard = renderCards.find(isPropertyCard) ?? null;
-  const wildCount = renderCards.filter((card) => card.type === "wild").length;
+  const wildCount = set.wildCount ?? renderCards.filter((card) => card.type === "wild").length;
   const buildingKinds = set.buildings ?? [];
-  const buildingBonusAmount = buildingKinds.reduce(
-    (total, building) => total + BUILDING_RENT_BONUS[building],
-    0,
-  );
+  const buildingBonusAmount = set.buildingBonusAmount ?? 0;
   const currentRentIndex = Math.max(0, Math.min(count, basePropertyCard?.rents.length ?? 0) - 1);
   const baseRent = basePropertyCard?.rents[currentRentIndex] ?? null;
-  const currentRentAmount = baseRent == null ? null : baseRent + buildingBonusAmount;
+  const currentRentAmount =
+    set.currentRentAmount ?? (baseRent == null ? null : baseRent + buildingBonusAmount);
   const rentSteps =
     basePropertyCard?.rents.map((amount, index) => {
       const stepCount = index + 1;

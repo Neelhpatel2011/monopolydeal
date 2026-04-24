@@ -10,6 +10,7 @@ type PropertySetSummaryCardProps = {
   isInvalid: boolean;
   interactionLocked: boolean;
   onOpen: () => void;
+  onTargetPress?: (setId: string) => void;
 };
 
 export function PropertySetSummaryCard({
@@ -19,6 +20,7 @@ export function PropertySetSummaryCard({
   isInvalid,
   interactionLocked,
   onOpen,
+  onTargetPress,
 }: PropertySetSummaryCardProps) {
   const summary = getPropertySetSummaryData(set);
   const targetId = getLocalTableauSetTargetId(set.id);
@@ -39,6 +41,11 @@ export function PropertySetSummaryCard({
         aria-disabled={interactionLocked}
         data-board-target-id={targetId}
         onClick={() => {
+          if (isTargetable && onTargetPress) {
+            onTargetPress(set.id);
+            return;
+          }
+
           if (!interactionLocked) {
             onOpen();
           }

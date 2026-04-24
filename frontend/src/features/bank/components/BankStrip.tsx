@@ -12,6 +12,7 @@ type BankStripProps = {
   isTargetable?: boolean;
   isPreviewed?: boolean;
   isInvalid?: boolean;
+  onTargetPress?: () => void;
 };
 
 export function BankStrip({
@@ -20,6 +21,7 @@ export function BankStrip({
   isTargetable = false,
   isPreviewed = false,
   isInvalid = false,
+  onTargetPress,
 }: BankStripProps) {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const surfacePreset = boardCardSurfacePresets.bank;
@@ -43,6 +45,11 @@ export function BankStrip({
           aria-disabled={interactionLocked}
           data-board-target-id={LOCAL_BANK_TARGET_ID}
           onClick={() => {
+            if (isTargetable && onTargetPress) {
+              onTargetPress();
+              return;
+            }
+
             if (!interactionLocked) {
               setIsDetailOpen(true);
             }

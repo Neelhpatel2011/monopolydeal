@@ -7,9 +7,13 @@ import type {
   DragPreviewState,
   InvalidFeedback,
 } from "../model/interaction-types";
+import { createHandSelectionIntent } from "../model/interaction-machine";
 import type { LocalHandCard, LocalPlayerState } from "../model/localPlayer";
 import type { OpponentSummary } from "../../opponents/model/opponentExpansion";
-import type { DragTargetDefinition } from "../../drag-targeting/model/target-preview";
+import {
+  getValidDragTargets,
+  type DragTargetDefinition,
+} from "../../drag-targeting/model/target-preview";
 
 const MOVE_THRESHOLD_PX = 8;
 const TOUCH_HOLD_DELAY_MS = 140;
@@ -34,6 +38,7 @@ type UseHandDragControllerArgs = {
   localPlayer: LocalPlayerState;
   opponents: OpponentSummary[];
   validTargets: Map<string, DragTargetDefinition>;
+  onValidDropTarget: (target: DragTargetDefinition, cardId: string) => void;
   createInvalidFeedback: (args: {
     card: LocalHandCard;
     targetId: string | null;
@@ -85,6 +90,7 @@ export function useHandDragController({
   localPlayer,
   opponents,
   validTargets,
+  onValidDropTarget,
   createInvalidFeedback,
 }: UseHandDragControllerArgs): UseHandDragControllerResult {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -97,6 +103,7 @@ export function useHandDragController({
   const localPlayerRef = useRef(localPlayer);
   const opponentsRef = useRef(opponents);
   const validTargetsRef = useRef(validTargets);
+  const onValidDropTargetRef = useRef(onValidDropTarget);
   const createInvalidFeedbackRef = useRef(createInvalidFeedback);
 
   useEffect(() => {
@@ -122,6 +129,10 @@ export function useHandDragController({
   useEffect(() => {
     validTargetsRef.current = validTargets;
   }, [validTargets]);
+
+  useEffect(() => {
+    onValidDropTargetRef.current = onValidDropTarget;
+  }, [onValidDropTarget]);
 
   useEffect(() => {
     createInvalidFeedbackRef.current = createInvalidFeedback;
@@ -322,6 +333,7 @@ export function useHandDragController({
 
         if (target) {
           dispatch({ type: "CANCEL_DRAG" });
+          onValidDropTargetRef.current(target, session.cardId);
         } else {
           const card = activeCardRef.current;
           const targetId = resolveBoardTargetId(pointerEvent.clientX, pointerEvent.clientY);
@@ -420,11 +432,14 @@ export function useHandDragController({
     cardId: string,
     event: ReactPointerEvent<HTMLButtonElement>,
   ) {
-    if (!isCurrentTurn || interactionState.mode !== "selected") {
+    if (!isCurrentTurn) {
       return;
     }
 
-    if (interactionState.origin !== "hand" || interactionState.selectedCardId !== cardId) {
+    if (
+      interactionState.mode !== "idle" &&
+      interactionState.mode !== "selected"
+    ) {
       return;
     }
 
@@ -434,6 +449,42 @@ export function useHandDragController({
 
     if (event.pointerType === "mouse" && event.button !== 0) {
       return;
+    }
+
+    const card = localPlayerRef.current.handCards.find((entry) => entry.id === cardId);
+    if (!card) {
+      return;
+    }
+
+    const isAlreadySelected =
+      interactionState.mode === "selected" &&
+      interactionState.origin === "hand" &&
+      interactionState.selectedCardId === cardId;
+
+    if (!isAlreadySelected) {
+      const intent = createHandSelectionIntent(card);
+      const immediateTargets = getValidDragTargets(
+        card,
+        intent,
+        localPlayerRef.current,
+        opponentsRef.current,
+      );
+
+      dispatch({
+        type: "SELECT_CARD",
+        origin: "hand",
+        intent,
+      });
+      interactionStateRef.current = {
+        mode: "selected",
+        selectedCardId: intent.cardId,
+        origin: "hand",
+        intent,
+        expandedOpponentId: null,
+        invalidFeedback: null,
+        endTurnConfirmOpen: false,
+      };
+      validTargetsRef.current = new Map(immediateTargets.map((target) => [target.id, target]));
     }
 
     finishPendingSession();

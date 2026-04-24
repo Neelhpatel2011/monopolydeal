@@ -87,6 +87,7 @@ def get_game_state(game_id: str) -> GameSummary:
 @router.get("/games/{game_id}/view", response_model=PlayerView)
 def get_player_view(
     game_id: str,
+    request: Request,
     player_id: str = Query(..., description="Player id to render view for"),
 ) -> PlayerView:
     _require_uuid(game_id, name="game_id")
@@ -96,7 +97,7 @@ def get_player_view(
         raise _map_value_error(e)
     if player_id not in state.players:
         raise HTTPException(status_code=404, detail="Unknown player_id")
-    return build_player_view(state, player_id)
+    return build_player_view(state, player_id, request.app.state.card_catalog)
 
 
 # DELETE METHODS:

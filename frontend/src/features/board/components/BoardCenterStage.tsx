@@ -1,17 +1,20 @@
 import { BoardCardBack } from "../../../components/cards/BoardCardBack";
 import { getRenderCardByCatalogId } from "../../../components/cards/boardCardAdapters";
 import { ScaledMonopolyCard } from "../../../components/cards/ScaledMonopolyCard";
+import { BOARD_PLAY_TARGET_ID } from "../../drag-targeting/model/target-preview";
 
 type BoardCenterStageProps = {
   drawCount: number;
   discardCount: number;
   discardTopCardId?: string;
+  onPlayZonePress?: () => void;
 };
 
 export function BoardCenterStage({
   drawCount,
   discardCount,
   discardTopCardId = "action-just-say-no",
+  onPlayZonePress,
 }: BoardCenterStageProps) {
   void drawCount;
   void discardCount;
@@ -27,10 +30,15 @@ export function BoardCenterStage({
         <p className="pile-card__label">Deck</p>
       </div>
 
-      <div className="drop-zone-panel">
+      <button
+        type="button"
+        className="drop-zone-panel"
+        data-board-target-id={BOARD_PLAY_TARGET_ID}
+        onClick={onPlayZonePress}
+      >
         <p className="drop-zone-panel__mark" aria-hidden="true">GREED</p>
         <p className="drop-zone-panel__subtitle">Drag a card here to play an action</p>
-      </div>
+      </button>
 
       <div className="pile-card pile-card--right">
         <div className="pile-card__stack">

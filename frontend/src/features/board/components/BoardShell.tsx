@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useReducer, useRef } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { BoardCenterStage } from "./BoardCenterStage";
 import { BoardHeader } from "./BoardHeader";
 import { LocalPlayerPanel } from "./LocalPlayerPanel";
 import { BoardOverlayHost } from "./BoardOverlayHost";
-import type { LocalPlayerState } from "../model/localPlayer";
+import type { LocalHandCard, LocalPlayerState } from "../model/localPlayer";
 import { OpponentRail } from "../../opponents/components/OpponentRail";
 import { OpponentDetailSheet } from "../../opponents/components/OpponentDetailSheet";
 import { DragPreview } from "../../drag-targeting/components/DragPreview";
@@ -29,16 +29,26 @@ import {
 } from "../model/interaction-selectors";
 import { useHandDragController } from "../hooks/useHandDragController";
 import {
+  BOARD_PLAY_TARGET_ID,
   LOCAL_BANK_TARGET_ID,
   LOCAL_TABLEAU_TARGET_ID,
   buildActionHintCopy,
   buildInvalidReleaseFeedback,
+  getOpponentTargetId,
   getValidDragTargets,
+  type DragTargetDefinition,
 } from "../../drag-targeting/model/target-preview";
 import type { BoardBlockingState } from "../model/blocking-overlays";
 import { resolveBoardBlockingOverlay } from "../model/blocking-overlays";
 import { deriveEndTurnControlState } from "../../turn-controls/end-turn-policy";
 import { EndTurnConfirmSheet } from "../../turn-controls/components/EndTurnConfirmSheet";
+import type { BackendActionRequest, BackendPendingResponse, BackendPlayerView } from "../../../integration/backend/contracts";
+import { ActionComposerSheet } from "./ActionComposerSheet";
+import { buildActionRequestFromIntent, buildChangeWildRequest, applyChosenValue } from "../model/backendActionBridge";
+import { PendingPromptSheet } from "./PendingPromptSheet";
+import { PaymentFlowSheet } from "./PaymentFlowSheet";
+import { DiscardFlowSheet } from "./DiscardFlowSheet";
+import { getPendingPaymentSelectionSummary } from "../../../integration/backend/adapters";
 
 type BoardShellProps = {
   roundLabel: string;
@@ -46,9 +56,34 @@ type BoardShellProps = {
   opponentSummaries: OpponentSummary[];
   opponentDetails: OpponentDetail[];
   localPlayer: LocalPlayerState;
+  playerView: BackendPlayerView;
   discardTopCardId?: string;
   blockingState?: BoardBlockingState | null;
-  onConfirmEndTurn?: () => void | Promise<void>;
+  drawCount?: number;
+  onSubmitAction: (request: BackendActionRequest) => Promise<{
+    status: "ok" | "error";
+    message?: string | null;
+  }>;
+  onSubmitPendingResponse: (pendingId: string, response: BackendPendingResponse) => Promise<{
+    status: "ok" | "error";
+    message?: string | null;
+  }>;
+  onSubmitPayment: (selection: {
+    bank: string[];
+    properties: string[];
+    buildings: string[];
+  }) => Promise<{
+    status: "ok" | "error";
+    message?: string | null;
+  }>;
+  onSubmitDiscard: (cardIds: string[]) => Promise<{
+    status: "ok" | "error";
+    message?: string | null;
+  }>;
+  onConfirmEndTurn?: () => Promise<{
+    status: "ok" | "error";
+    message?: string | null;
+  }>;
 };
 
 export function BoardShell({
@@ -57,8 +92,14 @@ export function BoardShell({
   opponentSummaries,
   opponentDetails,
   localPlayer,
+  playerView,
   discardTopCardId,
   blockingState = null,
+  drawCount = 0,
+  onSubmitAction,
+  onSubmitPendingResponse,
+  onSubmitPayment,
+  onSubmitDiscard,
   onConfirmEndTurn,
 }: BoardShellProps) {
   const isCurrentTurn = localPlayer.isCurrentTurn;
@@ -82,6 +123,8 @@ export function BoardShell({
     () => resolveBoardBlockingOverlay(blockingState),
     [blockingState],
   );
+  const [composerIntent, setComposerIntent] = useState<typeof activeIntent>(null);
+  const [isPromptSubmitting, setIsPromptSubmitting] = useState(false);
   const hasOpponentDetailOpen = expandedOpponentId !== null;
   const canBrowseOpponents =
     selectCanBrowseOpponents(interactionState) && activeBlockingOverlay === null;
@@ -186,6 +229,7 @@ export function BoardShell({
     localPlayer,
     opponents: opponentSummaries,
     validTargets: validTargetMap,
+    onValidDropTarget: handleResolvedDropTarget,
     createInvalidFeedback: ({ card, targetId, validTargets: availableTargets }) =>
       buildInvalidReleaseFeedback({
         card,
@@ -198,6 +242,11 @@ export function BoardShell({
   const expandedOpponent = useMemo(
     () => opponentDetails.find((opponent) => opponent.id === expandedOpponentId) ?? null,
     [expandedOpponentId, opponentDetails],
+  );
+  const pendingPrompt = playerView.pending_prompts[0] ?? null;
+  const pendingPayment = useMemo(
+    () => getPendingPaymentSelectionSummary(playerView, localPlayer.id),
+    [localPlayer.id, playerView],
   );
 
   useEffect(() => {
@@ -328,7 +377,7 @@ export function BoardShell({
     dispatch({
       type: "SELECT_CARD",
       origin: "hand",
-      intent: createHandSelectionIntent(cardId, card.label),
+      intent: createHandSelectionIntent(card),
     });
   }
 
@@ -350,7 +399,10 @@ export function BoardShell({
     dispatch({ type: "SUBMIT_END_TURN_START", submissionId });
 
     try {
-      await Promise.resolve(onConfirmEndTurn?.());
+      const result = await Promise.resolve(onConfirmEndTurn?.());
+      if (result?.status === "error") {
+        throw new Error(result.message ?? "End turn failed.");
+      }
       dispatch({ type: "SUBMIT_END_TURN_RESOLVE" });
     } catch {
       dispatch({
@@ -362,6 +414,232 @@ export function BoardShell({
             detail: "Try again once the board is ready.",
           },
         ),
+      });
+    }
+  }
+
+  function resolveIntentContext(cardId?: string): {
+    card: LocalHandCard;
+    intent: NonNullable<typeof activeIntent>;
+  } | null {
+    const resolvedCardId = cardId ?? activeHandCard?.id ?? null;
+    if (!resolvedCardId) {
+      return null;
+    }
+
+    const card = localPlayer.handCards.find((entry) => entry.id === resolvedCardId) ?? null;
+    if (!card) {
+      return null;
+    }
+
+    const intent =
+      activeIntent && activeIntent.cardId === resolvedCardId
+        ? activeIntent
+        : createHandSelectionIntent(card);
+
+    return { card, intent };
+  }
+
+  async function submitSelectedIntent(
+    intentToSubmit: NonNullable<typeof activeIntent>,
+    cardOverride?: LocalHandCard,
+  ) {
+    const card = cardOverride ?? activeHandCard;
+    if (!card) {
+      return;
+    }
+
+    const submissionId = `action-${Date.now()}`;
+    dispatch({ type: "SUBMIT_ACTION_START", submissionId });
+    const result = await onSubmitAction(
+      buildActionRequestFromIntent({
+        playerId: localPlayer.id,
+        card,
+        intent: intentToSubmit,
+      }),
+    );
+
+    if (result.status === "error") {
+      dispatch({
+        type: "SUBMIT_ACTION_REJECTED",
+        feedback: createInvalidFeedback("rejected", result.message ?? "Action rejected"),
+        preserveSelection: true,
+      });
+      return;
+    }
+
+    setComposerIntent(null);
+    dispatch({ type: "SUBMIT_ACTION_RESOLVE" });
+  }
+
+  function handleIntentTarget(
+    field: "property_color" | "rent_color" | "target_player_id",
+    value: string,
+    cardId?: string,
+  ) {
+    const context = resolveIntentContext(cardId);
+    if (!context) {
+      return;
+    }
+    const nextIntent = applyChosenValue(context.intent, field, value);
+    if (nextIntent.missing.length === 0) {
+      void submitSelectedIntent(nextIntent, context.card);
+      return;
+    }
+    setComposerIntent(nextIntent);
+  }
+
+  function handleResolvedDropTarget(target: DragTargetDefinition, cardId: string) {
+    const context = resolveIntentContext(cardId);
+    if (!context) {
+      return;
+    }
+
+    if (target.id === LOCAL_BANK_TARGET_ID) {
+      handleBankTarget(cardId);
+      return;
+    }
+
+    if (target.id === BOARD_PLAY_TARGET_ID) {
+      handlePlayZonePress(cardId);
+      return;
+    }
+
+    if (target.id === LOCAL_TABLEAU_TARGET_ID) {
+      handleTableauTarget(cardId);
+      return;
+    }
+
+    if (target.id.startsWith(`${LOCAL_TABLEAU_TARGET_ID}:`)) {
+      handleTableauSetTarget(target.id.slice(`${LOCAL_TABLEAU_TARGET_ID}:`.length), cardId);
+      return;
+    }
+
+    if (
+      (target.field === "property_color" ||
+        target.field === "rent_color" ||
+        target.field === "target_player_id") &&
+      typeof target.value === "string"
+    ) {
+      handleIntentTarget(target.field, target.value, context.card.id);
+    }
+  }
+
+  function handlePlayZonePress(cardId?: string) {
+    const context = resolveIntentContext(cardId);
+    if (!context) {
+      return;
+    }
+    if (
+      context.intent.actionType === "play_bank" &&
+      context.card.actionOptions?.cardKind === "money"
+    ) {
+      handleBankTarget(context.card.id);
+      return;
+    }
+    if (context.intent.actionType === "play_property") {
+      handleTableauTarget(context.card.id);
+      return;
+    }
+    if (context.intent.actionType === "play_bank") {
+      return;
+    }
+    if (context.intent.missing.length === 0) {
+      void submitSelectedIntent(context.intent, context.card);
+      return;
+    }
+    setComposerIntent(context.intent);
+  }
+
+  function handleBankTarget(cardId?: string) {
+    const context = resolveIntentContext(cardId);
+    if (!context) {
+      return;
+    }
+    void submitSelectedIntent(
+      {
+        cardId: context.card.id,
+        actionType: "play_bank",
+        chosen: {},
+        missing: [],
+      },
+      context.card,
+    );
+  }
+
+  function handleTableauTarget(cardId?: string) {
+    const context = resolveIntentContext(cardId);
+    if (!context) {
+      return;
+    }
+    if (
+      context.intent.actionType !== "play_property" &&
+      context.intent.actionType !== "play_action_non_counterable"
+    ) {
+      return;
+    }
+    if (context.intent.missing.includes("property_color")) {
+      setComposerIntent(context.intent);
+      return;
+    }
+    if (context.intent.missing.includes("rent_color")) {
+      setComposerIntent(context.intent);
+      return;
+    }
+    void submitSelectedIntent(context.intent, context.card);
+  }
+
+  function handleTableauSetTarget(setId: string, cardId?: string) {
+    const context = resolveIntentContext(cardId);
+    if (!context) {
+      return;
+    }
+    if (
+      context.intent.actionType !== "play_property" &&
+      context.intent.actionType !== "play_action_non_counterable"
+    ) {
+      return;
+    }
+    const set = localPlayer.propertySets.find((entry) => entry.id === setId);
+    if (!set) {
+      return;
+    }
+
+    if (context.intent.missing.includes("property_color")) {
+      handleIntentTarget("property_color", set.backendColor, context.card.id);
+      return;
+    }
+    if (context.intent.missing.includes("rent_color")) {
+      handleIntentTarget("rent_color", set.backendColor, context.card.id);
+      return;
+    }
+    void submitSelectedIntent(context.intent, context.card);
+  }
+
+  function handleOpponentPress(opponentId: string) {
+    if (activeHandCard && validTargets.some((target) => target.id === getOpponentTargetId(opponentId))) {
+      handleIntentTarget("target_player_id", opponentId);
+      return;
+    }
+
+    if (!canBrowseOpponents) {
+      return;
+    }
+    dispatch({ type: "OPEN_OPPONENT_DETAIL", opponentId });
+  }
+
+  async function handleChangeWild(cardId: string, newColor: string) {
+    const result = await onSubmitAction(
+      buildChangeWildRequest({
+        playerId: localPlayer.id,
+        cardId,
+        newColor,
+      }),
+    );
+    if (result.status === "error") {
+      dispatch({
+        type: "SERVER_DRAFT_INVALIDATED",
+        feedback: createInvalidFeedback("blocked", result.message ?? "Wild reassignment failed."),
       });
     }
   }
@@ -384,15 +662,14 @@ export function BoardShell({
           targetableOpponentIds={targetableOpponentIds}
           invalidOpponentId={invalidOpponentId}
           previewedOpponentId={previewedOpponentId}
-          onOpen={(opponentId) => {
-            if (!canBrowseOpponents) {
-              return;
-            }
-
-            dispatch({ type: "OPEN_OPPONENT_DETAIL", opponentId });
-          }}
+          onOpen={handleOpponentPress}
         />
-        <BoardCenterStage drawCount={8} discardCount={5} discardTopCardId={discardTopCardId} />
+        <BoardCenterStage
+          drawCount={drawCount}
+          discardCount={playerView.discard_pile.length}
+          discardTopCardId={discardTopCardId}
+          onPlayZonePress={handlePlayZonePress}
+        />
         <LocalPlayerPanel
           {...localPlayer}
           selectedHandCardId={selectedOrigin === "hand" ? selectedCardId : null}
@@ -428,6 +705,10 @@ export function BoardShell({
 
             handDragController.handleCardPointerDown(cardId, event);
           }}
+          onTargetTableau={handleTableauTarget}
+          onTargetTableauSet={handleTableauSetTarget}
+          onTargetBank={handleBankTarget}
+          onChangeWild={handleChangeWild}
         />
       </div>
 
@@ -439,7 +720,7 @@ export function BoardShell({
       ) : null}
 
       {expandedOpponent &&
-      activeBlockingOverlay === null &&
+      activeBlockingOverlay?.kind !== "game_over" &&
       !endTurnConfirmOpen &&
       interactionState.mode !== "submittingEndTurn" ? (
         <OpponentDetailSheet
@@ -460,7 +741,58 @@ export function BoardShell({
         onConfirm={handleConfirmEndTurn}
       />
 
-      <BoardOverlayHost overlay={activeBlockingOverlay} />
+      <BoardOverlayHost overlay={activeBlockingOverlay?.kind === "game_over" ? activeBlockingOverlay : null} />
+
+      {composerIntent && activeHandCard ? (
+        <ActionComposerSheet
+          playerId={localPlayer.id}
+          card={activeHandCard}
+          intent={composerIntent}
+          onClose={() => setComposerIntent(null)}
+          onSubmit={async (intentToSubmit) => {
+            await submitSelectedIntent(intentToSubmit);
+          }}
+        />
+      ) : null}
+
+      {activeBlockingOverlay?.kind === "pending_prompt" && pendingPrompt ? (
+        <PendingPromptSheet
+          prompt={pendingPrompt.prompt}
+          isSubmitting={isPromptSubmitting}
+          onAccept={async () => {
+            setIsPromptSubmitting(true);
+            try {
+              await onSubmitPendingResponse(pendingPrompt.pending_id, "accept");
+            } finally {
+              setIsPromptSubmitting(false);
+            }
+          }}
+          onJustSayNo={async () => {
+            setIsPromptSubmitting(true);
+            try {
+              await onSubmitPendingResponse(pendingPrompt.pending_id, "just_say_no");
+            } finally {
+              setIsPromptSubmitting(false);
+            }
+          }}
+        />
+      ) : null}
+
+      {activeBlockingOverlay?.kind === "payment_required" && pendingPayment ? (
+        <PaymentFlowSheet
+          amountDue={pendingPayment.amount}
+          localPlayer={localPlayer}
+          onSubmit={onSubmitPayment}
+        />
+      ) : null}
+
+      {blockingState?.discardRequired ? (
+        <DiscardFlowSheet
+          requiredCount={blockingState.discardRequired.discardCount ?? 0}
+          cards={localPlayer.handCards}
+          onSubmit={onSubmitDiscard}
+        />
+      ) : null}
     </main>
   );
 }

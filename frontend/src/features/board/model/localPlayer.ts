@@ -24,8 +24,16 @@ export type LocalPropertySet = {
   count: number;
   targetSize: number;
   isComplete?: boolean;
+  currentRentAmount?: number | null;
+  buildingBonusAmount?: number;
+  wildCount?: number;
   cards: LocalPropertyCard[];
   buildings?: Array<"House" | "Hotel">;
+  wildReassignments?: Array<{
+    cardId: string;
+    availableColors: string[];
+  }>;
+  backendColor: string;
 };
 
 export type LocalBankCard = BoardMoneyCardRef;
@@ -33,6 +41,7 @@ export type LocalBankCard = BoardMoneyCardRef;
 export type LocalHandCard = BoardHandCardRef;
 
 export type LocalPlayerState = {
+  id: string;
   name: string;
   isCurrentTurn: boolean;
   handCount: number;

@@ -12,13 +12,15 @@ import type {
   TargetScope,
 } from "../../board/model/interaction-types";
 import type { OpponentSummary } from "../../opponents/model/opponentExpansion";
+import { getBackendCardMeta } from "../../../integration/backend/catalog";
 
 export const LOCAL_TABLEAU_TARGET_ID = "local-tableau";
 export const LOCAL_BANK_TARGET_ID = "local-bank";
+export const BOARD_PLAY_TARGET_ID = "board-play";
 
 export type DragTargetDefinition = {
   id: string;
-  scope: Extract<TargetScope, "tableau" | "bank" | "opponent">;
+  scope: Extract<TargetScope, "board" | "tableau" | "bank" | "opponent">;
   label: string;
   detail: string;
   field: ActionFieldKey | null;
@@ -42,7 +44,7 @@ export function getOpponentTargetId(opponentId: string): string {
 
 function describeValidTargetRecovery(validTargets: DragTargetDefinition[]): string {
   if (validTargets.length === 0) {
-    return "Keep the card selected and try again when a highlighted preview surface is available.";
+    return "Keep the card selected and try again when a highlighted drop surface is available.";
   }
 
   const scopes = Array.from(new Set(validTargets.map((target) => target.scope)));
@@ -50,11 +52,11 @@ function describeValidTargetRecovery(validTargets: DragTargetDefinition[]): stri
   if (scopes.length === 1) {
     switch (scopes[0]) {
       case "bank":
-        return "Keep the card selected and aim for your highlighted bank.";
+        return "Keep the card selected and drop it on your highlighted bank.";
       case "tableau":
-        return "Keep the card selected and aim for your highlighted tableau.";
+        return "Keep the card selected and drop it on your highlighted tableau.";
       case "opponent":
-        return "Keep the card selected and aim for a highlighted opponent.";
+        return "Keep the card selected and drop it on a highlighted opponent.";
       default:
         break;
     }
@@ -142,8 +144,47 @@ export function getValidDragTargets(
   localPlayer: LocalPlayerState,
   opponents: OpponentSummary[],
 ): DragTargetDefinition[] {
-  const profile = deriveHandCardIntentProfile(card.label);
+  const profile = deriveHandCardIntentProfile(card);
+  const meta = getBackendCardMeta(card.backendCardId);
+  const propertyColorField = card.actionOptions?.fieldOptions.find(
+    (field) => field.field === "property_color",
+  );
+  const rentColorField = card.actionOptions?.fieldOptions.find(
+    (field) => field.field === "rent_color",
+  );
+  const targetPlayerField = card.actionOptions?.fieldOptions.find(
+    (field) => field.field === "target_player_id",
+  );
   const targets: DragTargetDefinition[] = [];
+  const chosenTargetPlayerId =
+    typeof intent.chosen.target_player_id === "string" ? intent.chosen.target_player_id : null;
+  const allowedPropertyColors = new Set(
+    propertyColorField?.options.map((option) => option.value) ?? [],
+  );
+
+  function getFieldChoiceCount(field: ActionFieldKey): number {
+    const fieldView = card.actionOptions?.fieldOptions.find((entry) => entry.field === field);
+    if (!fieldView) {
+      return 0;
+    }
+
+    if (fieldView.options.length > 0) {
+      return fieldView.options.length;
+    }
+
+    if (chosenTargetPlayerId && fieldView.byTarget[chosenTargetPlayerId]) {
+      return fieldView.byTarget[chosenTargetPlayerId]?.length ?? 0;
+    }
+
+    return Object.values(fieldView.byTarget).reduce(
+      (count, options) => count + options.length,
+      0,
+    );
+  }
+
+  function canAdvanceIntentFromCurrentChoices() {
+    return intent.missing.every((field) => getFieldChoiceCount(field) > 0);
+  }
 
   if (profile.canBank) {
     targets.push({
@@ -156,7 +197,27 @@ export function getValidDragTargets(
     });
   }
 
-  if (profile.actionType === "playProperty") {
+  if (profile.category === "money" && profile.canBank) {
+    targets.push({
+      id: BOARD_PLAY_TARGET_ID,
+      scope: "board",
+      label: "Play area",
+      detail: "Drop here to commit this money card to your bank.",
+      field: null,
+      value: null,
+    });
+  }
+
+  if (profile.actionType === "play_property") {
+    targets.push({
+      id: BOARD_PLAY_TARGET_ID,
+      scope: "board",
+      label: "Play area",
+      detail: "Drop here to commit this property to your tableau.",
+      field: null,
+      value: null,
+    });
+
     targets.push({
       id: LOCAL_TABLEAU_TARGET_ID,
       scope: "tableau",
@@ -174,8 +235,16 @@ export function getValidDragTargets(
 
       if (
         propertyColor &&
-        propertySet.color !== propertyColor &&
-        card.label !== "Wild"
+        propertySet.backendColor !== propertyColor &&
+        propertyColorField?.options.length !== 0
+      ) {
+        continue;
+      }
+
+      if (
+        !propertyColor &&
+        propertyColorField?.options.length &&
+        !allowedPropertyColors.has(propertySet.backendColor)
       ) {
         continue;
       }
@@ -185,40 +254,71 @@ export function getValidDragTargets(
         scope: "tableau",
         label: `${propertySet.name} set`,
         detail: `Preview the card on your ${propertySet.name} property set.`,
-        field: card.label === "Wild" ? "property_color" : null,
-        value: propertySet.color,
+        field: propertyColorField?.options.length ? "property_color" : null,
+        value: propertySet.backendColor,
       });
     }
   }
 
-  if (profile.actionType === "rent") {
-    for (const opponent of opponents) {
-      targets.push({
-        id: getOpponentTargetId(opponent.id),
-        scope: "opponent",
-        label: opponent.name,
-        detail: `Preview ${opponent.name} as the rent target.`,
-        field: "target_player_id",
-        value: opponent.id,
-      });
-    }
-  }
+  if (meta.effectType === "building" && (rentColorField?.options.length ?? 0) > 0) {
+    targets.push({
+      id: LOCAL_TABLEAU_TARGET_ID,
+      scope: "tableau",
+      label: "Your tableau",
+      detail: "Choose where to place this building in your property area.",
+      field: null,
+      value: null,
+    });
 
-  if (profile.actionType === "dealBreaker") {
-    for (const opponent of opponents) {
-      const completeSets = opponent.properties.filter((property) => property.isComplete);
+    for (const propertySet of localPlayer.propertySets) {
+      const canPlaceInSet = rentColorField?.options.some(
+        (option) => option.value === propertySet.backendColor,
+      );
 
-      if (completeSets.length === 0) {
+      if (!canPlaceInSet) {
         continue;
       }
 
       targets.push({
-        id: getOpponentTargetId(opponent.id),
+        id: getLocalTableauSetTargetId(propertySet.id),
+        scope: "tableau",
+        label: `${propertySet.name} set`,
+        detail: `Place this building on your ${propertySet.name} set.`,
+        field: "rent_color",
+        value: propertySet.backendColor,
+      });
+    }
+  }
+
+  if (
+    profile.category !== "money" &&
+    meta.effectType !== "building" &&
+    (profile.actionType === "play_action_non_counterable" ||
+      profile.actionType === "play_action_counterable") &&
+    (intent.missing.length === 0 || canAdvanceIntentFromCurrentChoices())
+  ) {
+    targets.push({
+      id: BOARD_PLAY_TARGET_ID,
+      scope: "board",
+      label: "Play area",
+      detail: "Submit the card to the center play area.",
+      field: null,
+      value: null,
+    });
+  }
+
+  if (profile.actionType === "play_action_counterable" && targetPlayerField) {
+    for (const option of targetPlayerField.options) {
+      const opponent = opponents.find((entry) => entry.id === option.value);
+      targets.push({
+        id: getOpponentTargetId(option.value),
         scope: "opponent",
-        label: opponent.name,
-        detail: `Preview ${opponent.name}; ${completeSets.length} complete set${completeSets.length === 1 ? "" : "s"} available.`,
+        label: opponent?.name ?? option.label,
+        detail:
+          option.detail ??
+          `Target ${opponent?.name ?? option.label} for this action.`,
         field: "target_player_id",
-        value: opponent.id,
+        value: option.value,
       });
     }
   }
@@ -277,7 +377,7 @@ export function buildActionHintCopy(args: {
       title: invalidFeedback.message,
       detail:
         invalidFeedback.detail ??
-        "Keep the card selected and release over a highlighted target to preview the play.",
+        "Keep the card selected and release over a highlighted target to continue the play.",
       tone: "invalid",
     };
   }
@@ -286,7 +386,7 @@ export function buildActionHintCopy(args: {
     return {
       eyebrow: "Turn",
       title: "Play up to 3 cards",
-      detail: "Tap a card to inspect it, then drag toward a highlighted surface to preview the play.",
+      detail: "Tap a card to inspect it, then drag it to bank, tableau, or the play area.",
       tone: "default",
     };
   }
@@ -303,8 +403,8 @@ export function buildActionHintCopy(args: {
           }.`
         : previewTarget.detail;
     const nextMessage = nextField
-      ? ` Next: choose ${formatActionFieldLabel(nextField)}.`
-      : " Release still only previews in this slice.";
+      ? ` Release to lock this step, then choose ${formatActionFieldLabel(nextField)}.`
+      : " Release to submit this play.";
 
     return {
       eyebrow: "Target Preview",
@@ -323,7 +423,7 @@ export function buildActionHintCopy(args: {
     return {
       eyebrow: "Drag",
       title: `Move ${card.label} across valid targets`,
-      detail: `Lit ${targetSummary || "board"} surfaces show preview-only targets. Leaving them clears the preview safely.`,
+      detail: `Lit ${targetSummary || "board"} surfaces are live drop targets. Leaving them clears the current target safely.`,
       tone: "active",
     };
   }
@@ -331,7 +431,7 @@ export function buildActionHintCopy(args: {
   return {
     eyebrow: "Selected Card",
     title: `${card.label} is ready`,
-    detail: `${validTargets.length} preview target${validTargets.length === 1 ? "" : "s"} available. Drag to inspect the next step without submitting.`,
+    detail: `${validTargets.length} drop target${validTargets.length === 1 ? "" : "s"} available. Drag to bank it, play it, or continue the required choices.`,
     tone: "active",
   };
 }

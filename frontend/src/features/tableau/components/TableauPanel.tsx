@@ -15,6 +15,9 @@ type TableauPanelProps = {
   targetableSetIds?: string[];
   previewedSetId?: string | null;
   invalidSetId?: string | null;
+  onTargetTableau?: () => void;
+  onTargetSet?: (setId: string) => void;
+  onChangeWild?: (cardId: string, newColor: string) => Promise<void>;
 };
 
 export function TableauPanel({
@@ -25,6 +28,9 @@ export function TableauPanel({
   targetableSetIds = [],
   previewedSetId = null,
   invalidSetId = null,
+  onTargetTableau,
+  onTargetSet,
+  onChangeWild,
 }: TableauPanelProps) {
   const [expandedSetId, setExpandedSetId] = useState<string | null>(null);
   const targetableSetIdSet = useMemo(() => new Set(targetableSetIds), [targetableSetIds]);
@@ -42,6 +48,11 @@ export function TableauPanel({
         }${isInvalid ? " tableau-panel--invalid" : ""}`}
         aria-label="Played property sets"
         data-board-target-id={LOCAL_TABLEAU_TARGET_ID}
+        onClick={(event) => {
+          if (isTargetable && event.target === event.currentTarget) {
+            onTargetTableau?.();
+          }
+        }}
       >
         <div className="tableau-panel__sets" aria-label="Property sets">
           {sets.map((set) => {
@@ -56,6 +67,7 @@ export function TableauPanel({
                 isInvalid={invalidSetId === setTargetId}
                 interactionLocked={interactionLocked}
                 onOpen={() => setExpandedSetId(set.id)}
+                onTargetPress={onTargetSet}
               />
             );
           })}
@@ -65,6 +77,8 @@ export function TableauPanel({
       {expandedSet ? (
         <PropertySetDetailSheet
           set={expandedSet}
+          allSets={sets}
+          onChangeWild={onChangeWild}
           onClose={() => setExpandedSetId(null)}
         />
       ) : null}

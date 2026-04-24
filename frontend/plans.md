@@ -435,3 +435,28 @@ The interaction layer is ready when:
 - invalid target behavior is obvious
 - end-turn is safe and non-intrusive
 - responsive behavior still holds
+
+## Backend Integration Notes
+
+The live board now treats the backend as the source of truth.
+
+- `frontend/src/integration/backend/contracts.ts`
+  Purpose: typed DTO boundary for REST and websocket payloads.
+- `frontend/src/integration/backend/client.ts`
+  Purpose: transport only.
+- `frontend/src/integration/backend/catalog.ts`
+  Purpose: backend card metadata + backend-card-id to approved UI-card mapping.
+- `frontend/src/integration/backend/adapters.ts`
+  Purpose: shape backend `PlayerView` into board-facing UI models only.
+- `frontend/src/features/board/hooks/useBoardSession.ts`
+  Purpose: board orchestration, bootstrap, fetch, websocket sync, and action submission.
+
+Rules:
+- backend owns Monopoly Deal logic, legality, prompts, payments, and state transitions
+- frontend may shape backend data for rendering, but must not recreate rules
+- surface-specific card sizes are only outer scale changes on canonical card faces
+- `PlayerView` now carries additive backend-derived UI fields for:
+  - per-hand-card action options
+  - property-set summaries
+  - wild reassignment options
+- prefer consuming those additive fields over inferring action semantics or rent/set state in the frontend
