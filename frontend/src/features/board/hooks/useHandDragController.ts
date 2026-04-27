@@ -485,6 +485,7 @@ export function useHandDragController({
         endTurnConfirmOpen: false,
       };
       validTargetsRef.current = new Map(immediateTargets.map((target) => [target.id, target]));
+      suppressNextClick(cardId);
     }
 
     finishPendingSession();

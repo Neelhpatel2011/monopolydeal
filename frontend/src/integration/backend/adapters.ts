@@ -40,6 +40,27 @@ function sumCardValues(cardIds: string[]) {
   return cardIds.reduce((total, cardId) => total + getBackendCardMeta(cardId).moneyValue, 0);
 }
 
+function sortBankCardIds(cardIds: string[]) {
+  return [...cardIds].sort((left, right) => {
+    const leftMeta = getBackendCardMeta(left);
+    const rightMeta = getBackendCardMeta(right);
+
+    if (rightMeta.moneyValue !== leftMeta.moneyValue) {
+      return rightMeta.moneyValue - leftMeta.moneyValue;
+    }
+
+    return leftMeta.name.localeCompare(rightMeta.name);
+  });
+}
+
+function sortPropertyEntries<T extends Record<string, string[]>>(properties: T) {
+  return Object.entries(properties)
+    .filter(([, cardIds]) => cardIds.length > 0)
+    .sort(([leftColor], [rightColor]) =>
+      formatColorLabel(leftColor).localeCompare(formatColorLabel(rightColor)),
+    );
+}
+
 function toBuildingKinds(buildingIds: string[] | undefined): Array<"House" | "Hotel"> {
   return (buildingIds ?? [])
     .map((cardId) => getBackendCardMeta(cardId).name)
@@ -123,8 +144,10 @@ function toOpponentDetail(
   player: BackendPlayerPublicView,
   index: number,
   currentPlayerId: string | null | undefined,
+  winnerId: string | null | undefined,
 ): OpponentDetail {
-  const propertyEntries = Object.entries(player.properties).filter(([, cardIds]) => cardIds.length > 0);
+  const sortedBank = sortBankCardIds(player.bank);
+  const propertyEntries = sortPropertyEntries(player.properties);
   const propertySets = propertyEntries.map(([color, cardIds]) =>
     toOpponentPropertySet(
       player.id,
@@ -144,11 +167,12 @@ function toOpponentDetail(
     avatarInitial: player.id.charAt(0).toUpperCase(),
     avatarTone: getAvatarTone(index),
     handCount: player.hand_count,
-    bankTotal: formatBankValue(sumCardValues(player.bank)),
+    bankTotal: formatBankValue(sumCardValues(sortedBank)),
     properties,
     propertySets,
-    moneyCards: player.bank.map((cardId, cardIndex) => buildBankCardRef(cardId, cardIndex)),
+    moneyCards: sortedBank.map((cardId, cardIndex) => buildBankCardRef(cardId, cardIndex)),
     isCurrentPlayer: currentPlayerId === player.id,
+    isWinner: winnerId === player.id,
   };
 }
 
@@ -172,9 +196,16 @@ function buildBlockingState(
     | null,
 ): BoardBlockingState | null {
   if (view.game_over?.winner_id) {
+    const winnerId = view.game_over.winner_id;
+    const didLocalPlayerWin = winnerId === view.you.id;
+
     return {
       gameOver: {
-        winnerName: view.game_over.winner_id,
+        winnerName: winnerId,
+        title: didLocalPlayerWin ? "You win" : "You lose",
+        detail: didLocalPlayerWin
+          ? "You completed the winning board. The final board state is shown below."
+          : `${winnerId} won the round. The final board state is shown below.`,
       },
     };
   }
@@ -223,7 +254,9 @@ export function adaptBackendPlayerViewToBoard(args: {
     | null;
 }): BoardViewModel {
   const { view, discardRequired } = args;
-  const localPropertyEntries = Object.entries(view.you.properties).filter(([, cardIds]) => cardIds.length > 0);
+  const winnerId = view.game_over?.winner_id ?? null;
+  const sortedLocalBank = sortBankCardIds(view.you.bank);
+  const localPropertyEntries = sortPropertyEntries(view.you.properties);
   const propertySets = localPropertyEntries.map(([color, cardIds]) =>
     toPropertySet(
       view.you.id,
@@ -238,16 +271,16 @@ export function adaptBackendPlayerViewToBoard(args: {
     name: view.you.id,
     isCurrentTurn: view.current_player_id === view.you.id,
     handCount: view.you.hand_count,
-    bankTotal: formatBankValue(sumCardValues(view.you.bank)),
+    bankTotal: formatBankValue(sumCardValues(sortedLocalBank)),
     handCards: view.you.hand.map((cardId, index) =>
       buildHandCardRef(cardId, index, view.you.available_actions[cardId]),
     ),
     propertySets,
-    bankCards: view.you.bank.map((cardId, index) => buildBankCardRef(cardId, index)),
+    bankCards: sortedLocalBank.map((cardId, index) => buildBankCardRef(cardId, index)),
   };
 
   const opponentDetails = view.others.map((player, index) =>
-    toOpponentDetail(player, index, view.current_player_id),
+    toOpponentDetail(player, index, view.current_player_id, winnerId),
   );
 
   return {

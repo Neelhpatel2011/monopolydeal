@@ -16,6 +16,7 @@ export type TargetScope = "board" | "opponent" | "tableau" | "bank" | "discard" 
 export type ActionFieldKey =
   | "property_color"
   | "rent_color"
+  | "double_rent_ids"
   | "target_player_id"
   | "steal_card_id"
   | "give_card_id"

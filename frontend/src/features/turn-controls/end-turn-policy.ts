@@ -7,6 +7,7 @@ type DeriveEndTurnControlStateArgs = {
   blockingOverlay: ResolvedBoardOverlay | null;
   interactionState: BoardInteractionState;
   isCurrentTurn: boolean;
+  currentTurnPlayerName?: string | null;
 };
 
 export function deriveEndTurnControlState({
@@ -14,13 +15,16 @@ export function deriveEndTurnControlState({
   blockingOverlay,
   interactionState,
   isCurrentTurn,
+  currentTurnPlayerName,
 }: DeriveEndTurnControlStateArgs): EndTurnControlState {
   if (!isCurrentTurn) {
     return {
       disabled: true,
       emphasis: "muted",
       buttonLabel: "End Turn",
-      helperText: "Waiting for your turn",
+      helperText: currentTurnPlayerName
+        ? `Waiting for ${currentTurnPlayerName}`
+        : "Waiting for the current turn",
     };
   }
 

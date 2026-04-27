@@ -39,38 +39,58 @@ export function TableauPanel({
     [expandedSetId, sets],
   );
   const interactionLocked = isTargetable || isPreviewed || isInvalid;
+  const isCondensed = sets.length > 4;
 
   return (
     <>
       <section
-        className={`tableau-panel${isTargetable ? " tableau-panel--targetable" : ""}${
+        className={`tableau-panel${isCondensed ? " tableau-panel--condensed" : ""}${
+          isTargetable ? " tableau-panel--targetable" : ""
+        }${
           isPreviewed ? " tableau-panel--previewed" : ""
         }${isInvalid ? " tableau-panel--invalid" : ""}`}
         aria-label="Played property sets"
         data-board-target-id={LOCAL_TABLEAU_TARGET_ID}
+        onWheel={(event) => {
+          if (!isCondensed) {
+            return;
+          }
+
+          const panel = event.currentTarget;
+          if (panel.scrollHeight <= panel.clientHeight) {
+            return;
+          }
+
+          if (Math.abs(event.deltaY) >= Math.abs(event.deltaX)) {
+            panel.scrollTop += event.deltaY;
+            event.preventDefault();
+          }
+        }}
         onClick={(event) => {
           if (isTargetable && event.target === event.currentTarget) {
             onTargetTableau?.();
           }
         }}
       >
-        <div className="tableau-panel__sets" aria-label="Property sets">
-          {sets.map((set) => {
-            const setTargetId = getLocalTableauSetTargetId(set.id);
+        <div className="tableau-panel__viewport">
+          <div className="tableau-panel__sets" aria-label="Property sets">
+            {sets.map((set) => {
+              const setTargetId = getLocalTableauSetTargetId(set.id);
 
-            return (
-              <PropertySetSummaryCard
-                key={set.id}
-                set={set}
-                isTargetable={targetableSetIdSet.has(setTargetId)}
-                isPreviewed={previewedSetId === setTargetId}
-                isInvalid={invalidSetId === setTargetId}
-                interactionLocked={interactionLocked}
-                onOpen={() => setExpandedSetId(set.id)}
-                onTargetPress={onTargetSet}
-              />
-            );
-          })}
+              return (
+                <PropertySetSummaryCard
+                  key={set.id}
+                  set={set}
+                  isTargetable={targetableSetIdSet.has(setTargetId)}
+                  isPreviewed={previewedSetId === setTargetId}
+                  isInvalid={invalidSetId === setTargetId}
+                  interactionLocked={interactionLocked}
+                  onOpen={() => setExpandedSetId(set.id)}
+                  onTargetPress={onTargetSet}
+                />
+              );
+            })}
+          </div>
         </div>
       </section>
 

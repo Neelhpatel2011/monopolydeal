@@ -66,6 +66,8 @@ class HandActionView(BaseModel):
     card_kind: str
     action_type: str
     can_bank: bool = False
+    available_double_rent_count: int = 0
+    available_double_rent_card_id: Optional[str] = None
     required_fields: List[ActionFieldName] = Field(default_factory=list)
     chosen_defaults: Dict[ActionFieldName, str] = Field(default_factory=dict)
     fields: List[FieldOptionsView] = Field(default_factory=list)
@@ -218,6 +220,19 @@ def _build_property_summaries(player: PlayerState, catalog: CardCatalog) -> Dict
 
 def _build_choice_option(value: str, *, label: Optional[str] = None, detail: Optional[str] = None) -> ChoiceOptionView:
     return ChoiceOptionView(value=value, label=label or value, detail=detail)
+
+
+def _get_available_double_rent_modifier(actor: PlayerState, catalog: CardCatalog) -> tuple[str | None, int]:
+    modifier_ids: List[str] = []
+    for held_card_id in actor.hand:
+        held_card = catalog.cards.get(held_card_id)
+        if not held_card or held_card.kind != "action" or not held_card.play:
+            continue
+        if held_card.play.effect != "modifier" or held_card.play.params.get("applies_to") != "rent":
+            continue
+        modifier_ids.append(held_card_id)
+
+    return (modifier_ids[0] if modifier_ids else None, len(modifier_ids))
 
 
 def _get_rent_color_options(player: PlayerState, catalog: CardCatalog, card_id: str) -> List[ChoiceOptionView]:
@@ -380,6 +395,7 @@ def _build_hand_action_view(
         )
 
     if card.kind == "rent":
+        double_rent_card_id, double_rent_count = _get_available_double_rent_modifier(actor, catalog)
         target_options = [
             _build_choice_option(other_id, label=other_id)
             for other_id in state.players.keys()
@@ -390,6 +406,8 @@ def _build_hand_action_view(
             card_kind=card.kind,
             action_type="play_action_counterable",
             can_bank=can_bank,
+            available_double_rent_count=double_rent_count,
+            available_double_rent_card_id=double_rent_card_id,
             required_fields=["target_player_id", "rent_color"],
             fields=[
                 FieldOptionsView(field="target_player_id", options=target_options),
@@ -551,6 +569,7 @@ def build_player_view(
         if pid == player_id:
             continue
         public_payload = other_player_state.model_dump()
+        public_payload["hand_count"] = len(other_player_state.hand)
         public_payload["property_summaries"] = _build_property_summaries(other_player_state, catalog)
         player_public_view = PlayerPublicView(**public_payload)
         others.append(player_public_view)

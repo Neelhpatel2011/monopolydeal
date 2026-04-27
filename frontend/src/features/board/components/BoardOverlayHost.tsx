@@ -2,6 +2,7 @@ import type { ResolvedBoardOverlay } from "../model/blocking-overlays";
 
 type BoardOverlayHostProps = {
   overlay: ResolvedBoardOverlay | null;
+  onDismissGameOver?: () => void;
 };
 
 function getOverlayFooterCopy(kind: ResolvedBoardOverlay["kind"]) {
@@ -19,24 +20,44 @@ function getOverlayFooterCopy(kind: ResolvedBoardOverlay["kind"]) {
   }
 }
 
-export function BoardOverlayHost({ overlay }: BoardOverlayHostProps) {
+export function BoardOverlayHost({
+  overlay,
+  onDismissGameOver,
+}: BoardOverlayHostProps) {
   if (!overlay) {
     return null;
   }
 
+  const isGameOver = overlay.kind === "game_over";
+
   return (
-    <div className="board-overlay-host" role="presentation">
-      <div className="board-overlay-host__backdrop" />
+    <div
+      className={`board-overlay-host${isGameOver ? " board-overlay-host--game-over" : ""}`}
+      role="presentation"
+    >
+      {isGameOver ? null : <div className="board-overlay-host__backdrop" />}
       <section
         className={`board-overlay-host__sheet board-overlay-host__sheet--${overlay.kind}`}
         role="dialog"
-        aria-modal="true"
+        aria-modal={isGameOver ? undefined : true}
         aria-labelledby="board-overlay-title"
         aria-describedby="board-overlay-detail"
       >
         <div className="board-overlay-host__header">
-          <p className="board-overlay-host__eyebrow">{overlay.eyebrow}</p>
-          <span className="board-overlay-host__badge">{overlay.emphasisLabel}</span>
+          <div className="board-overlay-host__header-copy">
+            <p className="board-overlay-host__eyebrow">{overlay.eyebrow}</p>
+            <span className="board-overlay-host__badge">{overlay.emphasisLabel}</span>
+          </div>
+          {isGameOver && onDismissGameOver ? (
+            <button
+              type="button"
+              className="board-overlay-host__dismiss"
+              aria-label="Close game over summary"
+              onClick={onDismissGameOver}
+            >
+              X
+            </button>
+          ) : null}
         </div>
 
         <div className="board-overlay-host__copy">
@@ -44,7 +65,9 @@ export function BoardOverlayHost({ overlay }: BoardOverlayHostProps) {
           <p id="board-overlay-detail">{overlay.detail}</p>
         </div>
 
-        <p className="board-overlay-host__footer">{getOverlayFooterCopy(overlay.kind)}</p>
+        {isGameOver ? null : (
+          <p className="board-overlay-host__footer">{getOverlayFooterCopy(overlay.kind)}</p>
+        )}
       </section>
     </div>
   );

@@ -79,7 +79,7 @@ export function formatTableauColor(color: string): string {
     return "Light Blue";
   }
 
-  if (color === "blue") {
+  if (color === "dark-blue") {
     return "Dark Blue";
   }
 

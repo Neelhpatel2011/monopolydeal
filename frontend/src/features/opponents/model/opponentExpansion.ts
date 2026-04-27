@@ -6,11 +6,13 @@ import type {
 export type OpponentPropertyColor =
   | "brown"
   | "light-blue"
+  | "railroad"
+  | "utility"
   | "green"
   | "yellow"
-  | "purple"
+  | "pink"
   | "orange"
-  | "blue"
+  | "dark-blue"
   | "red";
 
 export type OpponentPropertyProgress = {
@@ -55,6 +57,7 @@ export type OpponentSummary = {
   bankTotal: string;
   properties: OpponentPropertyProgress[];
   isCurrentPlayer?: boolean;
+  isWinner?: boolean;
 };
 
 export type OpponentDetail = OpponentSummary & {
@@ -72,5 +75,6 @@ export function toOpponentSummary(opponent: OpponentDetail): OpponentSummary {
     bankTotal: opponent.bankTotal,
     properties: opponent.properties,
     isCurrentPlayer: opponent.isCurrentPlayer,
+    isWinner: opponent.isWinner,
   };
 }

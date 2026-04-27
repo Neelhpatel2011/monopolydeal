@@ -67,7 +67,7 @@ export type BackendTurnActionView = {
 export type BackendPaymentParticipantView = {
   player_id: string;
   amount: number;
-  status: "pending" | "paid" | "partial" | "canceled";
+  status: "awaiting_response" | "pending" | "paid" | "partial" | "canceled";
   request_id?: string | null;
   paid_amount: number;
 };
@@ -117,6 +117,8 @@ export type BackendHandActionView = {
   card_kind: string;
   action_type: BackendActionType;
   can_bank: boolean;
+  available_double_rent_count: number;
+  available_double_rent_card_id?: string | null;
   required_fields: Array<
     | "property_color"
     | "rent_color"

@@ -248,18 +248,23 @@ export function toTableauColor(color: string) {
     case "light_blue":
       return "light-blue" as const;
     case "dark_blue":
-      return "blue" as const;
+      return "dark-blue" as const;
+    case "railroad":
+      return "railroad" as const;
+    case "utility":
+      return "utility" as const;
+    case "pink":
+      return "pink" as const;
     case "brown":
     case "green":
     case "yellow":
-    case "purple":
     case "orange":
     case "red":
       return normalizeColor(color) as
         | "brown"
         | "green"
         | "yellow"
-        | "purple"
+        | "pink"
         | "orange"
         | "red";
     default:
@@ -282,11 +287,13 @@ export function buildHandCardRef(
     backendCardId: cardId,
     catalogCardId: meta.frontendCatalogCardId,
     label: meta.name,
-    actionOptions: actionOptions
+        actionOptions: actionOptions
       ? {
           actionType: actionOptions.action_type,
           cardKind: actionOptions.card_kind,
           canBank: actionOptions.can_bank,
+          availableDoubleRentCount: actionOptions.available_double_rent_count,
+          availableDoubleRentCardId: actionOptions.available_double_rent_card_id,
           requiredFields: actionOptions.required_fields,
           chosenDefaults: actionOptions.chosen_defaults,
           fieldOptions: actionOptions.fields.map((field) => ({

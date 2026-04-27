@@ -10,7 +10,22 @@ import type {
   BackendRealtimeMessage,
 } from "./contracts";
 
-const API_BASE_URL = (import.meta.env.VITE_BACKEND_URL as string | undefined)?.replace(/\/$/, "") ?? "http://127.0.0.1:8000";
+function resolveApiBaseUrl() {
+  const configuredBaseUrl = (import.meta.env.VITE_BACKEND_URL as string | undefined)?.replace(/\/$/, "");
+  if (configuredBaseUrl) {
+    return configuredBaseUrl;
+  }
+
+  if (typeof window !== "undefined") {
+    const { protocol, hostname } = window.location;
+    const normalizedProtocol = protocol === "https:" ? "https:" : "http:";
+    return `${normalizedProtocol}//${hostname}:8000`;
+  }
+
+  return "http://127.0.0.1:8000";
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 const WS_BASE_URL = API_BASE_URL.replace(/^http/, "ws");
 
 async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {

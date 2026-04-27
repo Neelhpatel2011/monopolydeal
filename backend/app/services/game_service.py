@@ -258,6 +258,15 @@ def add_game_over(response: Dict[str, Any], state: GameState, catalog: CardCatal
         response["game_over"] = {"winner_id": winner_id}
 
 
+def persist_game_state(game_id: str, state: GameState) -> None:
+    if state.winner_id:
+        repo.delete_pending_payments_for_game(game_id)
+        repo.update_game(state, status="completed")
+        return
+
+    repo.update_game(state)
+
+
 async def handle_action(
     game_id: str, req: ActionRequest, catalog: CardCatalog
 ) -> ActionResponse:
@@ -290,11 +299,7 @@ async def handle_action(
     if response.get("status") == "ok":
         response["player_view"] = build_player_view(state, req.player_id, catalog)
     response.pop("state", None)
-    if state.winner_id:
-        repo.delete_pending_payments_for_game(game_id)
-        repo.delete_game(game_id)
-    else:
-        repo.update_game(state)
+    persist_game_state(game_id, state)
 
     await manager.broadcast_player_views(game_id, state)
     return response
@@ -346,11 +351,7 @@ async def handle_pending(
     if response.get("status") == "ok":
         response["player_view"] = build_player_view(state, req.player_id, catalog)
     response.pop("state", None)
-    if state.winner_id:
-        repo.delete_pending_payments_for_game(game_id)
-        repo.delete_game(game_id)
-    else:
-        repo.update_game(state)
+    persist_game_state(game_id, state)
 
     await manager.broadcast_player_views(game_id, state)
     return response
@@ -456,10 +457,6 @@ async def handle_payment(
     if response.get("status") == "ok":
         response["player_view"] = build_player_view(state, req.payer_id, catalog)
     response.pop("state", None)
-    if state.winner_id:
-        repo.delete_pending_payments_for_game(game_id)
-        repo.delete_game(game_id)
-    else:
-        repo.update_game(state)
+    persist_game_state(game_id, state)
     await manager.broadcast_player_views(game_id, state)
     return response

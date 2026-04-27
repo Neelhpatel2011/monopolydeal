@@ -4,11 +4,16 @@ import type { LocalHandCard } from "../model/localPlayer";
 type DiscardFlowSheetProps = {
   requiredCount: number;
   cards: LocalHandCard[];
-  onSubmit: (cardIds: string[]) => Promise<unknown>;
+  onSubmit: (cardIds: string[]) => Promise<{
+    status: "ok" | "error";
+    message?: string | null;
+  }>;
 };
 
 export function DiscardFlowSheet({ requiredCount, cards, onSubmit }: DiscardFlowSheetProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const selectedCards = useMemo(
     () =>
       selectedIds
@@ -17,6 +22,19 @@ export function DiscardFlowSheet({ requiredCount, cards, onSubmit }: DiscardFlow
         .map((card) => card.backendCardId),
     [cards, selectedIds],
   );
+
+  async function handleSubmit() {
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    try {
+      const result = await onSubmit(selectedCards);
+      if (result.status === "error") {
+        setErrorMessage(result.message ?? "Discard could not be submitted.");
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   return (
     <div className="board-modal-overlay" role="presentation">
@@ -35,25 +53,27 @@ export function DiscardFlowSheet({ requiredCount, cards, onSubmit }: DiscardFlow
                 <input
                   type="checkbox"
                   checked={checked}
-                  onChange={() =>
+                  onChange={() => {
+                    setErrorMessage(null);
                     setSelectedIds((current) =>
                       checked ? current.filter((id) => id !== card.id) : [...current, card.id],
-                    )
-                  }
+                    );
+                  }}
                 />
                 <span>{card.label}</span>
               </label>
             );
           })}
         </div>
+        {errorMessage ? <p className="board-modal-sheet__alert">{errorMessage}</p> : null}
         <div className="board-modal-sheet__footer">
           <button
             type="button"
             className="board-primary-button"
-            disabled={selectedIds.length !== requiredCount}
-            onClick={() => void onSubmit(selectedCards)}
+            disabled={isSubmitting || selectedIds.length !== requiredCount}
+            onClick={() => void handleSubmit()}
           >
-            Discard
+            {isSubmitting ? "Submitting..." : "Discard"}
           </button>
         </div>
       </section>

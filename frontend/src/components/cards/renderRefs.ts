@@ -10,6 +10,8 @@ export type BoardHandCardRef = BoardRenderableCardRef & {
     actionType: string;
     cardKind: string;
     canBank: boolean;
+    availableDoubleRentCount: number;
+    availableDoubleRentCardId?: string | null;
     requiredFields: string[];
     chosenDefaults: Record<string, string>;
     fieldOptions: Array<{

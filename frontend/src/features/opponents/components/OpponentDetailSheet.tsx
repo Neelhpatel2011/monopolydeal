@@ -11,6 +11,7 @@ import { getBankSummaryData } from "../../bank/model/bankSummary";
 import { getPropertySetSummaryData } from "../../tableau/model/propertySetSummary";
 import { OpponentQuickSwitch } from "./OpponentQuickSwitch";
 import type { OpponentDetail } from "../model/opponentExpansion";
+import { WinnerCrownIcon } from "./WinnerCrownIcon";
 
 type OpponentDetailSheetProps = {
   opponent: OpponentDetail;
@@ -43,7 +44,7 @@ export function OpponentDetailSheet({
   return (
     <div className="opponent-detail-overlay" role="presentation" onClick={onClose}>
       <section
-        className="opponent-detail-sheet"
+        className={`opponent-detail-sheet${opponent.isWinner ? " opponent-detail-sheet--winner" : ""}`}
         id={`opponent-detail-sheet-${opponent.id}`}
         role="dialog"
         aria-modal="true"
@@ -68,7 +69,15 @@ export function OpponentDetailSheet({
           </div>
 
           <div>
-            <h3>{opponent.name}</h3>
+            <div className="opponent-detail-sheet__title-row">
+              <h3>{opponent.name}</h3>
+              {opponent.isWinner ? (
+                <span className="opponent-detail-sheet__winner-badge">
+                  <WinnerCrownIcon className="opponent-detail-sheet__winner-icon" />
+                  Winner
+                </span>
+              ) : null}
+            </div>
             <p>
               {opponent.handCount} cards | {opponent.bankTotal} bank
             </p>

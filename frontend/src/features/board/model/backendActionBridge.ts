@@ -75,6 +75,11 @@ export function buildActionRequestFromIntent(args: {
         discard_ids: Array.isArray(intent.chosen.discard_ids)
           ? intent.chosen.discard_ids
           : undefined,
+        double_rent_ids: Array.isArray(intent.chosen.double_rent_ids)
+          ? intent.chosen.double_rent_ids.filter(
+              (value): value is string => typeof value === "string",
+            )
+          : undefined,
       };
     default:
       return base;

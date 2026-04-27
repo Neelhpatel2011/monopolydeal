@@ -597,7 +597,7 @@ def start_action(
                             {
                                 "player_id": tid,
                                 "amount": pending_amount,
-                                "status": "pending",
+                                "status": "awaiting_response",
                             }
                             for tid in target_ids
                         ],

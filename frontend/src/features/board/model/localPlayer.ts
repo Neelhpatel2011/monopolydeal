@@ -7,11 +7,13 @@ import type {
 export type TableauColor =
   | "brown"
   | "light-blue"
+  | "railroad"
+  | "utility"
   | "green"
   | "yellow"
-  | "purple"
+  | "pink"
   | "orange"
-  | "blue"
+  | "dark-blue"
   | "red"
   | "wild";
 

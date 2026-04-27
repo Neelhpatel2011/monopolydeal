@@ -28,7 +28,7 @@ class TurnAction(BaseModel):
 class PaymentParticipant(BaseModel):
     player_id: str
     amount: int
-    status: Literal["pending", "paid", "partial", "canceled"] = "pending"
+    status: Literal["awaiting_response", "pending", "paid", "partial", "canceled"] = "pending"
     request_id: Optional[str] = None
     paid_amount: int = 0
 
@@ -159,7 +159,7 @@ def set_payment_tracker_status(
     *,
     group_id: str,
     player_id: str,
-    status: Literal["pending", "paid", "partial", "canceled"],
+    status: Literal["awaiting_response", "pending", "paid", "partial", "canceled"],
     paid_amount: Optional[int] = None,
 ) -> None:
     tracker = find_payment_tracker(state, group_id)

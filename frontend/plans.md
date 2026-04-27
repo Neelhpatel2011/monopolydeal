@@ -25,6 +25,15 @@ Design cues for current board work:
 
 Keep this visual system focused on the gameplay screen unless the user explicitly requests matching updates for lobby or other routes.
 
+## Post-Game UX
+The game-over summary should be dismissible without hiding the final board state.
+
+Post-game rules:
+- keep all normal play actions disabled after game over
+- allow browsing board details and opponent profiles after dismissing the summary
+- keep a persistent game-over callout visible after dismissal
+- mark the winner with gold emphasis and a crown on their summary card
+
 ## Recommended File Structure
 Target this structure as board work proceeds:
 

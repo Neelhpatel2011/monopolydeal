@@ -49,6 +49,9 @@ import { PendingPromptSheet } from "./PendingPromptSheet";
 import { PaymentFlowSheet } from "./PaymentFlowSheet";
 import { DiscardFlowSheet } from "./DiscardFlowSheet";
 import { getPendingPaymentSelectionSummary } from "../../../integration/backend/adapters";
+import { deriveHandCardIntentProfile } from "../model/card-intents";
+import { getBackendCardMeta } from "../../../integration/backend/catalog";
+import { formatBankValue } from "../../../integration/backend/catalog";
 
 type BoardShellProps = {
   roundLabel: string;
@@ -123,13 +126,24 @@ export function BoardShell({
     () => resolveBoardBlockingOverlay(blockingState),
     [blockingState],
   );
+  const activeGameOverOverlay =
+    activeBlockingOverlay?.kind === "game_over" ? activeBlockingOverlay : null;
+  const [isGameOverOverlayDismissed, setIsGameOverOverlayDismissed] = useState(false);
+  const visibleBlockingOverlay =
+    activeGameOverOverlay && isGameOverOverlayDismissed ? null : activeBlockingOverlay;
+  const activeGameOverTitle = activeGameOverOverlay?.title ?? null;
+  const activeGameOverDetail = activeGameOverOverlay?.detail ?? null;
+  const activeGameOverEmphasisLabel = activeGameOverOverlay?.emphasisLabel ?? null;
   const [composerIntent, setComposerIntent] = useState<typeof activeIntent>(null);
   const [isPromptSubmitting, setIsPromptSubmitting] = useState(false);
   const hasOpponentDetailOpen = expandedOpponentId !== null;
+  const isGameOverBrowseMode =
+    activeGameOverOverlay !== null && isGameOverOverlayDismissed;
   const canBrowseOpponents =
-    selectCanBrowseOpponents(interactionState) && activeBlockingOverlay === null;
+    selectCanBrowseOpponents(interactionState) &&
+    (activeBlockingOverlay === null || isGameOverBrowseMode);
   const hasModalOverlayOpen =
-    activeBlockingOverlay !== null ||
+    visibleBlockingOverlay !== null ||
     endTurnConfirmOpen ||
     interactionState.mode === "submittingEndTurn" ||
     hasOpponentDetailOpen;
@@ -216,10 +230,25 @@ export function BoardShell({
       deriveEndTurnControlState({
         actionsLeft,
         blockingOverlay: activeBlockingOverlay,
+        currentTurnPlayerName:
+          playerView.current_player_id === localPlayer.id
+            ? localPlayer.name
+            : opponentSummaries.find((opponent) => opponent.id === playerView.current_player_id)?.name ??
+              playerView.current_player_id ??
+              null,
         interactionState,
         isCurrentTurn,
       }),
-    [actionsLeft, activeBlockingOverlay, interactionState, isCurrentTurn],
+    [
+      actionsLeft,
+      activeBlockingOverlay,
+      interactionState,
+      isCurrentTurn,
+      localPlayer.id,
+      localPlayer.name,
+      opponentSummaries,
+      playerView.current_player_id,
+    ],
   );
   const handDragController = useHandDragController({
     interactionState,
@@ -248,13 +277,17 @@ export function BoardShell({
     () => getPendingPaymentSelectionSummary(playerView, localPlayer.id),
     [localPlayer.id, playerView],
   );
+  const hasJustSayNoCard = useMemo(
+    () => localPlayer.handCards.some((card) => card.backendCardId === "action_just_say_no"),
+    [localPlayer.handCards],
+  );
 
   useEffect(() => {
-    if (activeBlockingOverlay?.kind === "game_over") {
+    if (activeGameOverOverlay) {
       if (
         interactionState.mode !== "idle" ||
-        interactionState.expandedOpponentId !== null ||
-        interactionState.endTurnConfirmOpen
+        interactionState.endTurnConfirmOpen ||
+        (!isGameOverBrowseMode && interactionState.expandedOpponentId !== null)
       ) {
         dispatch({ type: "RESET_TO_IDLE" });
       }
@@ -311,12 +344,16 @@ export function BoardShell({
       default:
         break;
     }
-  }, [activeBlockingOverlay, dispatch, interactionState]);
+  }, [activeBlockingOverlay, activeGameOverOverlay, dispatch, interactionState, isGameOverBrowseMode]);
+
+  useEffect(() => {
+    setIsGameOverOverlayDismissed(false);
+  }, [activeGameOverDetail, activeGameOverEmphasisLabel, activeGameOverTitle]);
 
   useEffect(() => {
     if (
       !expandedOpponent &&
-      !activeBlockingOverlay &&
+      !visibleBlockingOverlay &&
       !endTurnConfirmOpen
     ) {
       return undefined;
@@ -328,7 +365,7 @@ export function BoardShell({
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [activeBlockingOverlay, endTurnConfirmOpen, expandedOpponent]);
+  }, [endTurnConfirmOpen, expandedOpponent, visibleBlockingOverlay]);
 
   useEffect(() => {
     if (previousIsCurrentTurnRef.current && !isCurrentTurn) {
@@ -443,10 +480,16 @@ export function BoardShell({
   async function submitSelectedIntent(
     intentToSubmit: NonNullable<typeof activeIntent>,
     cardOverride?: LocalHandCard,
-  ) {
+  ): Promise<{
+    status: "ok" | "error";
+    message?: string | null;
+  }> {
     const card = cardOverride ?? activeHandCard;
     if (!card) {
-      return;
+      return {
+        status: "error",
+        message: "No selected card was found.",
+      };
     }
 
     const submissionId = `action-${Date.now()}`;
@@ -465,11 +508,12 @@ export function BoardShell({
         feedback: createInvalidFeedback("rejected", result.message ?? "Action rejected"),
         preserveSelection: true,
       });
-      return;
+      return result;
     }
 
     setComposerIntent(null);
     dispatch({ type: "SUBMIT_ACTION_RESOLVE" });
+    return result;
   }
 
   function handleIntentTarget(
@@ -530,6 +574,7 @@ export function BoardShell({
     if (!context) {
       return;
     }
+    const profile = deriveHandCardIntentProfile(context.card);
     if (
       context.intent.actionType === "play_bank" &&
       context.card.actionOptions?.cardKind === "money"
@@ -542,6 +587,13 @@ export function BoardShell({
       return;
     }
     if (context.intent.actionType === "play_bank") {
+      return;
+    }
+    if (
+      profile.canBank &&
+      (profile.category === "action" || profile.category === "rent")
+    ) {
+      setComposerIntent(context.intent);
       return;
     }
     if (context.intent.missing.length === 0) {
@@ -648,7 +700,7 @@ export function BoardShell({
     <main className="board-page">
       <div
         className={`board-shell${hasModalOverlayOpen ? " board-shell--modal-active" : ""}${
-          activeBlockingOverlay ? " board-shell--blocked" : ""
+          visibleBlockingOverlay ? " board-shell--blocked" : ""
         }`}
       >
         <BoardHeader
@@ -656,6 +708,22 @@ export function BoardShell({
           turnControlState={endTurnControlState}
           onRequestEndTurn={handleRequestEndTurn}
         />
+        {activeGameOverOverlay && isGameOverBrowseMode ? (
+          <section className="board-game-over-banner" role="status" aria-live="polite">
+            <div className="board-game-over-banner__copy">
+              <p className="board-game-over-banner__eyebrow">{activeGameOverOverlay.eyebrow}</p>
+              <h2>{activeGameOverOverlay.title}</h2>
+              <p>{activeGameOverOverlay.emphasisLabel}</p>
+            </div>
+            <button
+              type="button"
+              className="secondary-pill-button secondary-pill-button--quiet board-game-over-banner__action"
+              onClick={() => setIsGameOverOverlayDismissed(false)}
+            >
+              View Summary
+            </button>
+          </section>
+        ) : null}
         <OpponentRail
           opponents={opponentSummaries}
           browseSuppressed={!canBrowseOpponents}
@@ -708,7 +776,7 @@ export function BoardShell({
           onTargetTableau={handleTableauTarget}
           onTargetTableauSet={handleTableauSetTarget}
           onTargetBank={handleBankTarget}
-          onChangeWild={handleChangeWild}
+          onChangeWild={shouldSuspendBoardAffordances ? undefined : handleChangeWild}
         />
       </div>
 
@@ -720,7 +788,7 @@ export function BoardShell({
       ) : null}
 
       {expandedOpponent &&
-      activeBlockingOverlay?.kind !== "game_over" &&
+      (!activeGameOverOverlay || isGameOverBrowseMode) &&
       !endTurnConfirmOpen &&
       interactionState.mode !== "submittingEndTurn" ? (
         <OpponentDetailSheet
@@ -741,28 +809,39 @@ export function BoardShell({
         onConfirm={handleConfirmEndTurn}
       />
 
-      <BoardOverlayHost overlay={activeBlockingOverlay?.kind === "game_over" ? activeBlockingOverlay : null} />
+      <BoardOverlayHost
+        overlay={isGameOverBrowseMode ? null : activeGameOverOverlay}
+        onDismissGameOver={() => setIsGameOverOverlayDismissed(true)}
+      />
 
       {composerIntent && activeHandCard ? (
         <ActionComposerSheet
           playerId={localPlayer.id}
           card={activeHandCard}
           intent={composerIntent}
+          propertySets={localPlayer.propertySets}
+          opponents={opponentSummaries}
           onClose={() => setComposerIntent(null)}
-          onSubmit={async (intentToSubmit) => {
-            await submitSelectedIntent(intentToSubmit);
-          }}
+          onSubmit={(intentToSubmit) => submitSelectedIntent(intentToSubmit)}
         />
       ) : null}
 
       {activeBlockingOverlay?.kind === "pending_prompt" && pendingPrompt ? (
         <PendingPromptSheet
           prompt={pendingPrompt.prompt}
+          sourcePlayer={pendingPrompt.source_player}
+          cardName={getBackendCardMeta(pendingPrompt.card_id).name}
+          chargeAmountLabel={
+            typeof pendingPrompt.payload.amount === "number"
+              ? formatBankValue(pendingPrompt.payload.amount)
+              : null
+          }
+          canJustSayNo={hasJustSayNoCard}
           isSubmitting={isPromptSubmitting}
           onAccept={async () => {
             setIsPromptSubmitting(true);
             try {
-              await onSubmitPendingResponse(pendingPrompt.pending_id, "accept");
+              return await onSubmitPendingResponse(pendingPrompt.pending_id, "accept");
             } finally {
               setIsPromptSubmitting(false);
             }
@@ -770,7 +849,7 @@ export function BoardShell({
           onJustSayNo={async () => {
             setIsPromptSubmitting(true);
             try {
-              await onSubmitPendingResponse(pendingPrompt.pending_id, "just_say_no");
+              return await onSubmitPendingResponse(pendingPrompt.pending_id, "just_say_no");
             } finally {
               setIsPromptSubmitting(false);
             }
@@ -782,6 +861,10 @@ export function BoardShell({
         <PaymentFlowSheet
           amountDue={pendingPayment.amount}
           localPlayer={localPlayer}
+          sourcePlayerName={pendingPayment.sourcePlayerId ?? null}
+          sourceCardName={
+            pendingPayment.cardId ? getBackendCardMeta(pendingPayment.cardId).name : null
+          }
           onSubmit={onSubmitPayment}
         />
       ) : null}
