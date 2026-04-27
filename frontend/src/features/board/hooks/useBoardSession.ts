@@ -26,15 +26,14 @@ function readSessionParams() {
   const params = new URLSearchParams(window.location.search);
   return {
     gameId: params.get("gameId"),
-    playerId: params.get("playerId"),
     demo: params.get("demo") === "1",
   };
 }
 
-function writeSessionParams(gameId: string, playerId: string) {
+function writeSessionParams(gameId: string) {
   const params = new URLSearchParams(window.location.search);
   params.set("gameId", gameId);
-  params.set("playerId", playerId);
+  params.delete("playerId");
   window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
 }
 
@@ -42,11 +41,10 @@ async function bootstrapBackendGame() {
   const hostName = "Player";
   const joins = ["Sam", "Emily", "Max"];
   const game = await backendClient.createGame(hostName);
-  const hostId = game.player_ids[0];
   await Promise.all(joins.map((name) => backendClient.joinGame(game.game_id, name)));
-  await backendClient.startGame(game.game_id, hostId);
-  writeSessionParams(game.game_id, hostId);
-  return { gameId: game.game_id, playerId: hostId };
+  await backendClient.startGame(game.game_id);
+  writeSessionParams(game.game_id);
+  return { gameId: game.game_id };
 }
 
 export function useBoardSession() {
@@ -69,27 +67,28 @@ export function useBoardSession() {
       setState((current) => ({ ...current, status: "loading", error: null }));
       try {
         const sessionParams = readSessionParams();
-        let { gameId, playerId } = sessionParams;
+        let { gameId } = sessionParams;
         const { demo } = sessionParams;
-        if (!gameId || !playerId) {
+        if (!gameId) {
           if (!demo) {
-            throw new Error("Missing game session. Open the board with gameId and playerId, or use ?demo=1 for a local demo session.");
+            throw new Error("Missing game session. Open the board with gameId, or use ?demo=1 for a local demo session.");
           }
           const bootstrapped = await bootstrapBackendGame();
           gameId = bootstrapped.gameId;
-          playerId = bootstrapped.playerId;
         }
 
-        const view = await backendClient.getPlayerView(gameId, playerId);
+        const view = await backendClient.getPlayerView(gameId);
         if (cancelled) {
           return;
         }
+
+        writeSessionParams(gameId);
 
         setState((current) => ({
           ...current,
           status: "ready",
           gameId,
-          playerId,
+          playerId: view.you.id,
           view,
           error: null,
         }));
@@ -118,18 +117,18 @@ export function useBoardSession() {
     }
 
     const gameId = state.gameId;
-    const playerId = state.playerId;
     let isDisposed = false;
 
     async function resyncView() {
       try {
-        const nextView = await backendClient.getPlayerView(gameId, playerId);
+        const nextView = await backendClient.getPlayerView(gameId);
         if (isDisposed) {
           return;
         }
         setState((current) => ({
           ...current,
           status: "ready",
+          playerId: nextView.you.id,
           view: nextView,
           error: null,
         }));
@@ -146,11 +145,12 @@ export function useBoardSession() {
 
     function connectSocket() {
       socketRef.current?.close();
-      const socket = backendClient.connectToGame(gameId, playerId, {
+      const socket = backendClient.connectToGame(gameId, {
         onStateUpdate: (view) => {
           reconnectAttemptRef.current = 0;
           setState((current) => ({
             ...current,
+            playerId: view.you.id,
             view,
             discardRequired:
               current.discardRequired && view.you.hand.length <= 7 ? null : current.discardRequired,
@@ -194,11 +194,12 @@ export function useBoardSession() {
     const response = await backendClient.submitAction(state.gameId, request);
     setState((current) => ({
       ...current,
+      playerId: response.player_view?.you.id ?? current.playerId,
       view: response.player_view ?? current.view,
       discardRequired:
         response.response_type === "discard_required" && response.discard_required
           ? {
-              discardRequestId: `discard:${request.player_id}:${Date.now()}`,
+              discardRequestId: `discard:${current.playerId ?? current.view?.you.id ?? "player"}:${Date.now()}`,
               discardCount: response.discard_required.required_count,
             }
           : response.status === "ok"
@@ -216,7 +217,6 @@ export function useBoardSession() {
 
     return submitAction({
       action_type: "end_turn",
-      player_id: state.playerId,
     });
   }
 
@@ -225,11 +225,12 @@ export function useBoardSession() {
       throw new Error("Session not ready.");
     }
 
-    await backendClient.startGame(state.gameId, state.playerId);
-    const view = await backendClient.getPlayerView(state.gameId, state.playerId);
+    await backendClient.startGame(state.gameId);
+    const view = await backendClient.getPlayerView(state.gameId);
     setState((current) => ({
       ...current,
       status: "ready",
+      playerId: view.you.id,
       view,
       error: null,
       discardRequired: null,
@@ -244,12 +245,12 @@ export function useBoardSession() {
 
     const result = await backendClient.submitPendingResponse(state.gameId, pendingId, {
       pending_id: pendingId,
-      player_id: state.playerId,
       response,
     });
 
     setState((current) => ({
       ...current,
+      playerId: result.player_view?.you.id ?? current.playerId,
       view: result.player_view ?? current.view,
       error: result.status === "error" ? result.message ?? "Prompt response failed." : null,
     }));
@@ -273,8 +274,6 @@ export function useBoardSession() {
 
     const result = await backendClient.submitPayment(state.gameId, {
       request_id: payment.requestId,
-      payer_id: state.playerId,
-      receiver_id: payment.receiverId,
       bank: selection.bank,
       properties: selection.properties,
       buildings: selection.buildings,
@@ -282,13 +281,14 @@ export function useBoardSession() {
 
     let refreshedView = result.player_view ?? null;
     try {
-      refreshedView = await backendClient.getPlayerView(state.gameId, state.playerId);
+      refreshedView = await backendClient.getPlayerView(state.gameId);
     } catch {
       // Keep the response view when the immediate resync fails.
     }
 
     setState((current) => ({
       ...current,
+      playerId: refreshedView?.you.id ?? current.playerId,
       view: refreshedView ?? current.view,
       error: result.status === "error" ? result.message ?? "Payment failed." : null,
     }));
@@ -302,7 +302,6 @@ export function useBoardSession() {
     }
     const result = await submitAction({
       action_type: "discard",
-      player_id: state.playerId,
       discard_ids: cardIds,
     });
     if (result.status === "ok") {

@@ -13,11 +13,11 @@ type BoardCenterStageProps = {
 export function BoardCenterStage({
   drawCount,
   discardCount,
-  discardTopCardId = "action-just-say-no",
+  discardTopCardId,
   onPlayZonePress,
 }: BoardCenterStageProps) {
   void drawCount;
-  void discardCount;
+  const hasDiscardTopCard = discardCount > 0 && typeof discardTopCardId === "string";
 
   return (
     <section className="board-center-stage" aria-label="Board center stage">
@@ -43,12 +43,22 @@ export function BoardCenterStage({
       <div className="pile-card pile-card--right">
         <div className="pile-card__stack">
           <div className="pile-card__face pile-card__face--discard">
-            <ScaledMonopolyCard
-              card={getRenderCardByCatalogId(discardTopCardId)}
-              size="sm"
-              scale={0.28}
-              className="pile-card__discard-card"
-            />
+            {hasDiscardTopCard ? (
+              <ScaledMonopolyCard
+                card={getRenderCardByCatalogId(discardTopCardId)}
+                size="sm"
+                scale={0.28}
+                className="pile-card__discard-card"
+              />
+            ) : (
+              <BoardCardBack
+                tone="discard"
+                label="Empty"
+                size="sm"
+                scale={0.28}
+                className="pile-card__card-back"
+              />
+            )}
           </div>
         </div>
         <p className="pile-card__label">Discard</p>

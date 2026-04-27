@@ -24,14 +24,12 @@ export function applyChosenValue(
 }
 
 export function buildActionRequestFromIntent(args: {
-  playerId: string;
   card: LocalHandCard;
   intent: DraftActionIntent;
 }): BackendActionRequest {
-  const { playerId, card, intent } = args;
+  const { card, intent } = args;
   const base: BackendActionRequest = {
     action_type: intent.actionType as BackendActionRequest["action_type"],
-    player_id: playerId,
   };
 
   switch (intent.actionType) {
@@ -87,14 +85,12 @@ export function buildActionRequestFromIntent(args: {
 }
 
 export function buildChangeWildRequest(args: {
-  playerId: string;
   cardId: string;
   newColor: string;
 }): BackendActionRequest {
-  const { playerId, cardId, newColor } = args;
+  const { cardId, newColor } = args;
   return {
     action_type: "change_wild",
-    player_id: playerId,
     change_wild: {
       card_id: cardId,
       new_color: newColor,

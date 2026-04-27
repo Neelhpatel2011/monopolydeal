@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -21,14 +22,41 @@ def _require_uuid(value: str, *, name: str) -> None:
         raise ValueError(f"Invalid {name}.")
 
 
+def _is_unique_violation(error: APIError) -> bool:
+    code = getattr(error, "code", None)
+    if code == "23505":
+        return True
+    return "duplicate key value violates unique constraint" in str(error).lower()
+
+
+def _hydrate_game_state(row: Dict[str, Any]) -> GameState:
+    payload = dict(row["state"])
+    if row.get("game_code") and not payload.get("game_code"):
+        payload["game_code"] = row["game_code"]
+    return GameState.model_validate(payload)
+
+
 def create_game(state: GameState, status: str = "lobby") -> None:
-    supabase.table("games").insert(
-        {"id": state.id, "state": state.model_dump(), "status": status}
-    ).execute()
+    try:
+        supabase.table("games").insert(
+            {
+                "id": state.id,
+                "game_code": state.game_code,
+                "state": state.model_dump(),
+                "status": status,
+            }
+        ).execute()
+    except APIError as error:
+        if _is_unique_violation(error):
+            raise ValueError("Game code conflict.") from error
+        raise
 
 
 def update_game(state: GameState, status: Optional[str] = None) -> None:
-    payload: Dict[str, Any] = {"state": state.model_dump()}
+    payload: Dict[str, Any] = {
+        "game_code": state.game_code,
+        "state": state.model_dump(),
+    }
     if status is not None:
         payload["status"] = status
     supabase.table("games").update(payload).eq("id", state.id).execute()
@@ -38,13 +66,30 @@ def get_game(game_id: str) -> GameState:
     _require_uuid(game_id, name="game_id")
     res = (
         supabase.table("games")
-        .select("state")
+        .select("state,game_code")
         .eq("id", game_id)
         .single()
         .execute()
     )
     row = _require_single(res)
-    return GameState.model_validate(row["state"])
+    return _hydrate_game_state(row)
+
+
+def get_lobby_by_game_code(game_code: str) -> GameState:
+    normalized_code = game_code.strip().upper()
+    rows = (
+        supabase.table("games")
+        .select("state,game_code")
+        .eq("game_code", normalized_code)
+        .eq("status", "lobby")
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    if not rows:
+        raise ValueError("Game not found.")
+    return _hydrate_game_state(rows[0])
 
 
 def delete_game(game_id: str) -> None:
@@ -53,18 +98,54 @@ def delete_game(game_id: str) -> None:
 
 
 def list_games() -> List[GameSummary]:
-    res = supabase.table("games").select("id,state,status").execute()
+    res = supabase.table("games").select("id,game_code,state,status").execute()
     games: List[GameSummary] = []
     for row in res.data or []:
-        state = GameState.model_validate(row["state"])
+        state = _hydrate_game_state(row)
         games.append(
             GameSummary(
                 game_id=str(row["id"]),
+                game_code=state.game_code or row.get("game_code"),
                 player_ids=list(state.players.keys()),
                 started=row.get("status") != "lobby",
             )
         )
     return games
+
+
+def create_player_session(
+    *, game_id: str, player_id: str, token_hash: str, expires_at: str
+) -> None:
+    _require_uuid(game_id, name="game_id")
+    revoke_player_sessions_for_player(game_id=game_id, player_id=player_id)
+    supabase.table("player_sessions").insert(
+        {
+            "token_hash": token_hash,
+            "game_id": game_id,
+            "player_id": player_id,
+            "expires_at": expires_at,
+        }
+    ).execute()
+
+
+def get_player_session(token_hash: str) -> Optional[Dict[str, Any]]:
+    rows = (
+        supabase.table("player_sessions")
+        .select("*")
+        .eq("token_hash", token_hash)
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+    return rows[0] if rows else None
+
+
+def revoke_player_sessions_for_player(game_id: str, player_id: str) -> None:
+    _require_uuid(game_id, name="game_id")
+    supabase.table("player_sessions").update(
+        {"revoked_at": datetime.now(timezone.utc).isoformat()}
+    ).eq("game_id", game_id).eq("player_id", player_id).execute()
 
 
 def insert_pending_payment(

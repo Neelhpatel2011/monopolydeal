@@ -1,6 +1,7 @@
 # Orchestrates: load state, apply engine, save, broadcast
 
 # Placeholder for game service logic
+import secrets
 import uuid
 from typing import Dict, List, Any
 
@@ -27,7 +28,21 @@ from .realtime import manager
 from .player_view import build_player_view
 
 STARTING_HAND_SIZE = 5
-MAX_PLAYERS = 5
+MAX_PLAYERS = 4
+GAME_CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+GAME_CODE_LENGTH = 5
+GAME_CODE_RETRY_LIMIT = 10
+
+
+def _generate_game_code() -> str:
+    return "".join(secrets.choice(GAME_CODE_ALPHABET) for _ in range(GAME_CODE_LENGTH))
+
+
+def _normalize_game_code(game_code: str) -> str:
+    normalized = game_code.strip().upper()
+    if not normalized:
+        raise ValueError("game_code is required.")
+    return normalized
 
 
 def _ensure_host_id(state: GameState) -> str:
@@ -57,14 +72,24 @@ def create_game_lobby(player_ids: List[str]) -> GameState:
 
     state = GameState(
         id=str(uuid.uuid4()),
-        host_id=host_id,
         players=players,
         deck=deck,
+        host_id=host_id,
         current_player_id=host_id,
         turn_number=1,
     )
-    repo.create_game(state, status="lobby")
-    return state
+
+    for _ in range(GAME_CODE_RETRY_LIMIT):
+        state.game_code = _generate_game_code()
+        try:
+            repo.create_game(state, status="lobby")
+            return state
+        except ValueError as error:
+            if str(error) == "Game code conflict.":
+                continue
+            raise
+
+    raise ValueError("Could not allocate game code, please try again.")
 
 
 def start_new_game(
@@ -147,6 +172,15 @@ def join_game(game_id: str, player_name: str) -> Dict[str, object]:
     }
 
 
+def join_game_by_code(game_code: str, player_name: str) -> Dict[str, object]:
+    normalized_code = _normalize_game_code(game_code)
+    try:
+        state = repo.get_lobby_by_game_code(normalized_code)
+    except ValueError:
+        raise ValueError("Game code not found or no longer joinable.")
+    return join_game(state.id, player_name)
+
+
 def leave_game_lobby(game_id: str, player_id: str) -> Dict[str, Any]:
     """
     Remove a player from a lobby before the game starts.
@@ -166,6 +200,7 @@ def leave_game_lobby(game_id: str, player_id: str) -> Dict[str, Any]:
     if player_id not in state.players:
         raise ValueError("Unknown player_id.")
 
+    repo.revoke_player_sessions_for_player(game_id=game_id, player_id=player_id)
     del state.players[player_id]
 
     if not state.players:
@@ -268,7 +303,7 @@ def persist_game_state(game_id: str, state: GameState) -> None:
 
 
 async def handle_action(
-    game_id: str, req: ActionRequest, catalog: CardCatalog
+    game_id: str, req: ActionRequest, catalog: CardCatalog, *, actor_id: str
 ) -> ActionResponse:
 
     state = get_state(game_id)
@@ -291,13 +326,18 @@ async def handle_action(
                 "response_type": "action_resolved",
                 "message": "Cannot end turn while a pending payment is unresolved.",
             }
-    response = start_action(state=state, catalog=catalog, **req.model_dump())
+    response = start_action(
+        state=state,
+        catalog=catalog,
+        player_id=actor_id,
+        **req.model_dump(),
+    )
 
     add_to_pendingpayments(game_id, state, response)
     add_game_over(response, state, catalog)
 
     if response.get("status") == "ok":
-        response["player_view"] = build_player_view(state, req.player_id, catalog)
+        response["player_view"] = build_player_view(state, actor_id, catalog)
     response.pop("state", None)
     persist_game_state(game_id, state)
 
@@ -306,7 +346,7 @@ async def handle_action(
 
 
 async def handle_pending(
-    game_id, req: PendingResponseRequest, catalog: CardCatalog
+    game_id, req: PendingResponseRequest, catalog: CardCatalog, *, actor_id: str
 ) -> ActionResponse:
 
     state = get_state(game_id)
@@ -336,20 +376,25 @@ async def handle_pending(
             "message": f"Pending action does not belong to the current turn (current={state.current_player_id}).",
         }
 
-    if pending["awaiting_player"] != req.player_id:
+    if pending["awaiting_player"] != actor_id:
         return {
             "status": "error",
             "response_type": "action_resolved",
-            "message": f"Pending response player mismatch: awaiting {pending['awaiting_player']}, got {req.player_id}.",
+            "message": f"Pending response player mismatch: awaiting {pending['awaiting_player']}, got {actor_id}.",
         }
 
-    response = respond_to_pending(state=state, catalog=catalog, **req.model_dump())
+    response = respond_to_pending(
+        state=state,
+        catalog=catalog,
+        player_id=actor_id,
+        **req.model_dump(),
+    )
 
     add_to_pendingpayments(game_id, state, response)
     add_game_over(response, state, catalog)
 
     if response.get("status") == "ok":
-        response["player_view"] = build_player_view(state, req.player_id, catalog)
+        response["player_view"] = build_player_view(state, actor_id, catalog)
     response.pop("state", None)
     persist_game_state(game_id, state)
 
@@ -358,7 +403,7 @@ async def handle_pending(
 
 
 async def handle_payment(
-    game_id: str, req: PaymentRequest, catalog: CardCatalog
+    game_id: str, req: PaymentRequest, catalog: CardCatalog, *, actor_id: str
 ) -> PaymentResponse:
 
     state = get_state(game_id)
@@ -379,7 +424,7 @@ async def handle_payment(
                 (
                     entry
                     for entry in tracker.participants
-                    if entry.player_id == req.payer_id and entry.status == "pending"
+                    if entry.player_id == actor_id and entry.status == "pending"
                 ),
                 None,
             )
@@ -404,13 +449,6 @@ async def handle_payment(
             "message": "Unknown payment request_id.",
         }
 
-    if req.receiver_id != receiver_id:
-        return {
-            "status": "error",
-            "response_type": "payment_applied",
-            "message": "Receiver does not match pending payment.",
-        }
-
     if (
         state.current_player_id is not None
         and state.current_player_id != receiver_id
@@ -421,18 +459,18 @@ async def handle_payment(
             "message": f"Payment does not belong to the current turn (current={state.current_player_id}).",
         }
 
-    if req.payer_id not in targets:
+    if actor_id not in targets:
         return {
             "status": "error",
             "response_type": "payment_applied",
             "message": "Payer is not a target for this payment.",
         }
 
-    amount = targets[req.payer_id]
+    amount = targets[actor_id]
 
     response = process_payment(
         state=state,
-        payer_id=req.payer_id,
+        payer_id=actor_id,
         receiver_id=receiver_id,
         catalog=catalog,
         user_bank_payment_ids=req.bank,
@@ -455,7 +493,7 @@ async def handle_payment(
             )
     add_game_over(response, state, catalog)
     if response.get("status") == "ok":
-        response["player_view"] = build_player_view(state, req.payer_id, catalog)
+        response["player_view"] = build_player_view(state, actor_id, catalog)
     response.pop("state", None)
     persist_game_state(game_id, state)
     await manager.broadcast_player_views(game_id, state)

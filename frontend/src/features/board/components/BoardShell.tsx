@@ -496,7 +496,6 @@ export function BoardShell({
     dispatch({ type: "SUBMIT_ACTION_START", submissionId });
     const result = await onSubmitAction(
       buildActionRequestFromIntent({
-        playerId: localPlayer.id,
         card,
         intent: intentToSubmit,
       }),
@@ -683,7 +682,6 @@ export function BoardShell({
   async function handleChangeWild(cardId: string, newColor: string) {
     const result = await onSubmitAction(
       buildChangeWildRequest({
-        playerId: localPlayer.id,
         cardId,
         newColor,
       }),

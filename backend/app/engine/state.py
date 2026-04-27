@@ -43,6 +43,7 @@ class PaymentTracker(BaseModel):
 
 class GameState(BaseModel):
     id: str
+    game_code: Optional[str] = None
     host_id: Optional[str] = None
     players: Dict[str, PlayerState]
     deck: DeckState

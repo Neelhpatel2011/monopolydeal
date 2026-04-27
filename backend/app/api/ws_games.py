@@ -1,11 +1,13 @@
 import asyncio
 import json
 
+from fastapi import HTTPException
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from backend.app.db import repo
 from backend.app.services.player_view import build_player_view
 from backend.app.services.realtime import manager
+from backend.app.services.session_auth import require_websocket_player_session
 
 router = APIRouter()
 
@@ -15,8 +17,9 @@ MAX_MISSED_PINGS = 3
 
 @router.websocket("/ws/games/{game_id}")
 async def game_ws(websocket: WebSocket, game_id: str):
-    player_id = websocket.query_params.get("player_id")
-    if not player_id:
+    try:
+        player_id = require_websocket_player_session(websocket, game_id)
+    except HTTPException:
         await websocket.close(code=1008)
         return
 
@@ -26,10 +29,12 @@ async def game_ws(websocket: WebSocket, game_id: str):
     try:
         state = repo.get_game(game_id)
     except Exception:
+        await manager.disconnect(game_id, player_id)
         await websocket.close(code=1008)
         return
 
     if player_id not in state.players:
+        await manager.disconnect(game_id, player_id)
         await websocket.close(code=1008)
         return
 

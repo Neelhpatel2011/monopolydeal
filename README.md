@@ -10,10 +10,11 @@ A minimalist and free way to play monopoly deal anywhere with internet. Coming s
 * Play actions
 * Get prompted for JSN / payments
 * See state updates immediately
+* Share short join codes for lobby entry
+* Keep each browser locked to its own player seat with a guest session cookie
 
 ❌ **Not needed for MVP:**
 
-* Auth
 * Achievements/stats
 * Persistence beyond memory
 
@@ -118,11 +119,12 @@ Create the FastAPI endpoints.
 
 * `POST /games` (create)
 * `POST /games/{id}/join`
-* `GET /games/{id}/state?player_id=...`
+* `GET /games/{id}/state`
+* `GET /games/{id}/view`
 * `POST /games/{id}/actions`
 * `POST /games/{id}/pending/{pending_id}/respond`
 * `POST /games/{id}/payments`
-* `WS /ws/games/{id}?player_id=...`
+* `WS /ws/games/{id}`
 
 ### Route function rule
 

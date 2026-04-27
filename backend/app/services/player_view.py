@@ -111,6 +111,7 @@ class PlayerPrivateView(PlayerPublicView):
 
 class PlayerView(BaseModel):
     game_id: str
+    game_code: Optional[str] = None
     host_id: Optional[str] = None
     started: bool = False
     you: PlayerPrivateView
@@ -607,6 +608,7 @@ def build_player_view(
 
     return PlayerView(
         game_id=game_id,
+        game_code=state.game_code,
         host_id=host_id,
         started=bool(
             state.deck.draw_pile

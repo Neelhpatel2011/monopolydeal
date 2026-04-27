@@ -11,7 +11,6 @@ export type BackendPendingResponse = "accept" | "just_say_no";
 
 export type BackendActionRequest = {
   action_type: BackendActionType;
-  player_id: string;
   card_id?: string;
   bank_card_id?: string;
   property_card_id?: string;
@@ -31,8 +30,6 @@ export type BackendActionRequest = {
 
 export type BackendPaymentRequest = {
   request_id: string;
-  payer_id: string;
-  receiver_id: string;
   bank: string[];
   properties: string[];
   buildings: string[];
@@ -40,14 +37,19 @@ export type BackendPaymentRequest = {
 
 export type BackendPendingResponseRequest = {
   pending_id: string;
-  player_id: string;
   response: BackendPendingResponse;
 };
 
 export type BackendGameSummary = {
   game_id: string;
+  game_code?: string | null;
   player_ids: string[];
   started: boolean;
+};
+
+export type BackendJoinByCodeRequest = {
+  game_code: string;
+  player_name: string;
 };
 
 export type BackendPendingActionPrompt = {
@@ -150,6 +152,7 @@ export type BackendPropertySetSummaryView = {
 
 export type BackendPlayerView = {
   game_id: string;
+  game_code?: string | null;
   host_id?: string | null;
   started: boolean;
   you: BackendPlayerPrivateView;

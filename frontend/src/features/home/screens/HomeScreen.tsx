@@ -12,8 +12,8 @@ const heroCards = [
   catalog.find((card) => card.id === "rent-wild"),
 ].filter(Boolean);
 
-function openGameRoute(gameId: string, playerId: string) {
-  const params = new URLSearchParams({ gameId, playerId });
+function openGameRoute(gameId: string) {
+  const params = new URLSearchParams({ gameId });
   window.location.assign(`/game?${params.toString()}`);
 }
 
@@ -24,7 +24,7 @@ function openDemoRoute() {
 export function HomeScreen() {
   const [hostName, setHostName] = useState("");
   const [joinName, setJoinName] = useState("");
-  const [gameId, setGameId] = useState("");
+  const [gameCode, setGameCode] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const featuredCards = useMemo(() => heroCards, []);
@@ -40,7 +40,7 @@ export function HomeScreen() {
     setStatusMessage("Creating lobby...");
     try {
       const game = await backendClient.createGame(playerName);
-      openGameRoute(game.game_id, game.player_ids[0] ?? playerName);
+      openGameRoute(game.game_id);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Could not create game.");
     } finally {
@@ -50,17 +50,20 @@ export function HomeScreen() {
 
   async function handleJoinGame() {
     const playerName = joinName.trim();
-    const requestedGameId = gameId.trim();
-    if (!playerName || !requestedGameId) {
-      setStatusMessage("Enter your name and a game ID to join.");
+    const requestedGameCode = gameCode.trim().toUpperCase();
+    if (!playerName || !requestedGameCode) {
+      setStatusMessage("Enter your name and a game code to join.");
       return;
     }
 
     setIsSubmitting(true);
     setStatusMessage("Joining lobby...");
     try {
-      const response = await backendClient.joinGame(requestedGameId, playerName);
-      openGameRoute(response.player_view.game_id, response.player_id);
+      const response = await backendClient.joinGameByCode({
+        game_code: requestedGameCode,
+        player_name: playerName,
+      });
+      openGameRoute(response.player_view.game_id);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Could not join game.");
     } finally {
@@ -136,11 +139,13 @@ export function HomeScreen() {
             </label>
 
             <label className="home-field">
-              <span>Game ID</span>
+              <span>Game Code</span>
               <input
-                value={gameId}
-                onChange={(event) => setGameId(event.target.value)}
-                placeholder="Game ID"
+                value={gameCode}
+                maxLength={5}
+                autoCapitalize="characters"
+                onChange={(event) => setGameCode(event.target.value.toUpperCase())}
+                placeholder="ABCDE"
               />
             </label>
 

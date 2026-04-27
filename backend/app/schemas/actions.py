@@ -43,6 +43,22 @@ class CreateGameRequest(BaseModel):
         raise ValueError("player_name is required.")
 
 
+class JoinGameByCodeRequest(BaseModel):
+    game_code: str
+    player_name: str
+
+    @model_validator(mode="after")
+    def _normalize(self) -> "JoinGameByCodeRequest":
+        self.game_code = self.game_code.strip().upper()
+        self.player_name = self.player_name.strip()
+
+        if len(self.game_code) != 5 or not self.game_code.isalnum():
+            raise ValueError("game_code must be a 5-character alphanumeric code.")
+        if not self.player_name:
+            raise ValueError("player_name is required.")
+        return self
+
+
 class ChangeWildPayload(BaseModel):
     card_id: str
     new_color: str
@@ -50,8 +66,6 @@ class ChangeWildPayload(BaseModel):
 
 class PaymentRequest(BaseModel):
     request_id: str
-    payer_id: str
-    receiver_id: str
     bank: List[str] = Field(default_factory=list)
     properties: List[str] = Field(default_factory=list)
     buildings: List[str] = Field(default_factory=list)
@@ -59,7 +73,6 @@ class PaymentRequest(BaseModel):
 
 class PendingResponseRequest(BaseModel):
     pending_id: str
-    player_id: str
     response: Literal["accept", "just_say_no"]
 
 
@@ -73,8 +86,6 @@ class ActionRequest(BaseModel):
         "play_action_counterable",
         "play_action_non_counterable",
     ]
-    player_id: str
-
     # card ids
     card_id: Optional[str] = None
     bank_card_id: Optional[str] = None
