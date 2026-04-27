@@ -1,0 +1,16 @@
+{
+    "id": "prop_orange_st_james_place",
+    "name": "St. James Place",
+    "type": "property",
+    "count": 1,
+    "bank_value": 2,
+    "property_group": "orange",
+    "set_size": 3,
+    "rent_by_count": [
+        1,
+        3,
+        5
+    ],
+    "bankable": true,
+    "image_url": "https://monopolydealrules.com/photos/cards/orange-property-card.png"
+}

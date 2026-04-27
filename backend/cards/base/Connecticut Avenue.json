@@ -1,0 +1,16 @@
+{
+    "id": "prop_light_blue_connecticut_avenue",
+    "name": "Connecticut Avenue",
+    "type": "property",
+    "count": 1,
+    "bank_value": 1,
+    "property_group": "light_blue",
+    "set_size": 3,
+    "rent_by_count": [
+        1,
+        2,
+        3
+    ],
+    "bankable": true,
+    "image_url": "https://monopolydealrules.com/photos/cards/light-blue-property-card.png"
+}

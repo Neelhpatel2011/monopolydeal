@@ -1,0 +1,55 @@
+:root {
+  color-scheme: light;
+  font-family: "Avenir Next", "Helvetica Neue", sans-serif;
+  --bg-canvas: #ece8e0;
+  --bg-panel: #f7f3ec;
+  --bg-panel-strong: #fffdfa;
+  --bg-stage: #ebe7e0;
+  --bg-tray: #322821;
+  --bg-tray-edge: #261e18;
+  --bg-button-dark: #2f2a26;
+  --bg-button-dark-hover: #26211d;
+  --bg-button-quiet: #f1ece3;
+  --border-soft: rgba(64, 45, 34, 0.12);
+  --border-strong: rgba(44, 31, 24, 0.2);
+  --text-primary: #191512;
+  --text-secondary: #63564b;
+  --text-inverse: #fbf8f3;
+  --shadow-panel: 0 8px 24px rgba(63, 45, 31, 0.08);
+  --shadow-button: 0 4px 10px rgba(22, 16, 12, 0.18);
+  --radius-panel: 22px;
+  --radius-card: 16px;
+  --radius-button: 12px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}

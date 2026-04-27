@@ -1,0 +1,924 @@
+[
+    {
+        "id": "action_deal_breaker",
+        "name": "Deal Breaker",
+        "type": "action",
+        "count": 2,
+        "bank_value": 5,
+        "bankable": true,
+        "effect": {
+            "type": "steal_full_set",
+            "includes_buildings": true
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/deal-breaker-action-card.png"
+    },
+    {
+        "id": "action_debt_collector",
+        "name": "Debt Collector",
+        "type": "action",
+        "count": 3,
+        "bank_value": 3,
+        "bankable": true,
+        "effect": {
+            "type": "charge_player",
+            "amount": 5,
+            "currency": "M",
+            "target": "one_player"
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/debt-collector-action-card.png"
+    },
+    {
+        "id": "action_double_the_rent",
+        "name": "Double The Rent!",
+        "type": "action",
+        "count": 2,
+        "bank_value": 1,
+        "bankable": true,
+        "effect": {
+            "type": "modifier",
+            "applies_to": "rent",
+            "multiplier": 2
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/double-the-rent-action-card.png"
+    },
+    {
+        "id": "action_forced_deal",
+        "name": "Forced Deal",
+        "type": "action",
+        "count": 3,
+        "bank_value": 3,
+        "bankable": true,
+        "effect": {
+            "type": "swap_property",
+            "from_full_set_allowed": false
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/force-deal-action-card.png"
+    },
+    {
+        "id": "action_hotel",
+        "name": "Hotel",
+        "type": "action",
+        "count": 2,
+        "bank_value": 4,
+        "bankable": true,
+        "effect": {
+            "type": "building",
+            "building": "hotel",
+            "rent_bonus": 4,
+            "requires_full_set": true,
+            "requires_house": true,
+            "disallowed_groups": [
+                "railroad",
+                "utility"
+            ]
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/hotel-action-card.png"
+    },
+    {
+        "id": "action_house",
+        "name": "House",
+        "type": "action",
+        "count": 3,
+        "bank_value": 3,
+        "bankable": true,
+        "effect": {
+            "type": "building",
+            "building": "house",
+            "rent_bonus": 3,
+            "requires_full_set": true,
+            "disallowed_groups": [
+                "railroad",
+                "utility"
+            ]
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/house-action-card.png"
+    },
+    {
+        "id": "action_its_my_birthday",
+        "name": "It's My Birthday",
+        "type": "action",
+        "count": 3,
+        "bank_value": 2,
+        "bankable": true,
+        "effect": {
+            "type": "charge_players",
+            "amount": 2,
+            "currency": "M",
+            "target": "all_others"
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/it%27s-my-birthday-action-card.png"
+    },
+    {
+        "id": "action_just_say_no",
+        "name": "Just Say No!",
+        "type": "action",
+        "count": 3,
+        "bank_value": 4,
+        "bankable": true,
+        "effect": {
+            "type": "counter_action",
+            "counts_as_play": false
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/just-say-no-action-card.png"
+    },
+    {
+        "id": "action_pass_go",
+        "name": "Pass Go",
+        "type": "action",
+        "count": 10,
+        "bank_value": 1,
+        "bankable": true,
+        "effect": {
+            "type": "draw_cards",
+            "amount": 2
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/pass-go-action-card.png"
+    },
+    {
+        "id": "action_sly_deal",
+        "name": "Sly Deal",
+        "type": "action",
+        "count": 3,
+        "bank_value": 3,
+        "bankable": true,
+        "effect": {
+            "type": "steal_property",
+            "from_full_set_allowed": false
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/sly-deal-action-card.png"
+    },
+    {
+        "id": "money_10m",
+        "name": "Money 10M",
+        "type": "money",
+        "count": 1,
+        "bank_value": 10,
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/%2410M-money-card.png"
+    },
+    {
+        "id": "money_1m",
+        "name": "Money 1M",
+        "type": "money",
+        "count": 6,
+        "bank_value": 1,
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/%241M-money-card.png"
+    },
+    {
+        "id": "money_2m",
+        "name": "Money 2M",
+        "type": "money",
+        "count": 5,
+        "bank_value": 2,
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/%242M-money-card.png"
+    },
+    {
+        "id": "money_3m",
+        "name": "Money 3M",
+        "type": "money",
+        "count": 3,
+        "bank_value": 3,
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/%243M-money-card.png"
+    },
+    {
+        "id": "money_4m",
+        "name": "Money 4M",
+        "type": "money",
+        "count": 3,
+        "bank_value": 4,
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/%244M-money-card.png"
+    },
+    {
+        "id": "money_5m",
+        "name": "Money 5M",
+        "type": "money",
+        "count": 2,
+        "bank_value": 5,
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/%245M-money-card.png"
+    },
+    {
+        "id": "prop_brown_baltic_avenue",
+        "name": "Baltic Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 1,
+        "property_group": "brown",
+        "set_size": 2,
+        "rent_by_count": [
+            1,
+            2
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/brown-property-card.png"
+    },
+    {
+        "id": "prop_brown_mediterranean_avenue",
+        "name": "Mediterranean Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 1,
+        "property_group": "brown",
+        "set_size": 2,
+        "rent_by_count": [
+            1,
+            2
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/brown-property-card.png"
+    },
+    {
+        "id": "prop_light_blue_connecticut_avenue",
+        "name": "Connecticut Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 1,
+        "property_group": "light_blue",
+        "set_size": 3,
+        "rent_by_count": [
+            1,
+            2,
+            3
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/light-blue-property-card.png"
+    },
+    {
+        "id": "prop_light_blue_oriental_avenue",
+        "name": "Oriental Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 1,
+        "property_group": "light_blue",
+        "set_size": 3,
+        "rent_by_count": [
+            1,
+            2,
+            3
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/light-blue-property-card.png"
+    },
+    {
+        "id": "prop_light_blue_vermont_avenue",
+        "name": "Vermont Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 1,
+        "property_group": "light_blue",
+        "set_size": 3,
+        "rent_by_count": [
+            1,
+            2,
+            3
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/light-blue-property-card.png"
+    },
+    {
+        "id": "prop_pink_st_charles_place",
+        "name": "St. Charles Place",
+        "type": "property",
+        "count": 1,
+        "bank_value": 2,
+        "property_group": "pink",
+        "set_size": 3,
+        "rent_by_count": [
+            1,
+            2,
+            4
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/pink-property-card.png"
+    },
+    {
+        "id": "prop_pink_states_avenue",
+        "name": "States Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 2,
+        "property_group": "pink",
+        "set_size": 3,
+        "rent_by_count": [
+            1,
+            2,
+            4
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/pink-property-card.png"
+    },
+    {
+        "id": "prop_pink_virginia_avenue",
+        "name": "Virginia Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 2,
+        "property_group": "pink",
+        "set_size": 3,
+        "rent_by_count": [
+            1,
+            2,
+            4
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/pink-property-card.png"
+    },
+    {
+        "id": "prop_orange_new_york_avenue",
+        "name": "New York Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 2,
+        "property_group": "orange",
+        "set_size": 3,
+        "rent_by_count": [
+            1,
+            3,
+            5
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/orange-property-card.png"
+    },
+    {
+        "id": "prop_orange_st_james_place",
+        "name": "St. James Place",
+        "type": "property",
+        "count": 1,
+        "bank_value": 2,
+        "property_group": "orange",
+        "set_size": 3,
+        "rent_by_count": [
+            1,
+            3,
+            5
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/orange-property-card.png"
+    },
+    {
+        "id": "prop_orange_tennessee_avenue",
+        "name": "Tennessee Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 2,
+        "property_group": "orange",
+        "set_size": 3,
+        "rent_by_count": [
+            1,
+            3,
+            5
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/orange-property-card.png"
+    },
+    {
+        "id": "prop_red_illinois_avenue",
+        "name": "Illinois Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 3,
+        "property_group": "red",
+        "set_size": 3,
+        "rent_by_count": [
+            2,
+            3,
+            6
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/red-property-card.png"
+    },
+    {
+        "id": "prop_red_indiana_avenue",
+        "name": "Indiana Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 3,
+        "property_group": "red",
+        "set_size": 3,
+        "rent_by_count": [
+            2,
+            3,
+            6
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/red-property-card.png"
+    },
+    {
+        "id": "prop_red_kentucky_avenue",
+        "name": "Kentucky Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 3,
+        "property_group": "red",
+        "set_size": 3,
+        "rent_by_count": [
+            2,
+            3,
+            6
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/red-property-card.png"
+    },
+    {
+        "id": "prop_yellow_atlantic_avenue",
+        "name": "Atlantic Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 3,
+        "property_group": "yellow",
+        "set_size": 3,
+        "rent_by_count": [
+            2,
+            4,
+            6
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/yellow-property-card.png"
+    },
+    {
+        "id": "prop_yellow_marvin_gardens",
+        "name": "Marvin Gardens",
+        "type": "property",
+        "count": 1,
+        "bank_value": 3,
+        "property_group": "yellow",
+        "set_size": 3,
+        "rent_by_count": [
+            2,
+            4,
+            6
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/yellow-property-card.png"
+    },
+    {
+        "id": "prop_yellow_ventnor_avenue",
+        "name": "Ventnor Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 3,
+        "property_group": "yellow",
+        "set_size": 3,
+        "rent_by_count": [
+            2,
+            4,
+            6
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/yellow-property-card.png"
+    },
+    {
+        "id": "prop_green_north_carolina_avenue",
+        "name": "North Carolina Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 4,
+        "property_group": "green",
+        "set_size": 3,
+        "rent_by_count": [
+            2,
+            4,
+            7
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/green-property-card.png"
+    },
+    {
+        "id": "prop_green_pacific_avenue",
+        "name": "Pacific Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 4,
+        "property_group": "green",
+        "set_size": 3,
+        "rent_by_count": [
+            2,
+            4,
+            7
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/green-property-card.png"
+    },
+    {
+        "id": "prop_green_pennsylvania_avenue",
+        "name": "Pennsylvania Avenue",
+        "type": "property",
+        "count": 1,
+        "bank_value": 4,
+        "property_group": "green",
+        "set_size": 3,
+        "rent_by_count": [
+            2,
+            4,
+            7
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/green-property-card.png"
+    },
+    {
+        "id": "prop_dark_blue_boardwalk",
+        "name": "Boardwalk",
+        "type": "property",
+        "count": 1,
+        "bank_value": 4,
+        "property_group": "dark_blue",
+        "set_size": 2,
+        "rent_by_count": [
+            3,
+            8
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/dark-blue-property-card.png"
+    },
+    {
+        "id": "prop_dark_blue_park_place",
+        "name": "Park Place",
+        "type": "property",
+        "count": 1,
+        "bank_value": 4,
+        "property_group": "dark_blue",
+        "set_size": 2,
+        "rent_by_count": [
+            3,
+            8
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/dark-blue-property-card.png"
+    },
+    {
+        "id": "prop_railroad_b_and_o_railroad",
+        "name": "B. & O. Railroad",
+        "type": "property",
+        "count": 1,
+        "bank_value": 2,
+        "property_group": "railroad",
+        "set_size": 4,
+        "rent_by_count": [
+            1,
+            2,
+            3,
+            4
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/railroad-property-card.png"
+    },
+    {
+        "id": "prop_railroad_pennsylvania_railroad",
+        "name": "Pennsylvania Railroad",
+        "type": "property",
+        "count": 1,
+        "bank_value": 2,
+        "property_group": "railroad",
+        "set_size": 4,
+        "rent_by_count": [
+            1,
+            2,
+            3,
+            4
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/railroad-property-card.png"
+    },
+    {
+        "id": "prop_railroad_reading_railroad",
+        "name": "Reading Railroad",
+        "type": "property",
+        "count": 1,
+        "bank_value": 2,
+        "property_group": "railroad",
+        "set_size": 4,
+        "rent_by_count": [
+            1,
+            2,
+            3,
+            4
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/railroad-property-card.png"
+    },
+    {
+        "id": "prop_railroad_short_line",
+        "name": "Short Line",
+        "type": "property",
+        "count": 1,
+        "bank_value": 2,
+        "property_group": "railroad",
+        "set_size": 4,
+        "rent_by_count": [
+            1,
+            2,
+            3,
+            4
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/railroad-property-card.png"
+    },
+    {
+        "id": "prop_utility_electric_company",
+        "name": "Electric Company",
+        "type": "property",
+        "count": 1,
+        "bank_value": 2,
+        "property_group": "utility",
+        "set_size": 2,
+        "rent_by_count": [
+            1,
+            2
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/utility-property-card.png"
+    },
+    {
+        "id": "prop_utility_water_works",
+        "name": "Water Works",
+        "type": "property",
+        "count": 1,
+        "bank_value": 2,
+        "property_group": "utility",
+        "set_size": 2,
+        "rent_by_count": [
+            1,
+            2
+        ],
+        "bankable": true,
+        "image_url": "https://monopolydealrules.com/photos/cards/utility-property-card.png"
+    },
+    {
+        "id": "multicolor_rent",
+        "name": "Multicolor Rent",
+        "type": "rent",
+        "count": 3,
+        "bank_value": 3,
+        "bankable": true,
+        "colors": [
+            "any"
+        ],
+        "effect": {
+            "type": "collect_rent",
+            "colors": [
+                "any"
+            ],
+            "target": "one_player",
+            "choose_color_if_multiple": false
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/all-color-wild-rent-card.png"
+    },
+    {
+        "id": "rent_dark_blue_green",
+        "name": "Rent (Dark Blue or Green)",
+        "type": "rent",
+        "count": 2,
+        "bank_value": 1,
+        "bankable": true,
+        "colors": [
+            "dark_blue",
+            "green"
+        ],
+        "effect": {
+            "type": "collect_rent",
+            "colors": [
+                "dark_blue",
+                "green"
+            ],
+            "target": "all_others",
+            "choose_color_if_multiple": true
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/blue-and-green-rent-card.png"
+    },
+    {
+        "id": "rent_light_blue_brown",
+        "name": "Rent (Light Blue or Brown)",
+        "type": "rent",
+        "count": 2,
+        "bank_value": 1,
+        "bankable": true,
+        "colors": [
+            "light_blue",
+            "brown"
+        ],
+        "effect": {
+            "type": "collect_rent",
+            "colors": [
+                "light_blue",
+                "brown"
+            ],
+            "target": "all_others",
+            "choose_color_if_multiple": true
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/brown-and-light-blue-rent-card.png"
+    },
+    {
+        "id": "rent_pink_orange",
+        "name": "Rent (Pink or Orange)",
+        "type": "rent",
+        "count": 2,
+        "bank_value": 1,
+        "bankable": true,
+        "colors": [
+            "pink",
+            "orange"
+        ],
+        "effect": {
+            "type": "collect_rent",
+            "colors": [
+                "pink",
+                "orange"
+            ],
+            "target": "all_others",
+            "choose_color_if_multiple": true
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/orange-and-pink-rent-card.png"
+    },
+    {
+        "id": "rent_railroad_utility",
+        "name": "Rent (Railroad or Utility)",
+        "type": "rent",
+        "count": 2,
+        "bank_value": 1,
+        "bankable": true,
+        "colors": [
+            "railroad",
+            "utility"
+        ],
+        "effect": {
+            "type": "collect_rent",
+            "colors": [
+                "railroad",
+                "utility"
+            ],
+            "target": "all_others",
+            "choose_color_if_multiple": true
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/railroad-and-utility-rent-card.png"
+    },
+    {
+        "id": "rent_red_yellow",
+        "name": "Rent (Red or Yellow)",
+        "type": "rent",
+        "count": 2,
+        "bank_value": 1,
+        "bankable": true,
+        "colors": [
+            "red",
+            "yellow"
+        ],
+        "effect": {
+            "type": "collect_rent",
+            "colors": [
+                "red",
+                "yellow"
+            ],
+            "target": "all_others",
+            "choose_color_if_multiple": true
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/red-and-yellow-rent-card.png"
+    },
+    {
+        "id": "wild_dark_blue_green",
+        "name": "Property Wildcard (Dark Blue or Green)",
+        "type": "property_wild",
+        "count": 1,
+        "bank_value": 4,
+        "bankable": true,
+        "colors": [
+            "dark_blue",
+            "green"
+        ],
+        "restrictions": {
+            "cannot_complete_set_with_only_wildcards": true,
+            "note": "A full set must include at least one standard (non-wild) property card."
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/dark-blue-and-green-wildcard-card.png"
+    },
+    {
+        "id": "wild_green_railroad",
+        "name": "Property Wildcard (Green or Railroad)",
+        "type": "property_wild",
+        "count": 1,
+        "bank_value": 4,
+        "bankable": true,
+        "colors": [
+            "green",
+            "railroad"
+        ],
+        "restrictions": {
+            "cannot_complete_set_with_only_wildcards": true,
+            "note": "A full set must include at least one standard (non-wild) property card."
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/railraod-and-green-wildcard-card.png"
+    },
+    {
+        "id": "wild_light_blue_brown",
+        "name": "Property Wildcard (Light Blue or Brown)",
+        "type": "property_wild",
+        "count": 1,
+        "bank_value": 1,
+        "bankable": true,
+        "colors": [
+            "light_blue",
+            "brown"
+        ],
+        "restrictions": {
+            "cannot_complete_set_with_only_wildcards": true,
+            "note": "A full set must include at least one standard (non-wild) property card."
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/light-blue-and-brown-wildcard-card.png"
+    },
+    {
+        "id": "wild_light_blue_railroad",
+        "name": "Property Wildcard (Light Blue or Railroad)",
+        "type": "property_wild",
+        "count": 1,
+        "bank_value": 4,
+        "bankable": true,
+        "colors": [
+            "light_blue",
+            "railroad"
+        ],
+        "restrictions": {
+            "cannot_complete_set_with_only_wildcards": true,
+            "note": "A full set must include at least one standard (non-wild) property card."
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/railraod-and-light-blue-wildcard-card.png"
+    },
+    {
+        "id": "wild_multicolor_any",
+        "name": "Property Wildcard (Any Color)",
+        "type": "property_wild",
+        "count": 2,
+        "bank_value": 0,
+        "bankable": false,
+        "colors": [
+            "brown",
+            "light_blue",
+            "pink",
+            "orange",
+            "red",
+            "yellow",
+            "green",
+            "dark_blue",
+            "railroad",
+            "utility"
+        ],
+        "restrictions": {
+            "cannot_complete_set_with_only_wildcards": true,
+            "note": "A full set must include at least one standard (non-wild) property card."
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/multicolor-wildcard-card.png"
+    },
+    {
+        "id": "wild_pink_orange",
+        "name": "Property Wildcard (Pink or Orange)",
+        "type": "property_wild",
+        "count": 2,
+        "bank_value": 2,
+        "bankable": true,
+        "colors": [
+            "pink",
+            "orange"
+        ],
+        "restrictions": {
+            "cannot_complete_set_with_only_wildcards": true,
+            "note": "A full set must include at least one standard (non-wild) property card."
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/orange-and-pink-wildcard-card.png"
+    },
+    {
+        "id": "wild_railroad_utility",
+        "name": "Property Wildcard (Railroad or Utility)",
+        "type": "property_wild",
+        "count": 1,
+        "bank_value": 2,
+        "bankable": true,
+        "colors": [
+            "railroad",
+            "utility"
+        ],
+        "restrictions": {
+            "cannot_complete_set_with_only_wildcards": true,
+            "note": "A full set must include at least one standard (non-wild) property card."
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/railroad-and-utility-wildcard-card.png"
+    },
+    {
+        "id": "wild_red_yellow",
+        "name": "Property Wildcard (Red or Yellow)",
+        "type": "property_wild",
+        "count": 2,
+        "bank_value": 3,
+        "bankable": true,
+        "colors": [
+            "red",
+            "yellow"
+        ],
+        "restrictions": {
+            "cannot_complete_set_with_only_wildcards": true,
+            "note": "A full set must include at least one standard (non-wild) property card."
+        },
+        "image_url": "https://monopolydealrules.com/photos/cards/red-and-yellow-wildcard-card.png"
+    }
+]

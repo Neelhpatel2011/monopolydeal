@@ -1,0 +1,22 @@
+{
+    "id": "rent_red_yellow",
+    "name": "Rent (Red or Yellow)",
+    "type": "rent",
+    "count": 2,
+    "bank_value": 1,
+    "bankable": true,
+    "colors": [
+        "red",
+        "yellow"
+    ],
+    "effect": {
+        "type": "collect_rent",
+        "colors": [
+            "red",
+            "yellow"
+        ],
+        "target": "all_others",
+        "choose_color_if_multiple": true
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/red-and-yellow-rent-card.png"
+}

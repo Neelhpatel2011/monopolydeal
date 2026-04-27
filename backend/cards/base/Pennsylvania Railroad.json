@@ -1,0 +1,17 @@
+{
+    "id": "prop_railroad_pennsylvania_railroad",
+    "name": "Pennsylvania Railroad",
+    "type": "property",
+    "count": 1,
+    "bank_value": 2,
+    "property_group": "railroad",
+    "set_size": 4,
+    "rent_by_count": [
+        1,
+        2,
+        3,
+        4
+    ],
+    "bankable": true,
+    "image_url": "https://monopolydealrules.com/photos/cards/railroad-property-card.png"
+}

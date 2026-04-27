@@ -1,0 +1,14 @@
+{
+    "id": "action_double_the_rent",
+    "name": "Double The Rent!",
+    "type": "action",
+    "count": 2,
+    "bank_value": 1,
+    "bankable": true,
+    "effect": {
+        "type": "modifier",
+        "applies_to": "rent",
+        "multiplier": 2
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/double-the-rent-action-card.png"
+}

@@ -1,0 +1,22 @@
+{
+    "id": "rent_railroad_utility",
+    "name": "Rent (Railroad or Utility)",
+    "type": "rent",
+    "count": 2,
+    "bank_value": 1,
+    "bankable": true,
+    "colors": [
+        "railroad",
+        "utility"
+    ],
+    "effect": {
+        "type": "collect_rent",
+        "colors": [
+            "railroad",
+            "utility"
+        ],
+        "target": "all_others",
+        "choose_color_if_multiple": true
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/railroad-and-utility-rent-card.png"
+}

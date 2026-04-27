@@ -1,0 +1,26 @@
+import type { EndTurnControlState } from "../model/endTurnFlow";
+
+type TurnControlsDockProps = {
+  controlState: EndTurnControlState;
+  onRequestEndTurn: () => void;
+};
+
+export function TurnControlsDock({
+  controlState,
+  onRequestEndTurn,
+}: TurnControlsDockProps) {
+  return (
+    <div className="turn-controls-dock">
+      <button
+        className={`end-turn-button end-turn-button--${controlState.emphasis}`}
+        type="button"
+        disabled={controlState.disabled}
+        aria-disabled={controlState.disabled || undefined}
+        onClick={onRequestEndTurn}
+      >
+        <span>{controlState.buttonLabel}</span>
+      </button>
+      <p className="turn-controls-dock__helper">{controlState.helperText}</p>
+    </div>
+  );
+}

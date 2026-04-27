@@ -1,0 +1,15 @@
+{
+    "id": "prop_brown_mediterranean_avenue",
+    "name": "Mediterranean Avenue",
+    "type": "property",
+    "count": 1,
+    "bank_value": 1,
+    "property_group": "brown",
+    "set_size": 2,
+    "rent_by_count": [
+        1,
+        2
+    ],
+    "bankable": true,
+    "image_url": "https://monopolydealrules.com/photos/cards/brown-property-card.png"
+}

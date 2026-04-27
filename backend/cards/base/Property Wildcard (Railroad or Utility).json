@@ -1,0 +1,17 @@
+{
+    "id": "wild_railroad_utility",
+    "name": "Property Wildcard (Railroad or Utility)",
+    "type": "property_wild",
+    "count": 1,
+    "bank_value": 2,
+    "bankable": true,
+    "colors": [
+        "railroad",
+        "utility"
+    ],
+    "restrictions": {
+        "cannot_complete_set_with_only_wildcards": true,
+        "note": "A full set must include at least one standard (non-wild) property card."
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/railroad-and-utility-wildcard-card.png"
+}

@@ -1,0 +1,13 @@
+{
+    "id": "action_deal_breaker",
+    "name": "Deal Breaker",
+    "type": "action",
+    "count": 2,
+    "bank_value": 5,
+    "bankable": true,
+    "effect": {
+        "type": "steal_full_set",
+        "includes_buildings": true
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/deal-breaker-action-card.png"
+}

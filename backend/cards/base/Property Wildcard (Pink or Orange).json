@@ -1,0 +1,17 @@
+{
+    "id": "wild_pink_orange",
+    "name": "Property Wildcard (Pink or Orange)",
+    "type": "property_wild",
+    "count": 2,
+    "bank_value": 2,
+    "bankable": true,
+    "colors": [
+        "pink",
+        "orange"
+    ],
+    "restrictions": {
+        "cannot_complete_set_with_only_wildcards": true,
+        "note": "A full set must include at least one standard (non-wild) property card."
+    },
+    "image_url": "https://monopolydealrules.com/photos/cards/orange-and-pink-wildcard-card.png"
+}
