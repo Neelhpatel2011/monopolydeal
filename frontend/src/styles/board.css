@@ -3844,21 +3844,26 @@
 }
 
 .drop-zone-panel {
-  padding: 12px 8px;
+  width: min(100%, 344px);
+  min-height: 272px;
+  padding: 16px 14px;
   min-width: 0;
+  justify-self: center;
+  display: grid;
+  align-content: center;
 }
 
 .drop-zone-panel::before {
-  inset: 8px;
+  inset: 12px;
 }
 
 .drop-zone-panel__mark {
-  font-size: clamp(0.96rem, 2vw, 1.5rem);
+  font-size: clamp(1.28rem, 2.8vw, 2.08rem);
 }
 
 .drop-zone-panel__subtitle {
-  font-size: clamp(0.46rem, 0.7vw, 0.62rem);
-  line-height: 1.16;
+  font-size: clamp(0.6rem, 1vw, 0.78rem);
+  line-height: 1.2;
 }
 
 @media (max-width: 760px) {
@@ -3985,27 +3990,26 @@
   }
 
   .drop-zone-panel {
-    width: min(52vw, 162px);
-    min-width: 132px;
-    max-width: 162px;
-    aspect-ratio: 1 / 1;
-    padding: 4px;
+    width: min(100%, 272px);
+    max-width: 272px;
+    min-height: 216px;
+    padding: 10px 8px;
     justify-self: center;
     display: grid;
     align-content: center;
   }
 
   .drop-zone-panel::before {
-    inset: 4px;
+    inset: 7px;
   }
 
   .drop-zone-panel__mark {
-    font-size: 0.92rem;
+    font-size: clamp(1.16rem, 3vw, 1.56rem);
   }
 
   .drop-zone-panel__subtitle {
-    font-size: 0.36rem;
-    line-height: 1.05;
+    font-size: clamp(0.46rem, 1vw, 0.6rem);
+    line-height: 1.12;
   }
 
   .pile-card__stack {
