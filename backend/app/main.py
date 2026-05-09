@@ -1,7 +1,8 @@
 # FastAPI app entry point
 
-# Placeholder for the main FastAPI application code
+import os
 from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.services.card_catalog import load_catalog
@@ -19,12 +20,34 @@ LAN_DEV_ORIGIN_REGEX = (
     r")(:\d+)?$"
 )
 
-# Allow the Next.js dev server (and any local origin) to call the API.
-# In production, replace ["*"] with your actual domain.
+
+def _split_origins(raw_value: str | None) -> list[str]:
+    if not raw_value:
+        return []
+    return [origin.strip().rstrip("/") for origin in raw_value.split(",") if origin.strip()]
+
+
+def _origin_regex() -> str:
+    production_regex = os.getenv("FRONTEND_ORIGIN_REGEX", "").strip()
+    if not production_regex:
+        return LAN_DEV_ORIGIN_REGEX
+    return f"(?:{LAN_DEV_ORIGIN_REGEX})|(?:{production_regex})"
+
+
+PRODUCTION_FRONTEND_ORIGINS = _split_origins(
+    os.getenv("FRONTEND_ORIGINS") or os.getenv("FRONTEND_ORIGIN")
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
-    allow_origin_regex=LAN_DEV_ORIGIN_REGEX,
+    allow_origins=[
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        *PRODUCTION_FRONTEND_ORIGINS,
+    ],
+    allow_origin_regex=_origin_regex(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,3 +62,8 @@ app.include_router(ws_router)
 @app.get("/")
 async def root():
     return "Welcome to MonopolyDeal"
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}

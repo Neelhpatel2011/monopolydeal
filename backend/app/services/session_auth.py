@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 import hashlib
+import os
 import secrets
 from typing import Any, Dict
 
@@ -44,23 +45,41 @@ def create_player_session_token(game_id: str, player_id: str) -> str:
     return raw_token
 
 
+def _cookie_samesite() -> str:
+    configured = os.getenv("PLAYER_SESSION_COOKIE_SAMESITE", "lax").strip().lower()
+    if configured not in {"lax", "strict", "none"}:
+        return "lax"
+    return configured
+
+
+def _cookie_secure(request: Request, samesite: str) -> bool:
+    configured = os.getenv("PLAYER_SESSION_COOKIE_SECURE", "").strip().lower()
+    if configured:
+        return configured in {"1", "true", "yes", "on"}
+    if samesite == "none":
+        return True
+    return request.url.scheme == "https"
+
+
 def set_player_session_cookie(response: Response, request: Request, token: str) -> None:
+    samesite = _cookie_samesite()
     response.set_cookie(
         key=PLAYER_SESSION_COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=request.url.scheme == "https",
-        samesite="lax",
+        secure=_cookie_secure(request, samesite),
+        samesite=samesite,
         max_age=PLAYER_SESSION_TTL_DAYS * 24 * 60 * 60,
         path="/",
     )
 
 
 def clear_player_session_cookie(response: Response, request: Request) -> None:
+    samesite = _cookie_samesite()
     response.delete_cookie(
         key=PLAYER_SESSION_COOKIE_NAME,
-        secure=request.url.scheme == "https",
-        samesite="lax",
+        secure=_cookie_secure(request, samesite),
+        samesite=samesite,
         path="/",
     )
 
