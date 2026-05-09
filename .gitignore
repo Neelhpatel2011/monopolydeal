@@ -54,6 +54,7 @@ node_modules/
 frontend/node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/.vercel/
 frontend/test-results/
 frontend/playwright-report/
 frontend/output/
