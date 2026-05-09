@@ -7,6 +7,9 @@ type BoardCenterStageProps = {
   drawCount: number;
   discardCount: number;
   discardTopCardId?: string;
+  isPlayTargetable?: boolean;
+  isPlayPreviewed?: boolean;
+  isPlayInvalid?: boolean;
   onPlayZonePress?: () => void;
 };
 
@@ -14,6 +17,9 @@ export function BoardCenterStage({
   drawCount,
   discardCount,
   discardTopCardId,
+  isPlayTargetable = false,
+  isPlayPreviewed = false,
+  isPlayInvalid = false,
   onPlayZonePress,
 }: BoardCenterStageProps) {
   void drawCount;
@@ -32,12 +38,22 @@ export function BoardCenterStage({
 
       <button
         type="button"
-        className="drop-zone-panel"
+        className={`drop-zone-panel${
+          isPlayTargetable ? " drop-zone-panel--targetable" : ""
+        }${isPlayPreviewed ? " drop-zone-panel--previewed" : ""}${
+          isPlayInvalid ? " drop-zone-panel--invalid" : ""
+        }`}
         data-board-target-id={BOARD_PLAY_TARGET_ID}
         onClick={onPlayZonePress}
       >
         <p className="drop-zone-panel__mark" aria-hidden="true">GREED</p>
-        <p className="drop-zone-panel__subtitle">Drag a card here to play an action</p>
+        <p className="drop-zone-panel__subtitle">
+          {isPlayPreviewed
+            ? "Release to play"
+            : isPlayTargetable
+              ? "Drop card here"
+              : "Play cards here"}
+        </p>
       </button>
 
       <div className="pile-card pile-card--right">

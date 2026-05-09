@@ -42,12 +42,18 @@ import type { BoardBlockingState } from "../model/blocking-overlays";
 import { resolveBoardBlockingOverlay } from "../model/blocking-overlays";
 import { deriveEndTurnControlState } from "../../turn-controls/end-turn-policy";
 import { EndTurnConfirmSheet } from "../../turn-controls/components/EndTurnConfirmSheet";
+import {
+  buildOutstandingPaymentSummary,
+  type OutstandingEndTurnPayment,
+} from "../../turn-controls/model/endTurnFlow";
 import type { BackendActionRequest, BackendPendingResponse, BackendPlayerView } from "../../../integration/backend/contracts";
 import { ActionComposerSheet } from "./ActionComposerSheet";
 import { buildActionRequestFromIntent, buildChangeWildRequest, applyChosenValue } from "../model/backendActionBridge";
 import { PendingPromptSheet } from "./PendingPromptSheet";
 import { PaymentFlowSheet } from "./PaymentFlowSheet";
 import { DiscardFlowSheet } from "./DiscardFlowSheet";
+import { QuitGameConfirmSheet } from "./QuitGameConfirmSheet";
+import { SurrenderNoticeSheet } from "./SurrenderNoticeSheet";
 import { getPendingPaymentSelectionSummary } from "../../../integration/backend/adapters";
 import { deriveHandCardIntentProfile } from "../model/card-intents";
 import { getBackendCardMeta } from "../../../integration/backend/catalog";
@@ -60,6 +66,10 @@ type BoardShellProps = {
   opponentDetails: OpponentDetail[];
   localPlayer: LocalPlayerState;
   playerView: BackendPlayerView;
+  surrenderAnnouncements: Array<{
+    eventId: string;
+    playerId: string;
+  }>;
   discardTopCardId?: string;
   blockingState?: BoardBlockingState | null;
   drawCount?: number;
@@ -87,6 +97,8 @@ type BoardShellProps = {
     status: "ok" | "error";
     message?: string | null;
   }>;
+  onSurrenderGame: () => Promise<void>;
+  onDismissSurrenderAnnouncement: (eventId: string) => void;
 };
 
 export function BoardShell({
@@ -96,6 +108,7 @@ export function BoardShell({
   opponentDetails,
   localPlayer,
   playerView,
+  surrenderAnnouncements,
   discardTopCardId,
   blockingState = null,
   drawCount = 0,
@@ -104,6 +117,8 @@ export function BoardShell({
   onSubmitPayment,
   onSubmitDiscard,
   onConfirmEndTurn,
+  onSurrenderGame,
+  onDismissSurrenderAnnouncement,
 }: BoardShellProps) {
   const isCurrentTurn = localPlayer.isCurrentTurn;
   const [interactionState, dispatch] = useReducer(
@@ -117,6 +132,8 @@ export function BoardShell({
   const draggedCardId = selectDraggedCardId(interactionState);
   const invalidFeedback = selectInvalidFeedback(interactionState);
   const endTurnConfirmOpen = selectEndTurnConfirmOpen(interactionState);
+  const endTurnBlockedFeedback =
+    endTurnConfirmOpen && invalidFeedback?.kind === "blocked" ? invalidFeedback : null;
   const selectedCardId = selectSelectedCardId(interactionState);
   const selectedOrigin = selectSelectedCardOrigin(interactionState);
   const activeIntent = selectActiveIntent(interactionState);
@@ -136,6 +153,12 @@ export function BoardShell({
   const activeGameOverEmphasisLabel = activeGameOverOverlay?.emphasisLabel ?? null;
   const [composerIntent, setComposerIntent] = useState<typeof activeIntent>(null);
   const [isPromptSubmitting, setIsPromptSubmitting] = useState(false);
+  const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
+  const [isSurrendering, setIsSurrendering] = useState(false);
+  const visibleSurrenderAnnouncement = useMemo(
+    () => surrenderAnnouncements[0] ?? null,
+    [surrenderAnnouncements],
+  );
   const hasOpponentDetailOpen = expandedOpponentId !== null;
   const isGameOverBrowseMode =
     activeGameOverOverlay !== null && isGameOverOverlayDismissed;
@@ -145,11 +168,15 @@ export function BoardShell({
   const hasModalOverlayOpen =
     visibleBlockingOverlay !== null ||
     endTurnConfirmOpen ||
+    quitConfirmOpen ||
+    visibleSurrenderAnnouncement !== null ||
     interactionState.mode === "submittingEndTurn" ||
     hasOpponentDetailOpen;
   const shouldSuspendBoardAffordances =
     activeBlockingOverlay !== null ||
     endTurnConfirmOpen ||
+    quitConfirmOpen ||
+    visibleSurrenderAnnouncement !== null ||
     interactionState.mode === "submittingEndTurn";
   const activeHandCardId = draggedCardId ?? selectedCardId;
   const activeHandCard = useMemo(
@@ -178,7 +205,9 @@ export function BoardShell({
       ? invalidTargetId.replace(/^opponent:/, "")
       : null;
   const showTargetHighlights =
-    interactionState.mode === "dragging" || interactionState.mode === "targeting";
+    interactionState.mode === "selected" ||
+    interactionState.mode === "dragging" ||
+    interactionState.mode === "targeting";
   const targetableTableauSetIds = showTargetHighlights
     ? validTargets
         .filter(
@@ -225,6 +254,55 @@ export function BoardShell({
       validTargets,
     ],
   );
+  const outstandingEndTurnPayments = useMemo<OutstandingEndTurnPayment[]>(() => {
+    if (!localPlayer.isCurrentTurn) {
+      return [];
+    }
+
+    const playerNames = new Map<string, string>([[localPlayer.id, localPlayer.name]]);
+    opponentSummaries.forEach((opponent) => {
+      playerNames.set(opponent.id, opponent.name);
+    });
+
+    const pendingAmounts = new Map<string, number>();
+    playerView.payment_trackers.forEach((tracker) => {
+      if (tracker.receiver_id !== localPlayer.id) {
+        return;
+      }
+
+      tracker.participants.forEach((participant) => {
+        if (participant.status !== "pending" || participant.amount <= 0) {
+          return;
+        }
+
+        pendingAmounts.set(
+          participant.player_id,
+          (pendingAmounts.get(participant.player_id) ?? 0) + participant.amount,
+        );
+      });
+    });
+
+    return [...pendingAmounts.entries()]
+      .map(([playerId, amount]) => ({
+        playerName: playerNames.get(playerId) ?? playerId,
+        amount,
+        amountLabel: formatBankValue(amount),
+      }))
+      .sort(
+        (left, right) =>
+          right.amount - left.amount || left.playerName.localeCompare(right.playerName),
+      );
+  }, [
+    localPlayer.id,
+    localPlayer.isCurrentTurn,
+    localPlayer.name,
+    opponentSummaries,
+    playerView.payment_trackers,
+  ]);
+  const outstandingPaymentSummary = useMemo(
+    () => buildOutstandingPaymentSummary(outstandingEndTurnPayments),
+    [outstandingEndTurnPayments],
+  );
   const endTurnControlState = useMemo(
     () =>
       deriveEndTurnControlState({
@@ -238,6 +316,7 @@ export function BoardShell({
               null,
         interactionState,
         isCurrentTurn,
+        outstandingPaymentSummary,
       }),
     [
       actionsLeft,
@@ -248,6 +327,7 @@ export function BoardShell({
       localPlayer.name,
       opponentSummaries,
       playerView.current_player_id,
+      outstandingPaymentSummary,
     ],
   );
   const handDragController = useHandDragController({
@@ -354,7 +434,9 @@ export function BoardShell({
     if (
       !expandedOpponent &&
       !visibleBlockingOverlay &&
-      !endTurnConfirmOpen
+      !endTurnConfirmOpen &&
+      !quitConfirmOpen &&
+      visibleSurrenderAnnouncement === null
     ) {
       return undefined;
     }
@@ -365,7 +447,13 @@ export function BoardShell({
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [endTurnConfirmOpen, expandedOpponent, visibleBlockingOverlay]);
+  }, [
+    endTurnConfirmOpen,
+    expandedOpponent,
+    quitConfirmOpen,
+    visibleBlockingOverlay,
+    visibleSurrenderAnnouncement,
+  ]);
 
   useEffect(() => {
     if (previousIsCurrentTurnRef.current && !isCurrentTurn) {
@@ -423,7 +511,7 @@ export function BoardShell({
       return;
     }
 
-    if (actionsLeft > 0) {
+    if (actionsLeft > 0 || outstandingEndTurnPayments.length > 0) {
       dispatch({ type: "OPEN_END_TURN_CONFIRM" });
       return;
     }
@@ -431,7 +519,42 @@ export function BoardShell({
     void handleConfirmEndTurn();
   }
 
+  function handleRequestSurrender() {
+    if (shouldSuspendBoardAffordances) {
+      return;
+    }
+    setQuitConfirmOpen(true);
+  }
+
+  async function handleConfirmSurrender() {
+    if (isSurrendering) {
+      return;
+    }
+    setIsSurrendering(true);
+    try {
+      await onSurrenderGame();
+    } finally {
+      setIsSurrendering(false);
+    }
+  }
+
   async function handleConfirmEndTurn() {
+    if (outstandingEndTurnPayments.length > 0) {
+      dispatch({
+        type: "SUBMIT_END_TURN_REJECTED",
+        feedback: createInvalidFeedback(
+          "blocked",
+          "Pending payments are still unresolved.",
+          {
+            detail:
+              outstandingPaymentSummary ??
+              "The remaining players need to finish their payments before the turn can end.",
+          },
+        ),
+      });
+      return;
+    }
+
     const submissionId = `end-turn-${Date.now()}`;
     dispatch({ type: "SUBMIT_END_TURN_START", submissionId });
 
@@ -441,14 +564,14 @@ export function BoardShell({
         throw new Error(result.message ?? "End turn failed.");
       }
       dispatch({ type: "SUBMIT_END_TURN_RESOLVE" });
-    } catch {
+    } catch (error) {
       dispatch({
         type: "SUBMIT_END_TURN_REJECTED",
         feedback: createInvalidFeedback(
           "blocked",
-          "End turn could not be completed",
+          error instanceof Error ? error.message : "End turn could not be completed.",
           {
-            detail: "Try again once the board is ready.",
+            detail: outstandingPaymentSummary ?? "Try again once the board is ready.",
           },
         ),
       });
@@ -705,6 +828,7 @@ export function BoardShell({
           roundLabel={roundLabel}
           turnControlState={endTurnControlState}
           onRequestEndTurn={handleRequestEndTurn}
+          onRequestSurrender={handleRequestSurrender}
         />
         {activeGameOverOverlay && isGameOverBrowseMode ? (
           <section className="board-game-over-banner" role="status" aria-live="polite">
@@ -734,6 +858,11 @@ export function BoardShell({
           drawCount={drawCount}
           discardCount={playerView.discard_pile.length}
           discardTopCardId={discardTopCardId}
+          isPlayTargetable={
+            showTargetHighlights && validTargets.some((target) => target.id === BOARD_PLAY_TARGET_ID)
+          }
+          isPlayPreviewed={showTargetHighlights && previewTarget?.id === BOARD_PLAY_TARGET_ID}
+          isPlayInvalid={invalidTargetId === BOARD_PLAY_TARGET_ID}
           onPlayZonePress={handlePlayZonePress}
         />
         <LocalPlayerPanel
@@ -803,8 +932,18 @@ export function BoardShell({
         actionsLeft={actionsLeft}
         isOpen={endTurnConfirmOpen}
         isSubmitting={interactionState.mode === "submittingEndTurn"}
+        outstandingPayments={outstandingEndTurnPayments}
+        errorMessage={endTurnBlockedFeedback?.message ?? null}
+        errorDetail={endTurnBlockedFeedback?.detail ?? null}
         onCancel={() => dispatch({ type: "CLOSE_END_TURN_CONFIRM" })}
         onConfirm={handleConfirmEndTurn}
+      />
+
+      <QuitGameConfirmSheet
+        isOpen={quitConfirmOpen}
+        isSubmitting={isSurrendering}
+        onCancel={() => setQuitConfirmOpen(false)}
+        onConfirm={handleConfirmSurrender}
       />
 
       <BoardOverlayHost
@@ -872,6 +1011,20 @@ export function BoardShell({
           requiredCount={blockingState.discardRequired.discardCount ?? 0}
           cards={localPlayer.handCards}
           onSubmit={onSubmitDiscard}
+        />
+      ) : null}
+
+      {visibleSurrenderAnnouncement &&
+      !visibleBlockingOverlay &&
+      !quitConfirmOpen &&
+      !endTurnConfirmOpen &&
+      !hasOpponentDetailOpen &&
+      interactionState.mode !== "submittingEndTurn" ? (
+        <SurrenderNoticeSheet
+          playerName={visibleSurrenderAnnouncement.playerId}
+          onDismiss={() =>
+            onDismissSurrenderAnnouncement(visibleSurrenderAnnouncement.eventId)
+          }
         />
       ) : null}
     </main>

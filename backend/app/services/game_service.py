@@ -1,6 +1,7 @@
 # Orchestrates: load state, apply engine, save, broadcast
 
 # Placeholder for game service logic
+import random
 import secrets
 import uuid
 from typing import Dict, List, Any
@@ -214,6 +215,104 @@ def leave_game_lobby(game_id: str, player_id: str) -> Dict[str, Any]:
         state.current_player_id = next_host_id
 
     repo.update_game(state, status="lobby")
+    return {"deleted": False, "state": state}
+
+
+def _collect_player_owned_cards(player: PlayerState) -> List[str]:
+    cards: List[str] = []
+    cards.extend(player.hand)
+    cards.extend(player.bank)
+    for property_cards in player.properties.values():
+        cards.extend(property_cards)
+    for building_cards in player.buildings.values():
+        cards.extend(building_cards)
+    return cards
+
+
+def surrender_game(game_id: str, player_id: str) -> Dict[str, Any]:
+    """
+    Remove a player from an active game.
+
+    Surrender cancels any unresolved pending flows so the remaining players are
+    not left in a blocked state.
+    """
+    state = get_state(game_id)
+    _ensure_host_id(state)
+
+    player_id = player_id.strip()
+    if not player_id:
+        raise ValueError("player_id is required.")
+
+    if player_id not in state.players:
+        raise ValueError("Unknown player_id.")
+
+    started = bool(
+        state.deck.draw_pile
+        or state.deck.discard_pile
+        or any(player.hand for player in state.players.values())
+    )
+    if not started:
+        return leave_game_lobby(game_id, player_id)
+
+    player_order = list(state.players.keys())
+    current_player_id = state.current_player_id
+    was_current_player = current_player_id == player_id
+
+    departing_player = state.players[player_id]
+    recycled_cards = _collect_player_owned_cards(departing_player)
+    if recycled_cards:
+        state.deck.draw_pile.extend(recycled_cards)
+        random.shuffle(state.deck.draw_pile)
+
+    repo.revoke_player_sessions_for_player(game_id=game_id, player_id=player_id)
+    del state.players[player_id]
+
+    # Clear unresolved blockers so the table can continue safely.
+    state.pending_actions = {}
+    state.payment_trackers = []
+    repo.delete_pending_payments_for_game(game_id)
+
+    # Remove public turn-history entries for the surrendered player.
+    state.turn_actions = [
+        turn_action
+        for turn_action in state.turn_actions
+        if turn_action.player_id != player_id
+    ]
+
+    if not state.players:
+        repo.delete_game(game_id)
+        return {"deleted": True, "state": None}
+
+    state.host_id = resolve_host_id(state)
+
+    remaining_player_ids = list(state.players.keys())
+    if len(remaining_player_ids) == 1:
+        state.current_player_id = remaining_player_ids[0]
+        state.actions_taken = 0
+        state.turn_actions = []
+        state.winner_id = remaining_player_ids[0]
+        persist_game_state(game_id, state)
+        return {"deleted": False, "state": state}
+
+    if was_current_player or current_player_id not in state.players:
+        departed_index = player_order.index(player_id)
+        next_player_id = None
+        for offset in range(1, len(player_order) + 1):
+            candidate = player_order[(departed_index + offset) % len(player_order)]
+            if candidate in state.players:
+                next_player_id = candidate
+                break
+
+        if next_player_id is None:
+            raise ValueError("Could not resolve the next player after surrender.")
+
+        state.current_player_id = next_player_id
+        state.turn_number += 1
+        state.actions_taken = 0
+        state.turn_actions = []
+        draw_cards(state, next_player_id, n=2)
+
+    persist_game_state(game_id, state)
     return {"deleted": False, "state": state}
 
 

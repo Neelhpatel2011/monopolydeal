@@ -5,22 +5,26 @@ import type {
   BoardInteractionEvent,
   BoardInteractionState,
   DragPreviewState,
+  DraftActionIntent,
   InvalidFeedback,
 } from "../model/interaction-types";
 import { createHandSelectionIntent } from "../model/interaction-machine";
 import type { LocalHandCard, LocalPlayerState } from "../model/localPlayer";
 import type { OpponentSummary } from "../../opponents/model/opponentExpansion";
 import {
+  LOCAL_TABLEAU_TARGET_ID,
   getValidDragTargets,
   type DragTargetDefinition,
 } from "../../drag-targeting/model/target-preview";
 
 const MOVE_THRESHOLD_PX = 8;
-const TOUCH_HOLD_DELAY_MS = 140;
+const TOUCH_HOLD_DELAY_MS = 110;
+const TOUCH_ACCELERATED_DRAG_DISTANCE_PX = 18;
 const CLICK_SUPPRESSION_MS = 220;
 
 type HandDragSession = {
   cardId: string;
+  intent: DraftActionIntent;
   pointerId: number;
   pointerType: DragPreviewState["pointerType"];
   startedAt: number;
@@ -82,6 +86,32 @@ function normalizePointerType(pointerType: string): DragPreviewState["pointerTyp
   return "touch";
 }
 
+function shouldBeginDrag(
+  session: HandDragSession,
+  clientX: number,
+  clientY: number,
+) {
+  const deltaX = clientX - session.startClientX;
+  const deltaY = clientY - session.startClientY;
+  const distance = Math.hypot(deltaX, deltaY);
+
+  if (distance < MOVE_THRESHOLD_PX) {
+    return false;
+  }
+
+  if (session.pointerType !== "touch") {
+    return true;
+  }
+
+  // Upward pulls toward the board should feel immediate, while sideways motion can
+  // still behave like a hand-tray scroll or a simple tap.
+  const hasClearUpwardDragIntent =
+    deltaY <= -TOUCH_ACCELERATED_DRAG_DISTANCE_PX &&
+    Math.abs(deltaY) > Math.abs(deltaX);
+
+  return hasClearUpwardDragIntent || performance.now() - session.startedAt >= TOUCH_HOLD_DELAY_MS;
+}
+
 export function useHandDragController({
   interactionState,
   dispatch,
@@ -97,6 +127,8 @@ export function useHandDragController({
   const pendingSessionRef = useRef<HandDragSession | null>(null);
   const suppressClickCardIdRef = useRef<string | null>(null);
   const detachListenersRef = useRef<(() => void) | null>(null);
+  const moveFrameRef = useRef<number | null>(null);
+  const latestMoveRef = useRef<{ clientX: number; clientY: number } | null>(null);
   const interactionStateRef = useRef(interactionState);
   const activeCardRef = useRef(activeCard);
   const isCurrentTurnRef = useRef(isCurrentTurn);
@@ -148,6 +180,11 @@ export function useHandDragController({
 
   function finishPendingSession() {
     const pendingSession = pendingSessionRef.current;
+    if (moveFrameRef.current !== null) {
+      window.cancelAnimationFrame(moveFrameRef.current);
+      moveFrameRef.current = null;
+    }
+    latestMoveRef.current = null;
     detachListenersRef.current?.();
     detachListenersRef.current = null;
     pendingSessionRef.current = null;
@@ -217,6 +254,21 @@ export function useHandDragController({
     );
   }
 
+  function resolveFallbackTargetId(targetId: string | null): string | null {
+    if (!targetId) {
+      return null;
+    }
+
+    if (
+      targetId.startsWith(`${LOCAL_TABLEAU_TARGET_ID}:`) &&
+      validTargetsRef.current.has(LOCAL_TABLEAU_TARGET_ID)
+    ) {
+      return LOCAL_TABLEAU_TARGET_ID;
+    }
+
+    return null;
+  }
+
   function resolveDragTarget(clientX: number, clientY: number): DragTargetDefinition | null {
     const targetId = resolveBoardTargetId(clientX, clientY);
 
@@ -224,7 +276,11 @@ export function useHandDragController({
       return null;
     }
 
-    return validTargetsRef.current.get(targetId) ?? null;
+    return (
+      validTargetsRef.current.get(targetId) ??
+      validTargetsRef.current.get(resolveFallbackTargetId(targetId) ?? "") ??
+      null
+    );
   }
 
   function beginDrag(session: HandDragSession) {
@@ -232,9 +288,7 @@ export function useHandDragController({
 
     if (
       !isCurrentTurnRef.current ||
-      latestState.mode !== "selected" ||
-      latestState.origin !== "hand" ||
-      latestState.selectedCardId !== session.cardId
+      (latestState.mode !== "idle" && latestState.mode !== "selected")
     ) {
       finishPendingSession();
       return;
@@ -242,12 +296,25 @@ export function useHandDragController({
 
     session.started = true;
     dispatch({
-      type: "START_DRAG",
+      type: "START_HAND_DRAG",
       pointerId: String(session.pointerId),
       origin: "hand",
+      intent: session.intent,
       preview: session.preview,
       hoverTargetId: null,
     });
+    interactionStateRef.current = {
+      mode: "dragging",
+      selectedCardId: session.intent.cardId,
+      origin: "hand",
+      intent: session.intent,
+      pointerId: String(session.pointerId),
+      hoverTargetId: null,
+      preview: session.preview,
+      expandedOpponentId: null,
+      invalidFeedback: null,
+      endTurnConfirmOpen: false,
+    };
     suppressNextClick(session.cardId);
   }
 
@@ -255,44 +322,21 @@ export function useHandDragController({
     const listeners: Array<[string, EventListener, boolean | AddEventListenerOptions | undefined]> = [];
     const viewport = viewportRef.current;
 
-    const onPointerMove: EventListener = (event) => {
-      const pointerEvent = event as globalThis.PointerEvent;
-      if (pointerEvent.pointerId !== session.pointerId) {
+    function flushMove() {
+      moveFrameRef.current = null;
+
+      const latestMove = latestMoveRef.current;
+      if (!latestMove || !session.started) {
         return;
       }
 
-      session.preview = {
-        ...session.preview,
-        clientX: pointerEvent.clientX,
-        clientY: pointerEvent.clientY,
-      };
-
-      if (!session.started) {
-        const distance = Math.hypot(
-          pointerEvent.clientX - session.startClientX,
-          pointerEvent.clientY - session.startClientY,
-        );
-
-        if (
-          distance >= MOVE_THRESHOLD_PX &&
-          (session.pointerType === "mouse" ||
-            performance.now() - session.startedAt >= TOUCH_HOLD_DELAY_MS)
-        ) {
-          beginDrag(session);
-          return;
-        }
-
-        return;
-      }
-
-      pointerEvent.preventDefault();
       dispatch({
         type: "UPDATE_DRAG_PREVIEW",
-        clientX: pointerEvent.clientX,
-        clientY: pointerEvent.clientY,
+        clientX: latestMove.clientX,
+        clientY: latestMove.clientY,
       });
 
-      const target = resolveDragTarget(pointerEvent.clientX, pointerEvent.clientY);
+      const target = resolveDragTarget(latestMove.clientX, latestMove.clientY);
       const latestState = interactionStateRef.current;
 
       if (target) {
@@ -314,6 +358,45 @@ export function useHandDragController({
 
       if (latestState.mode === "targeting") {
         dispatch({ type: "LEAVE_TARGETING" });
+      }
+    }
+
+    const onPointerMove: EventListener = (event) => {
+      const pointerEvent = event as globalThis.PointerEvent;
+      if (pointerEvent.pointerId !== session.pointerId) {
+        return;
+      }
+
+      session.preview = {
+        ...session.preview,
+        clientX: pointerEvent.clientX,
+        clientY: pointerEvent.clientY,
+      };
+
+      if (!session.started) {
+        if (shouldBeginDrag(session, pointerEvent.clientX, pointerEvent.clientY)) {
+          pointerEvent.preventDefault();
+          beginDrag(session);
+          latestMoveRef.current = {
+            clientX: pointerEvent.clientX,
+            clientY: pointerEvent.clientY,
+          };
+          if (moveFrameRef.current === null) {
+            moveFrameRef.current = window.requestAnimationFrame(flushMove);
+          }
+          return;
+        }
+
+        return;
+      }
+
+      pointerEvent.preventDefault();
+      latestMoveRef.current = {
+        clientX: pointerEvent.clientX,
+        clientY: pointerEvent.clientY,
+      };
+      if (moveFrameRef.current === null) {
+        moveFrameRef.current = window.requestAnimationFrame(flushMove);
       }
     };
 
@@ -460,39 +543,21 @@ export function useHandDragController({
       interactionState.mode === "selected" &&
       interactionState.origin === "hand" &&
       interactionState.selectedCardId === cardId;
-
-    if (!isAlreadySelected) {
-      const intent = createHandSelectionIntent(card);
-      const immediateTargets = getValidDragTargets(
-        card,
-        intent,
-        localPlayerRef.current,
-        opponentsRef.current,
-      );
-
-      dispatch({
-        type: "SELECT_CARD",
-        origin: "hand",
-        intent,
-      });
-      interactionStateRef.current = {
-        mode: "selected",
-        selectedCardId: intent.cardId,
-        origin: "hand",
-        intent,
-        expandedOpponentId: null,
-        invalidFeedback: null,
-        endTurnConfirmOpen: false,
-      };
-      validTargetsRef.current = new Map(immediateTargets.map((target) => [target.id, target]));
-      suppressNextClick(cardId);
-    }
+    const intent = isAlreadySelected ? interactionState.intent : createHandSelectionIntent(card);
+    const immediateTargets = getValidDragTargets(
+      card,
+      intent,
+      localPlayerRef.current,
+      opponentsRef.current,
+    );
 
     finishPendingSession();
+    validTargetsRef.current = new Map(immediateTargets.map((target) => [target.id, target]));
     const pointerType = normalizePointerType(event.pointerType);
 
     const session: HandDragSession = {
       cardId,
+      intent,
       pointerId: event.pointerId,
       pointerType,
       startedAt: performance.now(),

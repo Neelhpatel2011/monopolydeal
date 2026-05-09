@@ -24,8 +24,8 @@ from backend.app.services.game_service import (
     handle_payment,
     create_game_lobby,
     join_game_by_code,
-    leave_game_lobby,
     start_new_game,
+    surrender_game,
 )
 from backend.app.services.game_service import join_game as join_game_service
 
@@ -42,6 +42,15 @@ from backend.app.db import repo
 
 
 router = APIRouter()
+
+
+def _state_has_started(state) -> bool:
+    return bool(
+        state.deck.draw_pile
+        or state.deck.discard_pile
+        or any(player.hand for player in state.players.values())
+        or state.winner_id
+    )
 
 
 def _map_value_error(e: ValueError) -> HTTPException:
@@ -136,7 +145,7 @@ async def leave_game(game_id: str, request: Request, response: Response) -> None
     _require_uuid(game_id, name="game_id")
     player_id = require_http_player_session(request, game_id)
     try:
-        result = leave_game_lobby(game_id=game_id, player_id=player_id)
+        result = surrender_game(game_id=game_id, player_id=player_id)
     except ValueError as e:
         raise _map_value_error(e)
 
@@ -144,7 +153,44 @@ async def leave_game(game_id: str, request: Request, response: Response) -> None
     clear_player_session_cookie(response, request)
     state = result.get("state")
     if state is not None:
+        if _state_has_started(state):
+            await manager.broadcast_player_surrendered(
+                game_id,
+                event_id=f"surrender_{uuid.uuid4().hex}",
+                player_id=player_id,
+                recipient_ids=list(state.players.keys()),
+            )
         await manager.broadcast_player_views(game_id, state)
+
+
+@router.post("/games/{game_id}/surrender", status_code=204)
+async def surrender_active_game(
+    game_id: str,
+    request: Request,
+    response: Response,
+) -> None:
+    _require_uuid(game_id, name="game_id")
+    player_id = require_http_player_session(request, game_id)
+    try:
+        result = surrender_game(game_id=game_id, player_id=player_id)
+    except ValueError as e:
+        raise _map_value_error(e)
+
+    await manager.disconnect(game_id, player_id)
+    clear_player_session_cookie(response, request)
+
+    state = result.get("state")
+    if state is None:
+        return
+
+    if _state_has_started(state):
+        await manager.broadcast_player_surrendered(
+            game_id,
+            event_id=f"surrender_{uuid.uuid4().hex}",
+            player_id=player_id,
+            recipient_ids=list(state.players.keys()),
+        )
+    await manager.broadcast_player_views(game_id, state)
 
 
 # POST METHODS:

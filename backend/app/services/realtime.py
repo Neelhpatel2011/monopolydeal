@@ -46,5 +46,21 @@ class ConnectionManager:
                 {"type": "state_update", "view": view.model_dump()},
             )
 
+    async def broadcast_player_surrendered(
+        self,
+        game_id: str,
+        *,
+        event_id: str,
+        player_id: str,
+        recipient_ids: list[str],
+    ) -> None:
+        payload = {
+            "type": "player_surrendered",
+            "event_id": event_id,
+            "player_id": player_id,
+        }
+        for recipient_id in recipient_ids:
+            await self.send_to_player(game_id, recipient_id, payload)
+
 
 manager = ConnectionManager()

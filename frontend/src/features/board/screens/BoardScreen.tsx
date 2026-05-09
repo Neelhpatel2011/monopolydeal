@@ -276,6 +276,7 @@ export function BoardScreen() {
       opponentDetails={session.boardView.opponentDetails}
       localPlayer={session.boardView.localPlayer}
       playerView={session.view}
+      surrenderAnnouncements={session.surrenderAnnouncements}
       discardTopCardId={session.boardView.discardTopCatalogCardId}
       drawCount={session.boardView.deckCount}
       blockingState={session.boardView.blockingState}
@@ -284,6 +285,8 @@ export function BoardScreen() {
       onSubmitPayment={session.submitPayment}
       onSubmitDiscard={session.submitDiscard}
       onConfirmEndTurn={session.endTurn}
+      onSurrenderGame={session.surrenderGame}
+      onDismissSurrenderAnnouncement={session.dismissSurrenderAnnouncement}
     />
   );
 }

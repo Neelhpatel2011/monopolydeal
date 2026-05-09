@@ -201,6 +201,11 @@ export type BackendGameOver = {
   winner_id: string;
 };
 
+export type BackendPlayerSurrendered = {
+  event_id: string;
+  player_id: string;
+};
+
 export type BackendActionResponse = {
   status: "ok" | "error";
   response_type:
@@ -233,5 +238,6 @@ export type BackendJoinGameResponse = {
 
 export type BackendRealtimeMessage =
   | { type: "state_update"; view: BackendPlayerView }
+  | { type: "player_surrendered"; event_id: string; player_id: string }
   | { type: "ping" }
   | { type: "pong" };

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { BackendActionRequest, BackendPendingResponse, BackendPlayerView } from "../../../integration/backend/contracts";
-import { backendClient } from "../../../integration/backend/client";
+import { backendClient, isAuthSessionError } from "../../../integration/backend/client";
 import {
   adaptBackendPlayerViewToBoard,
   getPendingPaymentSelectionSummary,
@@ -13,6 +13,11 @@ type DiscardRequirementState = {
 
 type BoardSessionStatus = "bootstrapping" | "loading" | "ready" | "error";
 
+type SurrenderAnnouncement = {
+  eventId: string;
+  playerId: string;
+};
+
 type BoardSessionState = {
   status: BoardSessionStatus;
   gameId: string | null;
@@ -20,6 +25,7 @@ type BoardSessionState = {
   view: BackendPlayerView | null;
   error: string | null;
   discardRequired: DiscardRequirementState;
+  surrenderAnnouncements: SurrenderAnnouncement[];
 };
 
 function readSessionParams() {
@@ -35,6 +41,14 @@ function writeSessionParams(gameId: string) {
   params.set("gameId", gameId);
   params.delete("playerId");
   window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
+}
+
+function getSessionErrorMessage(error: unknown) {
+  if (isAuthSessionError(error)) {
+    return "This browser session no longer has access to this game. Return home and rejoin the table.";
+  }
+
+  return error instanceof Error ? error.message : "Board session lost connection.";
 }
 
 async function bootstrapBackendGame() {
@@ -55,6 +69,7 @@ export function useBoardSession() {
     view: null,
     error: null,
     discardRequired: null,
+    surrenderAnnouncements: [],
   });
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
@@ -91,6 +106,7 @@ export function useBoardSession() {
           playerId: view.you.id,
           view,
           error: null,
+          surrenderAnnouncements: [],
         }));
       } catch (error) {
         if (cancelled) {
@@ -99,7 +115,7 @@ export function useBoardSession() {
         setState((current) => ({
           ...current,
           status: "error",
-          error: error instanceof Error ? error.message : "Board session failed to load.",
+          error: getSessionErrorMessage(error),
         }));
       }
     }
@@ -119,6 +135,21 @@ export function useBoardSession() {
     const gameId = state.gameId;
     let isDisposed = false;
 
+    function stopForSessionError(error: unknown) {
+      isDisposed = true;
+      if (reconnectTimeoutRef.current !== null) {
+        window.clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      socketRef.current?.close();
+      socketRef.current = null;
+      setState((current) => ({
+        ...current,
+        status: "error",
+        error: getSessionErrorMessage(error),
+      }));
+    }
+
     async function resyncView() {
       try {
         const nextView = await backendClient.getPlayerView(gameId);
@@ -128,17 +159,21 @@ export function useBoardSession() {
         setState((current) => ({
           ...current,
           status: "ready",
-          playerId: nextView.you.id,
-          view: nextView,
-          error: null,
-        }));
+            playerId: nextView.you.id,
+            view: nextView,
+            error: null,
+          }));
       } catch (error) {
         if (isDisposed) {
           return;
         }
+        if (isAuthSessionError(error)) {
+          stopForSessionError(error);
+          return;
+        }
         setState((current) => ({
           ...current,
-          error: error instanceof Error ? error.message : "Board session lost connection.",
+          error: getSessionErrorMessage(error),
         }));
       }
     }
@@ -156,9 +191,32 @@ export function useBoardSession() {
               current.discardRequired && view.you.hand.length <= 7 ? null : current.discardRequired,
           }));
         },
-        onClose: () => {
+        onPlayerSurrendered: ({ eventId, playerId }) => {
+          if (isDisposed) {
+            return;
+          }
+          setState((current) => {
+            if (current.surrenderAnnouncements.some((entry) => entry.eventId === eventId)) {
+              return current;
+            }
+            return {
+              ...current,
+              surrenderAnnouncements: [
+                ...current.surrenderAnnouncements,
+                { eventId, playerId },
+              ],
+            };
+          });
+        },
+        onClose: (event) => {
           socketRef.current = null;
           if (isDisposed) {
+            return;
+          }
+          if (event.code === 1008) {
+            stopForSessionError(
+              new Error("This browser session no longer has access to this game."),
+            );
             return;
           }
           const attempt = reconnectAttemptRef.current + 1;
@@ -310,6 +368,24 @@ export function useBoardSession() {
     return result;
   }
 
+  async function surrenderGame() {
+    if (!state.gameId) {
+      throw new Error("Game not ready.");
+    }
+
+    await backendClient.surrenderGame(state.gameId);
+    window.location.assign("/");
+  }
+
+  function dismissSurrenderAnnouncement(eventId: string) {
+    setState((current) => ({
+      ...current,
+      surrenderAnnouncements: current.surrenderAnnouncements.filter(
+        (announcement) => announcement.eventId !== eventId,
+      ),
+    }));
+  }
+
   const boardView = useMemo(() => {
     if (!state.view) {
       return null;
@@ -329,5 +405,7 @@ export function useBoardSession() {
     submitPendingResponse,
     submitPayment,
     submitDiscard,
+    surrenderGame,
+    dismissSurrenderAnnouncement,
   };
 }
