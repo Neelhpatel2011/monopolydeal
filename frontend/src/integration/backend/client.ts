@@ -2,6 +2,7 @@ import type {
   BackendActionRequest,
   BackendActionResponse,
   BackendGameSummary,
+  BackendJoinByCodeRequest,
   BackendJoinGameResponse,
   BackendPaymentRequest,
   BackendPaymentResponse,
@@ -28,9 +29,41 @@ function resolveApiBaseUrl() {
 const API_BASE_URL = resolveApiBaseUrl();
 const WS_BASE_URL = API_BASE_URL.replace(/^http/, "ws");
 
+export class BackendRequestError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "BackendRequestError";
+    this.status = status;
+  }
+}
+
+async function getResponseError(response: Response) {
+  const rawDetail = await response.text();
+  if (!rawDetail) {
+    return `Request failed: ${response.status}`;
+  }
+
+  try {
+    const parsed = JSON.parse(rawDetail) as { detail?: string };
+    return parsed.detail || rawDetail;
+  } catch {
+    return rawDetail;
+  }
+}
+
+export function isAuthSessionError(error: unknown) {
+  return (
+    error instanceof BackendRequestError &&
+    (error.status === 401 || error.status === 403)
+  );
+}
+
 async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${input}`, {
     ...init,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers ?? {}),
@@ -38,11 +71,41 @@ async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(detail || `Request failed: ${response.status}`);
+    throw new BackendRequestError(response.status, await getResponseError(response));
   }
 
   return response.json() as Promise<T>;
+}
+
+async function requestVoid(input: string, init?: RequestInit): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}${input}`, {
+    ...init,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new BackendRequestError(response.status, await getResponseError(response));
+  }
+}
+
+function isMissingEndpointError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.trim();
+  return (
+    (error instanceof BackendRequestError &&
+      (error.status === 404 || error.status === 405)) ||
+    message === "Not Found" ||
+    message === "Method Not Allowed" ||
+    message === "Request failed: 404" ||
+    message === "Request failed: 405"
+  );
 }
 
 export const backendClient = {
@@ -57,16 +120,22 @@ export const backendClient = {
       method: "POST",
     });
   },
+  async joinGameByCode(request: BackendJoinByCodeRequest) {
+    return requestJson<BackendJoinGameResponse>("/games/join", {
+      method: "POST",
+      body: JSON.stringify(request),
+    });
+  },
   async getGameState(gameId: string) {
     return requestJson<BackendGameSummary>(`/games/${gameId}/state`);
   },
-  async startGame(gameId: string, playerId: string) {
-    return requestJson<BackendGameSummary>(`/games/${gameId}/start?player_id=${encodeURIComponent(playerId)}`, {
+  async startGame(gameId: string) {
+    return requestJson<BackendGameSummary>(`/games/${gameId}/start`, {
       method: "POST",
     });
   },
-  async getPlayerView(gameId: string, playerId: string) {
-    return requestJson<BackendPlayerView>(`/games/${gameId}/view?player_id=${encodeURIComponent(playerId)}`);
+  async getPlayerView(gameId: string) {
+    return requestJson<BackendPlayerView>(`/games/${gameId}/view`);
   },
   async submitAction(gameId: string, request: BackendActionRequest) {
     return requestJson<BackendActionResponse>(`/games/${gameId}/actions`, {
@@ -89,18 +158,31 @@ export const backendClient = {
       body: JSON.stringify(request),
     });
   },
+  async surrenderGame(gameId: string) {
+    try {
+      return await requestVoid(`/games/${gameId}/surrender`, {
+        method: "POST",
+      });
+    } catch (error) {
+      if (!isMissingEndpointError(error)) {
+        throw error;
+      }
+
+      return requestVoid(`/games/${gameId}/players/me`, {
+        method: "DELETE",
+      });
+    }
+  },
   connectToGame(
     gameId: string,
-    playerId: string,
     handlers: {
       onStateUpdate: (view: BackendPlayerView) => void;
+      onPlayerSurrendered?: (payload: { eventId: string; playerId: string }) => void;
       onError?: (error: Event) => void;
-      onClose?: () => void;
+      onClose?: (event: CloseEvent) => void;
     },
   ) {
-    const socket = new WebSocket(
-      `${WS_BASE_URL}/ws/games/${gameId}?player_id=${encodeURIComponent(playerId)}`,
-    );
+    const socket = new WebSocket(`${WS_BASE_URL}/ws/games/${gameId}`);
 
     socket.addEventListener("message", (event) => {
       if (typeof event.data !== "string") {
@@ -119,14 +201,22 @@ export const backendClient = {
 
       if (payload.type === "state_update") {
         handlers.onStateUpdate(payload.view);
+        return;
+      }
+
+      if (payload.type === "player_surrendered") {
+        handlers.onPlayerSurrendered?.({
+          eventId: payload.event_id,
+          playerId: payload.player_id,
+        });
       }
     });
 
     socket.addEventListener("error", (event) => {
       handlers.onError?.(event);
     });
-    socket.addEventListener("close", () => {
-      handlers.onClose?.();
+    socket.addEventListener("close", (event) => {
+      handlers.onClose?.(event);
     });
 
     return socket;

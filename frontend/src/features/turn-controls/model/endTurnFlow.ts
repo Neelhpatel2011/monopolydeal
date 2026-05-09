@@ -11,6 +11,12 @@ export type EndTurnConfirmCopy = {
   detail: string;
 };
 
+export type OutstandingEndTurnPayment = {
+  playerName: string;
+  amount: number;
+  amountLabel: string;
+};
+
 export function buildEndTurnConfirmCopy(actionsLeft: number): EndTurnConfirmCopy {
   if (actionsLeft > 0) {
     return {
@@ -26,4 +32,18 @@ export function buildEndTurnConfirmCopy(actionsLeft: number): EndTurnConfirmCopy
     title: "Finish this turn?",
     detail: "No actions remain. Confirm to pass play to the next player.",
   };
+}
+
+export function buildOutstandingPaymentSummary(
+  payments: OutstandingEndTurnPayment[],
+): string | null {
+  if (payments.length === 0) {
+    return null;
+  }
+
+  if (payments.length === 1) {
+    return `${payments[0].playerName} still owes you ${payments[0].amountLabel}`;
+  }
+
+  return `${payments.length} players still owe you payment`;
 }

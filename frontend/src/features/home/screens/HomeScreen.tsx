@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import rawCatalog from "../../../data/monopolyDealCards.json";
 import { parseMonopolyDealCatalog } from "../../../components/cards/catalog";
 import { MonopolyDealCard } from "../../../components/cards/MonopolyDealCard";
@@ -12,26 +12,35 @@ const heroCards = [
   catalog.find((card) => card.id === "rent-wild"),
 ].filter(Boolean);
 
-function openGameRoute(gameId: string, playerId: string) {
-  const params = new URLSearchParams({ gameId, playerId });
+function openGameRoute(gameId: string) {
+  const params = new URLSearchParams({ gameId });
   window.location.assign(`/game?${params.toString()}`);
 }
 
-function openDemoRoute() {
-  window.location.assign("/game?demo=1");
-}
+type HomeFlow = "options" | "start" | "join";
 
 export function HomeScreen() {
-  const [hostName, setHostName] = useState("");
-  const [joinName, setJoinName] = useState("");
-  const [gameId, setGameId] = useState("");
+  const [flow, setFlow] = useState<HomeFlow>("options");
+  const [playerName, setPlayerName] = useState("");
+  const [gameCode, setGameCode] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const featuredCards = useMemo(() => heroCards, []);
 
-  async function handleCreateGame() {
-    const playerName = hostName.trim();
-    if (!playerName) {
+  function openFlow(nextFlow: Exclude<HomeFlow, "options">) {
+    setFlow(nextFlow);
+    setStatusMessage(null);
+  }
+
+  function returnToOptions() {
+    setFlow("options");
+    setStatusMessage(null);
+  }
+
+  async function handleCreateGame(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    const requestedPlayerName = playerName.trim();
+    if (!requestedPlayerName) {
       setStatusMessage("Enter your name to create a game.");
       return;
     }
@@ -39,8 +48,8 @@ export function HomeScreen() {
     setIsSubmitting(true);
     setStatusMessage("Creating lobby...");
     try {
-      const game = await backendClient.createGame(playerName);
-      openGameRoute(game.game_id, game.player_ids[0] ?? playerName);
+      const game = await backendClient.createGame(requestedPlayerName);
+      openGameRoute(game.game_id);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Could not create game.");
     } finally {
@@ -48,19 +57,23 @@ export function HomeScreen() {
     }
   }
 
-  async function handleJoinGame() {
-    const playerName = joinName.trim();
-    const requestedGameId = gameId.trim();
-    if (!playerName || !requestedGameId) {
-      setStatusMessage("Enter your name and a game ID to join.");
+  async function handleJoinGame(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
+    const requestedPlayerName = playerName.trim();
+    const requestedGameCode = gameCode.trim().toUpperCase();
+    if (!requestedPlayerName || !requestedGameCode) {
+      setStatusMessage("Enter your name and a game code to join.");
       return;
     }
 
     setIsSubmitting(true);
     setStatusMessage("Joining lobby...");
     try {
-      const response = await backendClient.joinGame(requestedGameId, playerName);
-      openGameRoute(response.player_view.game_id, response.player_id);
+      const response = await backendClient.joinGameByCode({
+        game_code: requestedGameCode,
+        player_name: requestedPlayerName,
+      });
+      openGameRoute(response.player_view.game_id);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Could not join game.");
     } finally {
@@ -94,80 +107,125 @@ export function HomeScreen() {
           </div>
         </header>
 
-        <section className="home-actions" aria-label="Lobby actions">
-          <article className="home-panel home-panel--olive">
-            <div className="home-panel__header">
-              <span className="home-panel__eyebrow">Create Game</span>
-              <h2>Start a table</h2>
+        {flow === "options" ? (
+          <section className="home-panel home-choice-panel" aria-label="Choose game">
+            <h2 className="home-panel-title">Choose Game</h2>
+            <div className="home-choice-list">
+              <button
+                className="home-choice home-choice--start"
+                type="button"
+                onClick={() => openFlow("start")}
+              >
+                <span className="home-choice__icon" aria-hidden="true">+</span>
+                <span className="home-choice__label">Start Game</span>
+                <span className="home-choice__arrow" aria-hidden="true">&gt;</span>
+              </button>
+
+              <button
+                className="home-choice home-choice--join"
+                type="button"
+                onClick={() => openFlow("join")}
+              >
+                <span className="home-choice__icon" aria-hidden="true">#</span>
+                <span className="home-choice__label">Join Game</span>
+                <span className="home-choice__arrow" aria-hidden="true">&gt;</span>
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {flow === "start" ? (
+          <section className="home-panel home-flow-panel" aria-label="Start game">
+            <div className="home-flow-panel__header">
+              <button
+                className="home-back-button"
+                type="button"
+                onClick={returnToOptions}
+              >
+                &lt;- Options
+              </button>
+              <h2 className="home-panel-title">Start Game</h2>
             </div>
 
-            <label className="home-field">
-              <span>Name</span>
-              <input
-                value={hostName}
-                onChange={(event) => setHostName(event.target.value)}
-                placeholder="Your name"
-              />
-            </label>
+            <form className="home-form" onSubmit={(event) => void handleCreateGame(event)}>
+              <label className="home-field">
+                <span>Name</span>
+                <input
+                  value={playerName}
+                  onChange={(event) => setPlayerName(event.target.value)}
+                  placeholder="Your name"
+                  autoFocus
+                />
+              </label>
 
-            <button
-              className="home-cta home-cta--olive"
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => void handleCreateGame()}
-            >
-              {isSubmitting ? "Working..." : "Host Match"}
-            </button>
-          </article>
+              {statusMessage ? (
+                <p className="home-status" aria-live="polite">{statusMessage}</p>
+              ) : null}
 
-          <article className="home-panel home-panel--blue">
-            <div className="home-panel__header">
-              <span className="home-panel__eyebrow">Join Game</span>
-              <h2>Crash the party</h2>
+              <button
+                className="home-cta home-cta--olive"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Working..." : "Host Match"}
+              </button>
+            </form>
+          </section>
+        ) : null}
+
+        {flow === "join" ? (
+          <section className="home-panel home-flow-panel" aria-label="Join game">
+            <div className="home-flow-panel__header">
+              <button
+                className="home-back-button"
+                type="button"
+                onClick={returnToOptions}
+              >
+                &lt;- Options
+              </button>
+              <h2 className="home-panel-title">Join Game</h2>
             </div>
 
-            <label className="home-field">
-              <span>Name</span>
-              <input
-                value={joinName}
-                onChange={(event) => setJoinName(event.target.value)}
-                placeholder="Your name"
-              />
-            </label>
+            <form className="home-form" onSubmit={(event) => void handleJoinGame(event)}>
+              <label className="home-field">
+                <span>Name</span>
+                <input
+                  value={playerName}
+                  onChange={(event) => setPlayerName(event.target.value)}
+                  placeholder="Your name"
+                  autoFocus
+                />
+              </label>
 
-            <label className="home-field">
-              <span>Game ID</span>
-              <input
-                value={gameId}
-                onChange={(event) => setGameId(event.target.value)}
-                placeholder="Game ID"
-              />
-            </label>
+              <label className="home-field">
+                <span>Game Code</span>
+                <input
+                  value={gameCode}
+                  maxLength={5}
+                  autoCapitalize="characters"
+                  onChange={(event) => setGameCode(event.target.value.toUpperCase())}
+                  placeholder="ABCDE"
+                />
+              </label>
 
-            <button
-              className="home-cta home-cta--blue"
-              type="button"
-              disabled={isSubmitting}
-              onClick={() => void handleJoinGame()}
-            >
-              {isSubmitting ? "Working..." : "Join Match"}
-            </button>
-          </article>
-        </section>
+              {statusMessage ? (
+                <p className="home-status" aria-live="polite">{statusMessage}</p>
+              ) : null}
 
-        {statusMessage ? (
-          <p className="home-status" aria-live="polite">{statusMessage}</p>
+              <button
+                className="home-cta home-cta--blue"
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Working..." : "Join Match"}
+              </button>
+            </form>
+          </section>
         ) : null}
 
         <section className="home-utility" aria-label="Quick actions">
           <button className="home-utility__button home-utility__button--dark" type="button">
             How to Play
-          </button>
-          <button className="home-utility__button home-utility__button--gold" type="button" onClick={openDemoRoute}>
-            Demo Match
-          </button>
-          <button className="home-utility__button home-utility__button--dark" type="button" onClick={openDemoRoute}>
-            Enter Arena
           </button>
         </section>
       </div>

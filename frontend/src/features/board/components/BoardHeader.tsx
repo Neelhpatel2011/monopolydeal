@@ -6,11 +6,13 @@ type BoardHeaderProps = {
   roundLabel: string;
   turnControlState: EndTurnControlState;
   onRequestEndTurn: () => void;
+  onRequestSurrender: () => void;
 };
 
 export function BoardHeader({
   turnControlState,
   onRequestEndTurn,
+  onRequestSurrender,
 }: BoardHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -58,6 +60,16 @@ export function BoardHeader({
           <div className="board-header__menu-panel">
             <button className="board-header__menu-item" type="button">
               Game Log
+            </button>
+            <button
+              className="board-header__menu-item board-header__menu-item--danger"
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                onRequestSurrender();
+              }}
+            >
+              Quit Match
             </button>
           </div>
         ) : null}

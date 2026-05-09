@@ -137,6 +137,14 @@ export type BoardInteractionEvent =
   | { type: "REPLACE_SELECTION"; origin: InteractionOrigin; intent: DraftActionIntent }
   | { type: "CLEAR_SELECTION" }
   | {
+      type: "START_HAND_DRAG";
+      pointerId: string;
+      origin: "hand";
+      intent: DraftActionIntent;
+      preview: DragPreviewState;
+      hoverTargetId?: string | null;
+    }
+  | {
       type: "START_DRAG";
       pointerId: string;
       origin: InteractionOrigin;

@@ -12,7 +12,6 @@ import type {
   TargetScope,
 } from "../../board/model/interaction-types";
 import type { OpponentSummary } from "../../opponents/model/opponentExpansion";
-import { getBackendCardMeta } from "../../../integration/backend/catalog";
 
 export const LOCAL_TABLEAU_TARGET_ID = "local-tableau";
 export const LOCAL_BANK_TARGET_ID = "local-bank";
@@ -57,6 +56,8 @@ function describeValidTargetRecovery(validTargets: DragTargetDefinition[]): stri
         return "Keep the card selected and drop it on your highlighted tableau.";
       case "opponent":
         return "Keep the card selected and drop it on a highlighted opponent.";
+      case "board":
+        return "Keep the card selected and drop it on the highlighted center play area.";
       default:
         break;
     }
@@ -144,23 +145,13 @@ export function getValidDragTargets(
   localPlayer: LocalPlayerState,
   opponents: OpponentSummary[],
 ): DragTargetDefinition[] {
+  void localPlayer;
+  void opponents;
+
   const profile = deriveHandCardIntentProfile(card);
-  const meta = getBackendCardMeta(card.backendCardId);
-  const propertyColorField = card.actionOptions?.fieldOptions.find(
-    (field) => field.field === "property_color",
-  );
-  const rentColorField = card.actionOptions?.fieldOptions.find(
-    (field) => field.field === "rent_color",
-  );
-  const targetPlayerField = card.actionOptions?.fieldOptions.find(
-    (field) => field.field === "target_player_id",
-  );
   const targets: DragTargetDefinition[] = [];
   const chosenTargetPlayerId =
     typeof intent.chosen.target_player_id === "string" ? intent.chosen.target_player_id : null;
-  const allowedPropertyColors = new Set(
-    propertyColorField?.options.map((option) => option.value) ?? [],
-  );
 
   function getFieldChoiceCount(field: ActionFieldKey): number {
     const fieldView = card.actionOptions?.fieldOptions.find((entry) => entry.field === field);
@@ -217,82 +208,10 @@ export function getValidDragTargets(
       field: null,
       value: null,
     });
-
-    targets.push({
-      id: LOCAL_TABLEAU_TARGET_ID,
-      scope: "tableau",
-      label: "Your tableau",
-      detail: "Keep the play in your committed property area.",
-      field: null,
-      value: null,
-    });
-
-    for (const propertySet of localPlayer.propertySets) {
-      const propertyColor =
-        typeof intent.chosen.property_color === "string"
-          ? intent.chosen.property_color
-          : profile.propertyColor;
-
-      if (
-        propertyColor &&
-        propertySet.backendColor !== propertyColor &&
-        propertyColorField?.options.length !== 0
-      ) {
-        continue;
-      }
-
-      if (
-        !propertyColor &&
-        propertyColorField?.options.length &&
-        !allowedPropertyColors.has(propertySet.backendColor)
-      ) {
-        continue;
-      }
-
-      targets.push({
-        id: getLocalTableauSetTargetId(propertySet.id),
-        scope: "tableau",
-        label: `${propertySet.name} set`,
-        detail: `Preview the card on your ${propertySet.name} property set.`,
-        field: propertyColorField?.options.length ? "property_color" : null,
-        value: propertySet.backendColor,
-      });
-    }
-  }
-
-  if (meta.effectType === "building" && (rentColorField?.options.length ?? 0) > 0) {
-    targets.push({
-      id: LOCAL_TABLEAU_TARGET_ID,
-      scope: "tableau",
-      label: "Your tableau",
-      detail: "Choose where to place this building in your property area.",
-      field: null,
-      value: null,
-    });
-
-    for (const propertySet of localPlayer.propertySets) {
-      const canPlaceInSet = rentColorField?.options.some(
-        (option) => option.value === propertySet.backendColor,
-      );
-
-      if (!canPlaceInSet) {
-        continue;
-      }
-
-      targets.push({
-        id: getLocalTableauSetTargetId(propertySet.id),
-        scope: "tableau",
-        label: `${propertySet.name} set`,
-        detail: `Place this building on your ${propertySet.name} set.`,
-        field: "rent_color",
-        value: propertySet.backendColor,
-      });
-    }
   }
 
   if (
     profile.category !== "money" &&
-    meta.effectType !== "building" &&
     (profile.actionType === "play_action_non_counterable" ||
       profile.actionType === "play_action_counterable") &&
     (intent.missing.length === 0 || canAdvanceIntentFromCurrentChoices())
@@ -305,22 +224,6 @@ export function getValidDragTargets(
       field: null,
       value: null,
     });
-  }
-
-  if (profile.actionType === "play_action_counterable" && targetPlayerField) {
-    for (const option of targetPlayerField.options) {
-      const opponent = opponents.find((entry) => entry.id === option.value);
-      targets.push({
-        id: getOpponentTargetId(option.value),
-        scope: "opponent",
-        label: opponent?.name ?? option.label,
-        detail:
-          option.detail ??
-          `Target ${opponent?.name ?? option.label} for this action.`,
-        field: "target_player_id",
-        value: option.value,
-      });
-    }
   }
 
   return targets;
@@ -386,7 +289,7 @@ export function buildActionHintCopy(args: {
     return {
       eyebrow: "Turn",
       title: "Play up to 3 cards",
-      detail: "Tap a card to inspect it, then drag it to bank, tableau, or the play area.",
+      detail: "Drag a card directly, or tap one first to preview its live drop zones.",
       tone: "default",
     };
   }
@@ -431,7 +334,7 @@ export function buildActionHintCopy(args: {
   return {
     eyebrow: "Selected Card",
     title: `${card.label} is ready`,
-    detail: `${validTargets.length} drop target${validTargets.length === 1 ? "" : "s"} available. Drag to bank it, play it, or continue the required choices.`,
+    detail: `${validTargets.length} drop target${validTargets.length === 1 ? "" : "s"} available. Drag to bank or drop on the center play area.`,
     tone: "active",
   };
 }

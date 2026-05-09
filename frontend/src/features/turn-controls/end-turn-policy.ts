@@ -8,6 +8,7 @@ type DeriveEndTurnControlStateArgs = {
   interactionState: BoardInteractionState;
   isCurrentTurn: boolean;
   currentTurnPlayerName?: string | null;
+  outstandingPaymentSummary?: string | null;
 };
 
 export function deriveEndTurnControlState({
@@ -16,6 +17,7 @@ export function deriveEndTurnControlState({
   interactionState,
   isCurrentTurn,
   currentTurnPlayerName,
+  outstandingPaymentSummary,
 }: DeriveEndTurnControlStateArgs): EndTurnControlState {
   if (!isCurrentTurn) {
     return {
@@ -91,12 +93,21 @@ export function deriveEndTurnControlState({
     };
   }
 
-  if (interactionState.mode !== "idle") {
+  if (interactionState.mode !== "idle" && interactionState.mode !== "selected") {
     return {
       disabled: true,
       emphasis: "muted",
       buttonLabel: "End Turn",
       helperText: "Finish the current interaction",
+    };
+  }
+
+  if (outstandingPaymentSummary) {
+    return {
+      disabled: false,
+      emphasis: "blocked",
+      buttonLabel: "End Turn",
+      helperText: outstandingPaymentSummary,
     };
   }
 

@@ -32,6 +32,14 @@ type PaymentOption = {
   serialLabel?: string;
 };
 
+type PaymentGroup = {
+  key: keyof SelectionState;
+  title: string;
+  options: PaymentOption[];
+  selectedTokens: string[];
+  emptyLabel: string;
+};
+
 function getBankCardValue(card: LocalBankCard) {
   return getBackendCardMeta(card.backendCardId).moneyValue;
 }
@@ -173,6 +181,52 @@ export function PaymentFlowSheet({
   const overpayAmount = Math.max(selectedTotal - amountDue, 0);
   const hasAnyPayableCards =
     bankOptions.length > 0 || propertyOptions.length > 0 || buildingOptions.length > 0;
+  const paymentSourceLabel = [sourcePlayerName, sourceCardName].filter(Boolean).join(" - ");
+  const paymentGroups: PaymentGroup[] = [
+    {
+      key: "bank",
+      title: "Bank",
+      options: bankOptions,
+      selectedTokens: selection.bank,
+      emptyLabel: "No bank cards available.",
+    },
+    {
+      key: "propertyTokens",
+      title: "Properties",
+      options: propertyOptions,
+      selectedTokens: selection.propertyTokens,
+      emptyLabel: "No properties available.",
+    },
+    {
+      key: "buildingTokens",
+      title: "Buildings",
+      options: buildingOptions,
+      selectedTokens: selection.buildingTokens,
+      emptyLabel: "No buildings available.",
+    },
+  ];
+  const visiblePaymentGroups = paymentGroups.filter((group) => group.options.length > 0);
+  const paymentStatusTitle = hasAnyPayableCards
+    ? selectedTotal <= 0
+      ? "Choose cards"
+      : selectedTotal >= amountDue
+        ? overpayAmount > 0
+          ? `Overpay ${formatBankValue(overpayAmount)}`
+          : "Ready"
+        : `${formatBankValue(remainingAmount)} short`
+    : "Nothing to pay";
+  const paymentStatusDetail = hasAnyPayableCards
+    ? `${formatBankValue(selectedTotal)} / ${formatBankValue(amountDue)}`
+    : "$0M";
+  const submitLabel = isSubmitting
+    ? "Submitting..."
+    : hasAnyPayableCards
+      ? selectedTotal > 0
+        ? `Submit ${formatBankValue(selectedTotal)}`
+        : "Submit Payment"
+      : "Submit $0M";
+  const progressRatio =
+    amountDue > 0 ? Math.min(selectedTotal / amountDue, 1) : hasAnyPayableCards ? 1 : 0;
 
   async function handleSubmit() {
     setIsSubmitting(true);
@@ -202,17 +256,20 @@ export function PaymentFlowSheet({
         key={option.token}
         type="button"
         aria-pressed={isSelected}
+        aria-label={`${isSelected ? "Remove" : "Add"} ${option.title}${
+          option.detail ? `, ${option.detail}` : ""
+        }, ${formatBankValue(option.value)}`}
         className={`payment-flow-sheet__option-button${
           isSelected ? " payment-flow-sheet__option-button--selected" : ""
         }`}
         onClick={() => toggleSelection(kind, option.token)}
       >
+        <span className="payment-flow-sheet__option-check" aria-hidden="true">
+          {isSelected ? "\u2713" : ""}
+        </span>
         <span className="payment-flow-sheet__option-main">
           <span className="payment-flow-sheet__option-copy">
             <strong className="payment-flow-sheet__option-label">{option.title}</strong>
-            {option.detail ? (
-              <span className="payment-flow-sheet__option-detail">{option.detail}</span>
-            ) : null}
           </span>
         </span>
         <span className="payment-flow-sheet__option-side">
@@ -222,9 +279,6 @@ export function PaymentFlowSheet({
           <strong className="payment-flow-sheet__option-value">
             {formatBankValue(option.value)}
           </strong>
-          <span className="payment-flow-sheet__option-pill" aria-hidden="true">
-            {isSelected ? "In" : "Add"}
-          </span>
         </span>
       </button>
     );
@@ -240,122 +294,59 @@ export function PaymentFlowSheet({
       >
         <div className="board-modal-sheet__header">
           <div>
-            <p className="board-modal-sheet__eyebrow">Payment Required</p>
             <h2>Pay {formatBankValue(amountDue)}</h2>
+            {paymentSourceLabel ? (
+              <p className="payment-flow-sheet__source">{paymentSourceLabel}</p>
+            ) : null}
           </div>
-        </div>
-        <div className="board-modal-sheet__body payment-flow-sheet__intro">
-          {sourcePlayerName || sourceCardName ? (
-            <p className="board-modal-sheet__copy">
-              {sourcePlayerName ?? "Another player"} played {sourceCardName ?? "a charge card"}.
-            </p>
-          ) : null}
-          <p className="board-modal-sheet__copy">
-            {hasAnyPayableCards
-              ? `Tap cards to cover ${formatBankValue(amountDue)}.`
-              : "You have nothing to pay. Submit $0M to continue."}
-          </p>
         </div>
 
-        <div className="payment-flow-sheet__summary">
-          <div className="payment-flow-sheet__stat">
-            <span>Due</span>
-            <strong>{formatBankValue(remainingAmount)}</strong>
+        <div className="payment-flow-sheet__summary" aria-live="polite">
+          <div className="payment-flow-sheet__summary-copy">
+            <strong>{paymentStatusTitle}</strong>
+            <span>{paymentStatusDetail}</span>
           </div>
-          <div className="payment-flow-sheet__stat">
-            <span>Selected</span>
-            <strong>{formatBankValue(selectedTotal)}</strong>
-          </div>
-          <div className="payment-flow-sheet__stat">
-            <span>Overpay</span>
-            <strong>{formatBankValue(overpayAmount)}</strong>
+          <div className="payment-flow-sheet__progress" aria-hidden="true">
+            <span style={{ width: `${progressRatio * 100}%` }} />
           </div>
         </div>
 
         <div className="payment-flow-sheet__content">
-          <section className="payment-flow-sheet__section">
-            <div className="payment-flow-sheet__section-header">
-              <h3>Bank</h3>
-              <span>{bankOptions.length}</span>
-            </div>
-            <div className="board-check-list payment-flow-sheet__list">
-              {bankOptions.length > 0 ? (
-                bankOptions.map((option) =>
-                  renderOptionButton("bank", option, selection.bank.includes(option.token)),
-                )
-              ) : (
-                <p className="payment-flow-sheet__empty">No bank cards available.</p>
-              )}
-            </div>
-          </section>
-
-          <section className="payment-flow-sheet__section">
-            <div className="payment-flow-sheet__section-header">
-              <h3>Properties</h3>
-              <span>{propertyOptions.length}</span>
-            </div>
-            <div className="board-check-list payment-flow-sheet__list">
-              {propertyOptions.length > 0 ? (
-                propertyOptions.map((option) =>
-                  renderOptionButton(
-                    "propertyTokens",
-                    option,
-                    selection.propertyTokens.includes(option.token),
-                  ),
-                )
-              ) : (
-                <p className="payment-flow-sheet__empty">No properties available.</p>
-              )}
-            </div>
-          </section>
-
-          <section className="payment-flow-sheet__section">
-            <div className="payment-flow-sheet__section-header">
-              <h3>Buildings</h3>
-              <span>{buildingOptions.length}</span>
-            </div>
-            <div className="board-check-list payment-flow-sheet__list">
-              {buildingOptions.length > 0 ? (
-                buildingOptions.map((option) =>
-                  renderOptionButton(
-                    "buildingTokens",
-                    option,
-                    selection.buildingTokens.includes(option.token),
-                  ),
-                )
-              ) : (
-                <p className="payment-flow-sheet__empty">No buildings available.</p>
-              )}
-            </div>
-          </section>
+          {visiblePaymentGroups.length > 0 ? (
+            visiblePaymentGroups.map((group) => (
+              <section className="payment-flow-sheet__section" key={group.key}>
+                <div className="payment-flow-sheet__section-header">
+                  <h3>{group.title}</h3>
+                </div>
+                <div className="board-check-list payment-flow-sheet__list">
+                  {group.options.map((option) =>
+                    renderOptionButton(
+                      group.key,
+                      option,
+                      group.selectedTokens.includes(option.token),
+                    ),
+                  )}
+                </div>
+              </section>
+            ))
+          ) : (
+            <p className="payment-flow-sheet__empty">
+              {paymentGroups.find((group) => group.options.length === 0)?.emptyLabel ??
+                "No payable cards available."}
+            </p>
+          )}
         </div>
 
         {errorMessage ? <p className="board-modal-sheet__alert">{errorMessage}</p> : null}
 
         <div className="board-modal-sheet__footer payment-flow-sheet__footer">
-          <div className="payment-flow-sheet__status">
-            <strong>
-              {hasAnyPayableCards
-                ? selectedTotal >= amountDue
-                  ? overpayAmount > 0
-                    ? `Selected ${formatBankValue(selectedTotal)}. Overpay ${formatBankValue(overpayAmount)}.`
-                    : `${formatBankValue(amountDue)} covered.`
-                  : `${formatBankValue(remainingAmount)} still needed`
-                : "Nothing to pay"}
-            </strong>
-            <span className="board-modal-sheet__meta">
-              {hasAnyPayableCards
-                ? "You can overpay if needed."
-                : "Submit to resolve the payment with $0M."}
-            </span>
-          </div>
           <button
             type="button"
             className="board-primary-button"
             disabled={isSubmitting || (hasAnyPayableCards && selectedTotal <= 0)}
             onClick={() => void handleSubmit()}
           >
-            {isSubmitting ? "Submitting..." : "Submit Payment"}
+            {submitLabel}
           </button>
         </div>
       </section>

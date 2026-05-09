@@ -3,11 +3,12 @@
 from typing import List
 
 # Placeholder for game-related REST endpoints
-from fastapi import APIRouter, Request, HTTPException, Query
+from fastapi import APIRouter, Request, HTTPException, Response
 import uuid
 from backend.app.schemas.actions import (
     ActionRequest,
     CreateGameRequest,
+    JoinGameByCodeRequest,
     PendingResponseRequest,
     PaymentRequest,
 )
@@ -22,18 +23,34 @@ from backend.app.services.game_service import (
     handle_pending,
     handle_payment,
     create_game_lobby,
-    leave_game_lobby,
+    join_game_by_code,
     start_new_game,
+    surrender_game,
 )
 from backend.app.services.game_service import join_game as join_game_service
 
 from backend.app.services.player_view import build_player_view, PlayerView
 from backend.app.services.game_service import get_state
 from backend.app.services.realtime import manager
+from backend.app.services.session_auth import (
+    clear_player_session_cookie,
+    create_player_session_token,
+    require_http_player_session,
+    set_player_session_cookie,
+)
 from backend.app.db import repo
 
 
 router = APIRouter()
+
+
+def _state_has_started(state) -> bool:
+    return bool(
+        state.deck.draw_pile
+        or state.deck.discard_pile
+        or any(player.hand for player in state.players.values())
+        or state.winner_id
+    )
 
 
 def _map_value_error(e: ValueError) -> HTTPException:
@@ -48,10 +65,14 @@ def _map_value_error(e: ValueError) -> HTTPException:
         return HTTPException(status_code=409, detail=msg)
     if msg == "Game already started; cannot leave lobby.":
         return HTTPException(status_code=409, detail=msg)
-    if msg == "Lobby is full (5 players max).":
+    if msg.startswith("Lobby is full (") and msg.endswith(" players max)."):
         return HTTPException(status_code=409, detail=msg)
     if msg == "Only the host can start the game.":
         return HTTPException(status_code=403, detail=msg)
+    if msg == "Game code not found or no longer joinable.":
+        return HTTPException(status_code=404, detail=msg)
+    if msg == "Could not allocate game code, please try again.":
+        return HTTPException(status_code=503, detail=msg)
     return HTTPException(status_code=400, detail=msg)
 
 
@@ -63,8 +84,6 @@ def _require_uuid(value: str, *, name: str) -> None:
 
 
 # GET METHODS:
-
-
 @router.get("/games", response_model=List[GameSummary])
 def get_games() -> List[GameSummary]:
     return repo.list_games()
@@ -79,6 +98,7 @@ def get_game_state(game_id: str) -> GameSummary:
         raise _map_value_error(e)
     return GameSummary(
         game_id=state.id,
+        game_code=state.game_code,
         player_ids=list(state.players.keys()),
         started=bool(state.deck.draw_pile or state.deck.discard_pile),
     )
@@ -88,9 +108,9 @@ def get_game_state(game_id: str) -> GameSummary:
 def get_player_view(
     game_id: str,
     request: Request,
-    player_id: str = Query(..., description="Player id to render view for"),
 ) -> PlayerView:
     _require_uuid(game_id, name="game_id")
+    player_id = require_http_player_session(request, game_id)
     try:
         state = get_state(game_id=game_id)
     except ValueError as e:
@@ -104,43 +124,111 @@ def get_player_view(
 
 
 @router.delete("/games/{game_id}")
-def delete_game(game_id: str) -> None:
+def delete_game(game_id: str, request: Request, response: Response) -> None:
     _require_uuid(game_id, name="game_id")
+    player_id = require_http_player_session(request, game_id)
+    try:
+        state = get_state(game_id=game_id)
+    except ValueError as e:
+        raise _map_value_error(e)
+    if state.host_id and player_id != state.host_id:
+        raise HTTPException(status_code=403, detail="Only the host can delete the game.")
     try:
         repo.delete_game(game_id)
     except ValueError as e:
         raise _map_value_error(e)
+    clear_player_session_cookie(response, request)
 
 
-@router.delete("/games/{game_id}/players/{player_id}", status_code=204)
-async def leave_game(game_id: str, player_id: str) -> None:
+@router.delete("/games/{game_id}/players/me", status_code=204)
+async def leave_game(game_id: str, request: Request, response: Response) -> None:
     _require_uuid(game_id, name="game_id")
+    player_id = require_http_player_session(request, game_id)
     try:
-        result = leave_game_lobby(game_id=game_id, player_id=player_id)
+        result = surrender_game(game_id=game_id, player_id=player_id)
     except ValueError as e:
         raise _map_value_error(e)
 
     await manager.disconnect(game_id, player_id)
+    clear_player_session_cookie(response, request)
     state = result.get("state")
     if state is not None:
+        if _state_has_started(state):
+            await manager.broadcast_player_surrendered(
+                game_id,
+                event_id=f"surrender_{uuid.uuid4().hex}",
+                player_id=player_id,
+                recipient_ids=list(state.players.keys()),
+            )
         await manager.broadcast_player_views(game_id, state)
+
+
+@router.post("/games/{game_id}/surrender", status_code=204)
+async def surrender_active_game(
+    game_id: str,
+    request: Request,
+    response: Response,
+) -> None:
+    _require_uuid(game_id, name="game_id")
+    player_id = require_http_player_session(request, game_id)
+    try:
+        result = surrender_game(game_id=game_id, player_id=player_id)
+    except ValueError as e:
+        raise _map_value_error(e)
+
+    await manager.disconnect(game_id, player_id)
+    clear_player_session_cookie(response, request)
+
+    state = result.get("state")
+    if state is None:
+        return
+
+    if _state_has_started(state):
+        await manager.broadcast_player_surrendered(
+            game_id,
+            event_id=f"surrender_{uuid.uuid4().hex}",
+            player_id=player_id,
+            recipient_ids=list(state.players.keys()),
+        )
+    await manager.broadcast_player_views(game_id, state)
 
 
 # POST METHODS:
 
 
 @router.post("/games", response_model=GameSummary)
-def create_game(req: CreateGameRequest) -> GameSummary:
+def create_game(req: CreateGameRequest, request: Request, response: Response) -> GameSummary:
 
     try:
         state = create_game_lobby(player_ids=[req.player_name or ""])
     except ValueError as e:
         raise _map_value_error(e)
+    session_token = create_player_session_token(state.id, state.host_id or (req.player_name or ""))
+    set_player_session_cookie(response, request, session_token)
     return GameSummary(
         game_id=state.id,
+        game_code=state.game_code,
         player_ids=list(state.players.keys()),
         started=False,
     )
+
+
+@router.post("/games/join", response_model=JoinGameResponse)
+async def join_game_with_code(
+    req: JoinGameByCodeRequest, request: Request, response: Response
+) -> JoinGameResponse:
+    try:
+        res = join_game_by_code(game_code=req.game_code, player_name=req.player_name)
+    except ValueError as e:
+        raise _map_value_error(e)
+    session_token = create_player_session_token(
+        res["player_view"].game_id,
+        res["player_id"],
+    )
+    set_player_session_cookie(response, request, session_token)
+    player_view = res["player_view"]
+    await manager.broadcast_player_views(player_view.game_id, get_state(game_id=player_view.game_id))
+    return res
 
 
 @router.post("/games/{game_id}/players/{player_id}", response_model=JoinGameResponse)
@@ -160,10 +248,10 @@ async def join_game(game_id: str, player_id: str) -> JoinGameResponse:
 async def start_game(
     game_id: str,
     request: Request,
-    player_id: str = Query(..., description="Player requesting to start the game"),
 ) -> GameSummary:
     catalog = request.app.state.card_catalog
     _require_uuid(game_id, name="game_id")
+    player_id = require_http_player_session(request, game_id)
     try:
         state = start_new_game(
             game_id=game_id,
@@ -176,6 +264,7 @@ async def start_game(
     await manager.broadcast_player_views(game_id, state)
     return GameSummary(
         game_id=state.id,
+        game_code=state.game_code,
         player_ids=list(state.players.keys()),
         started=True,
     )
@@ -187,8 +276,9 @@ async def submit_action_request(
 ) -> ActionResponse:
     catalog = request.app.state.card_catalog
     _require_uuid(game_id, name="game_id")
+    player_id = require_http_player_session(request, game_id)
     try:
-        return await handle_action(game_id, req, catalog)
+        return await handle_action(game_id, req, catalog, actor_id=player_id)
     except ValueError as e:
         raise _map_value_error(e)
 
@@ -200,14 +290,21 @@ async def submit_pending_request(
     game_id: str, pending_id: str, req: PendingResponseRequest, request: Request
 ) -> ActionResponse:
     catalog = request.app.state.card_catalog
+    _require_uuid(game_id, name="game_id")
+    player_id = require_http_player_session(request, game_id)
 
     if req.pending_id != pending_id:
-        raise ValueError(
-            f"{req.pending_id} (request body) doesn't match up with {pending_id} (url)"
+        raise HTTPException(
+            status_code=400,
+            detail=f"{req.pending_id} (request body) doesn't match up with {pending_id} (url)",
         )
-    _require_uuid(game_id, name="game_id")
     try:
-        return await handle_pending(game_id=game_id, req=req, catalog=catalog)
+        return await handle_pending(
+            game_id=game_id,
+            req=req,
+            catalog=catalog,
+            actor_id=player_id,
+        )
     except ValueError as e:
         raise _map_value_error(e)
 
@@ -218,7 +315,13 @@ async def submit_payment_request(
 ) -> PaymentResponse:
     catalog = request.app.state.card_catalog
     _require_uuid(game_id, name="game_id")
+    player_id = require_http_player_session(request, game_id)
     try:
-        return await handle_payment(game_id=game_id, req=req, catalog=catalog)
+        return await handle_payment(
+            game_id=game_id,
+            req=req,
+            catalog=catalog,
+            actor_id=player_id,
+        )
     except ValueError as e:
         raise _map_value_error(e)

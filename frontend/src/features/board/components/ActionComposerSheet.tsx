@@ -8,6 +8,9 @@ import {
   getBackendCardMeta,
   toTableauColor,
 } from "../../../integration/backend/catalog";
+import { ScaledMonopolyCard } from "../../../components/cards/ScaledMonopolyCard";
+import { getRenderCardByCatalogId } from "../../../components/cards/boardCardAdapters";
+import { boardCardSurfacePresets } from "../../../components/cards/boardCardSurfaces";
 import type { OpponentSummary } from "../../opponents/model/opponentExpansion";
 import { getPropertySetSummaryData } from "../../tableau/model/propertySetSummary";
 
@@ -23,6 +26,10 @@ type ActionComposerSheetProps = {
     message?: string | null;
   }>;
 };
+
+const propertyChoiceSurfacePreset = boardCardSurfacePresets.hand;
+const propertyChoiceCardScale = 0.24;
+const progressPropertyChoiceCardScale = 0.16;
 
 export function ActionComposerSheet({
   card,
@@ -91,6 +98,26 @@ export function ActionComposerSheet({
           missing: [],
         }
       : draftIntent;
+  const isCompactTargetChargeFlow =
+    canChooseBankOrEffect && meta.effectType === "charge_player";
+  const isPropertyExchangeFlow =
+    meta.effectType === "steal_property" || meta.effectType === "swap_property";
+  const isGuidedPropertyAction =
+    playMode === "effect" && isPropertyExchangeFlow && !isCompactTargetChargeFlow;
+  const missingSubmitField =
+    playMode === "effect" ? submitIntent.missing[0] ?? null : null;
+  const canSubmit = missingSubmitField == null && !isSubmitting;
+  const targetOptions = useMemo(
+    () =>
+      isCompactTargetChargeFlow
+        ? getComposerOptions({
+            card,
+            field: "target_player_id",
+            chosen: draftIntent.chosen,
+          })
+        : [],
+    [card, draftIntent.chosen, isCompactTargetChargeFlow],
+  );
   const availableDoubleRentCount = card.actionOptions?.availableDoubleRentCount ?? 0;
   const availableDoubleRentCardId = card.actionOptions?.availableDoubleRentCardId ?? null;
   const selectedDoubleRentIds = Array.isArray(draftIntent.chosen.double_rent_ids)
@@ -163,6 +190,23 @@ export function ActionComposerSheet({
     return field === "property_color" || field === "rent_color" || field === "steal_color";
   }
 
+  function isPropertyCardChoiceField(field: ActionFieldKey) {
+    return field === "steal_card_id" || field === "give_card_id";
+  }
+
+  function getPropertyChoicePreview(field: ActionFieldKey, optionValue: string) {
+    if (!isPropertyCardChoiceField(field)) {
+      return null;
+    }
+
+    const optionMeta = getBackendCardMeta(optionValue);
+    if (optionMeta.kind !== "property" && optionMeta.kind !== "property_wild") {
+      return null;
+    }
+
+    return getRenderCardByCatalogId(optionMeta.frontendCatalogCardId);
+  }
+
   const chosenStealCardLabel =
     chosenStealCardId != null
       ? getChosenOption("steal_card_id", chosenStealCardId)?.label ?? chosenStealCardId
@@ -171,61 +215,122 @@ export function ActionComposerSheet({
     chosenGiveCardId != null
       ? getChosenOption("give_card_id", chosenGiveCardId)?.label ?? chosenGiveCardId
       : null;
+  const chosenTargetDisplayName = chosenTargetOpponent?.name ?? chosenTargetPlayerId;
+  const chosenStealCardDisplayLabel =
+    chosenStealCardLabel?.replace(/^[^:]+:\s*/, "") ?? null;
+  const chosenGiveCardDisplayLabel =
+    chosenGiveCardLabel?.replace(/^[^:]+:\s*/, "") ?? null;
 
   const actionOutcomeCopy = useMemo(() => {
-    if (meta.effectType === "steal_property" && chosenTargetPlayerId && chosenStealCardLabel) {
-      return `You will steal ${chosenStealCardLabel} from ${chosenTargetPlayerId}.`;
+    if (
+      meta.effectType === "steal_property" &&
+      chosenTargetDisplayName &&
+      chosenStealCardDisplayLabel
+    ) {
+      return `You will steal ${chosenStealCardDisplayLabel} from ${chosenTargetDisplayName}.`;
     }
 
     if (
       meta.effectType === "swap_property" &&
-      chosenTargetPlayerId &&
-      chosenStealCardLabel &&
-      chosenGiveCardLabel
+      chosenTargetDisplayName &&
+      chosenStealCardDisplayLabel &&
+      chosenGiveCardDisplayLabel
     ) {
-      return `You will take ${chosenStealCardLabel} from ${chosenTargetPlayerId} and give ${chosenGiveCardLabel} in return.`;
+      return `You will take ${chosenStealCardDisplayLabel} from ${chosenTargetDisplayName} and give ${chosenGiveCardDisplayLabel}.`;
     }
 
-    if (meta.effectType === "swap_property" && chosenTargetPlayerId && chosenStealCardLabel) {
-      return `You are taking ${chosenStealCardLabel} from ${chosenTargetPlayerId}. Now choose what you will give back.`;
+    if (
+      meta.effectType === "swap_property" &&
+      chosenTargetDisplayName &&
+      chosenStealCardDisplayLabel
+    ) {
+      return `Taking ${chosenStealCardDisplayLabel} from ${chosenTargetDisplayName}. Choose what you give back.`;
     }
 
-    if (meta.effectType === "steal_property" && chosenTargetPlayerId) {
-      return `Targeting ${chosenTargetPlayerId}. Next choose which property you want to steal.`;
+    if (meta.effectType === "steal_property" && chosenTargetDisplayName) {
+      return `Targeting ${chosenTargetDisplayName}. Choose the property to steal.`;
     }
 
-    if (meta.effectType === "swap_property" && chosenTargetPlayerId) {
-      return `Targeting ${chosenTargetPlayerId}. Next choose the property you want to take.`;
+    if (meta.effectType === "swap_property" && chosenTargetDisplayName) {
+      return `Targeting ${chosenTargetDisplayName}. Choose the property to take.`;
     }
 
     return null;
   }, [
-    chosenGiveCardLabel,
-    chosenStealCardLabel,
-    chosenTargetPlayerId,
+    chosenGiveCardDisplayLabel,
+    chosenStealCardDisplayLabel,
+    chosenTargetDisplayName,
     meta.effectType,
   ]);
+  const bankValueLabel = formatBankValue(meta.moneyValue);
+  const effectAmountLabel =
+    typeof meta.effectParams.amount === "number"
+      ? formatBankValue(meta.effectParams.amount)
+      : null;
+  const compactEffectNote = useMemo(() => {
+    switch (meta.effectType) {
+      case "charge_players": {
+        return effectAmountLabel
+          ? `Collect ${effectAmountLabel} from each opponent`
+          : "Collect from each opponent";
+      }
+      case "charge_player":
+        return effectAmountLabel
+          ? `Collect ${effectAmountLabel} from one opponent`
+          : "Collect from one opponent";
+      case "draw_cards":
+        return "Draw extra cards";
+      case "steal_full_set":
+        return "Take a complete set";
+      case "steal_property":
+        return "Steal a property";
+      case "swap_property":
+        return "Trade properties";
+      case "building":
+        return "Add to a property set";
+      case "counter_action":
+        return "Counter an action";
+      default:
+        return `Resolve ${meta.name}`;
+    }
+  }, [effectAmountLabel, meta.effectType, meta.name]);
+  const compactEffectOutcome = isCompactTargetChargeFlow
+    ? chosenTargetOpponent
+      ? `collect ${effectAmountLabel ?? "money"} from ${chosenTargetOpponent.name}.`
+      : `choose one opponent to collect ${effectAmountLabel ?? "money"} from.`
+    : firstMissingField
+      ? "continue the guided choices below."
+      : compactEffectNote.charAt(0).toLowerCase() + compactEffectNote.slice(1) + ".";
+  const shouldShowModeOutcome =
+    playMode === "bank" || !isPropertyExchangeFlow || isCompactTargetChargeFlow;
+  const shouldRenderPropertyReadyEffect =
+    playMode === "effect" && !firstMissingField && isPropertyExchangeFlow;
+  const shouldRenderGenericReadyEffect =
+    playMode === "effect" &&
+    !firstMissingField &&
+    !canChooseBankOrEffect &&
+    !isPropertyExchangeFlow;
 
   function getFieldTitle(field: ActionFieldKey) {
     switch (field) {
       case "target_player_id":
         return "Choose a target player";
       case "steal_color":
-        return chosenTargetPlayerId
-          ? `Choose a full set from ${chosenTargetPlayerId}`
+        return chosenTargetDisplayName
+          ? `Choose a full set from ${chosenTargetDisplayName}`
           : "Choose a full set";
       case "steal_card_id":
         if (meta.effectType === "swap_property") {
-          return chosenTargetPlayerId
-            ? `Choose the property to take from ${chosenTargetPlayerId}`
+          return chosenTargetDisplayName
+            ? `Choose the property to take from ${chosenTargetDisplayName}`
             : "Choose the property you want to take";
         }
-        return chosenTargetPlayerId
-          ? `Choose the property to steal from ${chosenTargetPlayerId}`
+        return chosenTargetDisplayName
+          ? `Choose the property to steal from ${chosenTargetDisplayName}`
           : "Choose a property to steal";
       case "give_card_id":
-        return chosenTargetPlayerId
-          ? `Choose the property you will give ${chosenTargetPlayerId}`
+        return chosenTargetDisplayName
+          ? `Choose the property you will give ${chosenTargetDisplayName}`
           : "Choose the property you will give away";
       case "rent_color":
         return meta.kind === "rent"
@@ -264,6 +369,77 @@ export function ActionComposerSheet({
         return "Choose the property color this card should be committed to.";
       default:
         return "Choose an option to continue.";
+    }
+  }
+
+  function getGuidedStepTitle(field: ActionFieldKey) {
+    switch (field) {
+      case "target_player_id":
+        return "Choose opponent";
+      case "steal_color":
+        return "Pick full set";
+      case "steal_card_id":
+        return meta.effectType === "swap_property" ? "Pick what you take" : "Pick property";
+      case "give_card_id":
+        return "Pick what you give";
+      default:
+        return getFieldTitle(field);
+    }
+  }
+
+  function getGuidedStepDescription(field: ActionFieldKey) {
+    const targetName = chosenTargetDisplayName ?? "that player";
+
+    switch (field) {
+      case "target_player_id":
+        return meta.effectType === "swap_property"
+          ? "Select who you want to trade with."
+          : "Select who you want to steal from.";
+      case "steal_color":
+        return "Choose the complete set you want to take.";
+      case "steal_card_id":
+        return `Choose one property from ${targetName}.`;
+      case "give_card_id":
+        return "Choose one of your properties to send back.";
+      default:
+        return getFieldDescription(field);
+    }
+  }
+
+  function getBlockedActionLabel(field: ActionFieldKey) {
+    switch (field) {
+      case "target_player_id":
+        return "Choose opponent";
+      case "steal_color":
+        return "Choose set";
+      case "steal_card_id":
+        return meta.effectType === "swap_property"
+          ? "Choose card to take"
+          : "Choose card to steal";
+      case "give_card_id":
+        return "Choose card to give";
+      case "rent_color":
+      case "property_color":
+        return "Choose property set";
+      case "discard_ids":
+        return "Choose cards";
+      default:
+        return "Finish choices";
+    }
+  }
+
+  function getBlockedActionMessage(field: ActionFieldKey) {
+    switch (field) {
+      case "steal_card_id":
+        return meta.effectType === "swap_property"
+          ? "Choose the opponent property you want to take before playing this action."
+          : "Choose the opponent property you want to steal before playing this action.";
+      case "give_card_id":
+        return "Choose one of your properties to give back before playing Forced Deal.";
+      case "target_player_id":
+        return "Choose an opponent before playing this action.";
+      default:
+        return "Finish the required choices before playing this action.";
     }
   }
 
@@ -378,10 +554,23 @@ export function ActionComposerSheet({
     }
 
     return (
-      <div className="board-action-composer__progress" aria-label="Action progress">
+      <div
+        className={`board-action-composer__progress${
+          isGuidedPropertyAction ? " board-action-composer__progress--guided" : ""
+        }`}
+        aria-label="Action progress"
+      >
         {fieldOrder.map((field, index) => {
           const status = getStepStatus(field);
           const chosenValue = draftIntent.chosen[field];
+          const chosenPropertyPreview =
+            typeof chosenValue === "string"
+              ? getPropertyChoicePreview(field, chosenValue)
+              : null;
+          const compactChosenLabel =
+            typeof chosenValue === "string"
+              ? formatCompactChosenValue(field, chosenValue)
+              : null;
 
           return (
             <div
@@ -389,18 +578,30 @@ export function ActionComposerSheet({
               className={`board-action-composer__progress-step board-action-composer__progress-step--${status}`}
             >
               <span className="board-action-composer__progress-marker" aria-hidden="true">
-                {status === "complete" ? "OK" : index + 1}
+                {status === "complete" && isGuidedPropertyAction
+                  ? "\u2713"
+                  : status === "complete"
+                    ? "OK"
+                    : index + 1}
               </span>
 
               <span className="board-action-composer__progress-copy">
+                {chosenPropertyPreview ? (
+                  <ScaledMonopolyCard
+                    card={chosenPropertyPreview}
+                    size={propertyChoiceSurfacePreset.size}
+                    scale={progressPropertyChoiceCardScale}
+                    className="hand-card__scaled-card board-action-composer__progress-property-card"
+                    surfaceClassName="hand-card__scaled-card-surface"
+                  />
+                ) : null}
                 <strong>{getFieldSummaryLabel(field)}</strong>
-                <span className="board-action-composer__progress-value">
-                  {typeof chosenValue === "string"
-                    ? formatChosenValue(field, chosenValue)
-                    : status === "current"
-                      ? "Choose this next"
-                      : "Waiting"}
-                </span>
+                {compactChosenLabel || !isGuidedPropertyAction ? (
+                  <span className="board-action-composer__progress-value">
+                    {compactChosenLabel ??
+                      (status === "current" ? "Choose this next" : "Waiting")}
+                  </span>
+                ) : null}
               </span>
 
               {status === "complete" ? (
@@ -409,15 +610,15 @@ export function ActionComposerSheet({
                   className="board-action-composer__progress-action"
                   onClick={() => handleResetFromField(field)}
                 >
-                  Change
+                  {isGuidedPropertyAction ? "Edit" : "Change"}
                 </button>
-              ) : (
+              ) : !isGuidedPropertyAction ? (
                 <span
                   className={`board-action-composer__progress-pill board-action-composer__progress-pill--${status}`}
                 >
                   {status === "current" ? "Now" : "Next"}
                 </span>
-              )}
+              ) : null}
             </div>
           );
         })}
@@ -433,17 +634,25 @@ export function ActionComposerSheet({
     const localSetSummary = localSet ? propertySetSummaryMap.get(localSet.backendColor) ?? null : null;
     const isTargetOption = field === "target_player_id";
     const isSetOption = isSetField(field);
+    const propertyChoicePreview = getPropertyChoicePreview(field, option.value);
+    const optionLabel = propertyChoicePreview
+      ? option.label.replace(/^[^:]+:\s*/, "")
+      : option.label;
     const detailCopy =
-      option.detail ??
-      (isTargetOption
-        ? opponent != null
-          ? `${opponent.handCount} cards in hand - ${opponent.bankTotal} bank`
-          : "Choose this player as the target."
-        : localSetSummary != null
-          ? `${localSetSummary.count}/${localSetSummary.targetSize} cards - Rent ${localSetSummary.currentRentLabel}`
-          : opponentSet != null
-            ? `${opponentSet.count}/${opponentSet.targetSize} cards in the set`
-            : "Choose this option to continue.");
+      isGuidedPropertyAction && propertyChoicePreview
+        ? null
+        : option.detail ??
+          (isTargetOption
+            ? opponent != null
+              ? isGuidedPropertyAction
+                ? `${opponent.handCount} cards - ${opponent.bankTotal}`
+                : `${opponent.handCount} cards in hand - ${opponent.bankTotal} bank`
+              : "Choose this player as the target."
+            : localSetSummary != null
+              ? `${localSetSummary.count}/${localSetSummary.targetSize} cards - Rent ${localSetSummary.currentRentLabel}`
+              : opponentSet != null
+                ? `${opponentSet.count}/${opponentSet.targetSize} cards in the set`
+                : "Choose this option to continue.");
 
     return (
       <button
@@ -453,6 +662,10 @@ export function ActionComposerSheet({
           isTargetOption ? " board-action-composer__decision-card--target" : ""
         }${
           isSetOption ? " board-action-composer__decision-card--set" : ""
+        }${
+          propertyChoicePreview ? " board-action-composer__decision-card--property-choice" : ""
+        }${
+          isGuidedPropertyAction ? " board-action-composer__decision-card--guided" : ""
         }`}
         onClick={() =>
           setDraftIntent((current) => applyChosenValue(current, field, option.value))
@@ -474,9 +687,21 @@ export function ActionComposerSheet({
             />
           ) : null}
 
+          {propertyChoicePreview ? (
+            <ScaledMonopolyCard
+              card={propertyChoicePreview}
+              size={propertyChoiceSurfacePreset.size}
+              scale={propertyChoiceCardScale}
+              className="hand-card__scaled-card board-action-composer__decision-property-card"
+              surfaceClassName="hand-card__scaled-card-surface"
+            />
+          ) : null}
+
           <span className="board-action-composer__decision-copy">
-            <strong>{option.label}</strong>
-            <span className="board-action-composer__decision-detail">{detailCopy}</span>
+            <strong>{optionLabel}</strong>
+            {detailCopy ? (
+              <span className="board-action-composer__decision-detail">{detailCopy}</span>
+            ) : null}
           </span>
         </span>
 
@@ -498,7 +723,54 @@ export function ActionComposerSheet({
     );
   }
 
+  function formatCompactChosenValue(field: ActionFieldKey, value: string) {
+    const label = formatChosenValue(field, value);
+    return isPropertyCardChoiceField(field) ? label.replace(/^[^:]+:\s*/, "") : label;
+  }
+
+  function renderCompactTargetOption(option: (typeof targetOptions)[number]) {
+    const { opponent } = getOptionMeta("target_player_id", option.value);
+    const isSelected = chosenTargetPlayerId === option.value;
+    const detailCopy =
+      option.detail ??
+      (opponent
+        ? `${opponent.bankTotal} bank - ${opponent.handCount} cards in hand`
+        : "Choose this player.");
+
+    return (
+      <button
+        key={option.value}
+        type="button"
+        role="radio"
+        aria-checked={isSelected}
+        className={`board-action-composer__target-option${
+          isSelected ? " board-action-composer__target-option--active" : ""
+        }`}
+        onClick={() => {
+          setDraftIntent((current) =>
+            applyChosenValue(current, "target_player_id", option.value),
+          );
+          setErrorMessage(null);
+        }}
+      >
+        <span className="board-action-composer__mode-radio" aria-hidden="true" />
+        <span className="board-action-composer__target-copy">
+          <strong>{opponent?.name ?? option.label}</strong>
+          <span>{detailCopy}</span>
+        </span>
+        <span className="board-action-composer__choice-tag">
+          {isSelected ? "Selected" : "Target"}
+        </span>
+      </button>
+    );
+  }
+
   async function handleSubmit() {
+    if (missingSubmitField) {
+      setErrorMessage(getBlockedActionMessage(missingSubmitField));
+      return;
+    }
+
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
@@ -511,13 +783,37 @@ export function ActionComposerSheet({
     }
   }
 
+  function getPrimaryActionLabel() {
+    if (isSubmitting) {
+      return "Submitting...";
+    }
+
+    if (playMode === "bank") {
+      return `Bank ${bankValueLabel}`;
+    }
+
+    if (missingSubmitField) {
+      return getBlockedActionLabel(missingSubmitField);
+    }
+
+    if (isGuidedPropertyAction) {
+      return `Play ${meta.name}`;
+    }
+
+    return canChooseBankOrEffect ? "Play action" : `Play ${meta.name}`;
+  }
+
   return (
     <div className="board-modal-overlay" role="presentation" onClick={onClose}>
       <section
-        className="board-modal-sheet board-action-composer"
+        className={`board-modal-sheet board-action-composer${
+          canChooseBankOrEffect ? " board-action-composer--choice-flow" : ""
+        }${
+          isPropertyExchangeFlow ? " board-action-composer--guided-property" : ""
+        }`}
         role="dialog"
         aria-modal="true"
-        aria-label={`${card.label} options`}
+        aria-labelledby="action-composer-title"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="board-modal-sheet__header">
@@ -525,10 +821,10 @@ export function ActionComposerSheet({
             <p className="board-modal-sheet__eyebrow">
               {meta.kind === "rent" ? "Rent Card" : "Action Card"}
             </p>
-            <h2>{meta.name}</h2>
+            <h2 id="action-composer-title">{meta.name}</h2>
             <p className="board-modal-sheet__copy board-action-composer__headline">
               {canChooseBankOrEffect
-                ? `Play the effect or bank this card for ${formatBankValue(meta.moneyValue)}.`
+                ? "Pick one use for this card."
                 : `Follow the guided sequence below to resolve ${meta.name}.`}
             </p>
           </div>
@@ -538,56 +834,93 @@ export function ActionComposerSheet({
         </div>
 
         {canChooseBankOrEffect ? (
-          <div className="board-modal-sheet__body board-action-composer__section">
+          <div className="board-modal-sheet__body board-action-composer__section board-action-composer__mode-section">
             <div className="board-action-composer__section-header">
               <p className="board-modal-sheet__eyebrow">Use Card As</p>
             </div>
-            <div className="board-option-list board-action-composer__choice-list">
+            <div
+              className="board-action-composer__mode-list"
+              role="radiogroup"
+              aria-label="Use card as"
+            >
               <button
                 type="button"
-                className={`board-option-list__item${
-                  playMode === "effect" ? " board-option-list__item--active" : ""
-                } board-action-composer__choice board-action-composer__mode-card`}
+                role="radio"
+                aria-checked={playMode === "effect"}
+                className={`board-action-composer__mode-option${
+                  playMode === "effect" ? " board-action-composer__mode-option--active" : ""
+                }`}
                 onClick={() => {
                   setPlayMode("effect");
                   setErrorMessage(null);
                 }}
               >
+                <span className="board-action-composer__mode-radio" aria-hidden="true" />
                 <span className="board-action-composer__choice-copy">
-                  <strong>Play effect</strong>
+                  <strong>Play action</strong>
                   <span className="board-action-composer__choice-detail">
-                    Resolve the full effect for {meta.name}.
+                    {compactEffectNote}
                   </span>
                 </span>
                 <span className="board-action-composer__choice-tag">Action</span>
               </button>
               <button
                 type="button"
-                className={`board-option-list__item${
-                  playMode === "bank" ? " board-option-list__item--active" : ""
-                } board-action-composer__choice board-action-composer__mode-card`}
+                role="radio"
+                aria-checked={playMode === "bank"}
+                className={`board-action-composer__mode-option${
+                  playMode === "bank" ? " board-action-composer__mode-option--active" : ""
+                }`}
                 onClick={() => {
                   setPlayMode("bank");
                   setErrorMessage(null);
                 }}
               >
+                <span className="board-action-composer__mode-radio" aria-hidden="true" />
                 <span className="board-action-composer__choice-copy">
                   <strong>Bank card</strong>
                   <span className="board-action-composer__choice-detail">
-                    Commit this card to your bank.
+                    Add {bankValueLabel} to bank
                   </span>
                 </span>
                 <span className="board-action-composer__choice-tag">
-                  {formatBankValue(meta.moneyValue)}
+                  {bankValueLabel}
                 </span>
               </button>
+            </div>
+            {shouldShowModeOutcome ? (
+              <p className="board-action-composer__mode-outcome" aria-live="polite">
+                <strong>{playMode === "bank" ? "Bank selected:" : "Play selected:"}</strong>{" "}
+                {playMode === "bank"
+                  ? `add this card as ${bankValueLabel}.`
+                  : compactEffectOutcome}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {playMode === "effect" && isCompactTargetChargeFlow ? (
+          <div className="board-modal-sheet__body board-action-composer__section board-action-composer__target-section">
+            <div className="board-action-composer__section-header">
+              <p className="board-modal-sheet__eyebrow">Choose Opponent</p>
+            </div>
+            <div
+              className="board-action-composer__target-list"
+              role="radiogroup"
+              aria-label="Choose opponent"
+            >
+              {targetOptions.map((option) => renderCompactTargetOption(option))}
             </div>
           </div>
         ) : null}
 
-        {playMode === "effect" && firstMissingField ? (
-          <div className="board-modal-sheet__body board-action-composer__section">
-            {actionOutcomeCopy ? (
+        {playMode === "effect" && firstMissingField && !isCompactTargetChargeFlow ? (
+          <div
+            className={`board-modal-sheet__body board-action-composer__section${
+              isGuidedPropertyAction ? " board-action-composer__section--guided-property" : ""
+            }`}
+          >
+            {actionOutcomeCopy && !isGuidedPropertyAction ? (
               <div className="board-action-composer__step-card">
                 <div className="board-action-composer__section-header">
                   <p className="board-modal-sheet__eyebrow">Action Preview</p>
@@ -649,29 +982,59 @@ export function ActionComposerSheet({
 
             {renderProgressRail()}
 
-            <div className="board-action-composer__focus-card">
-              <div className="board-action-composer__focus-head">
-                <p className="board-modal-sheet__eyebrow">Current decision</p>
-                <span className="board-action-composer__focus-step">
-                  Step {currentStepIndex + 1} of {fieldOrder.length}
-                </span>
+            {isGuidedPropertyAction ? (
+              <div className="board-action-composer__guided-panel">
+                <div className="board-action-composer__guided-head">
+                  <span className="board-action-composer__focus-step">
+                    Step {currentStepIndex + 1} of {fieldOrder.length}
+                  </span>
+                  <h3>{getGuidedStepTitle(firstMissingField)}</h3>
+                  <p>{getGuidedStepDescription(firstMissingField)}</p>
+                </div>
+                <div className="board-action-composer__decision-list board-action-composer__decision-list--guided">
+                  {options.map((option) => renderDecisionOption(firstMissingField, option))}
+                </div>
               </div>
-              <h3>{getFieldTitle(firstMissingField)}</h3>
-              <p className="board-modal-sheet__copy board-action-composer__focus-detail">
-                {getFieldDescription(firstMissingField)}
-              </p>
-              <p className="board-modal-sheet__meta board-action-composer__focus-instruction">
-                {getFieldInstruction(firstMissingField)}
-              </p>
-            </div>
+            ) : (
+              <>
+                <div className="board-action-composer__focus-card">
+                  <div className="board-action-composer__focus-head">
+                    <p className="board-modal-sheet__eyebrow">Current decision</p>
+                    <span className="board-action-composer__focus-step">
+                      Step {currentStepIndex + 1} of {fieldOrder.length}
+                    </span>
+                  </div>
+                  <h3>{getFieldTitle(firstMissingField)}</h3>
+                  <p className="board-modal-sheet__copy board-action-composer__focus-detail">
+                    {getFieldDescription(firstMissingField)}
+                  </p>
+                  <p className="board-modal-sheet__meta board-action-composer__focus-instruction">
+                    {getFieldInstruction(firstMissingField)}
+                  </p>
+                </div>
 
-            <div className="board-action-composer__decision-list">
-              {options.map((option) => renderDecisionOption(firstMissingField, option))}
+                <div className="board-action-composer__decision-list">
+                  {options.map((option) => renderDecisionOption(firstMissingField, option))}
+                </div>
+              </>
+            )}
+          </div>
+        ) : null}
+
+        {shouldRenderPropertyReadyEffect ? (
+          <div className="board-modal-sheet__body board-action-composer__section board-action-composer__section--guided-property">
+            {renderProgressRail()}
+            <div className="board-action-composer__guided-panel board-action-composer__guided-panel--ready">
+              <div className="board-action-composer__guided-head">
+                <span className="board-action-composer__focus-step">Ready</span>
+                <h3>Play {meta.name}</h3>
+                <p>{actionOutcomeCopy ?? "All choices are set. Resolve the action."}</p>
+              </div>
             </div>
           </div>
         ) : null}
 
-        {playMode === "effect" && !firstMissingField ? (
+        {shouldRenderGenericReadyEffect ? (
           <div className="board-modal-sheet__body board-action-composer__section">
             {actionOutcomeCopy ? (
               <div className="board-action-composer__step-card">
@@ -750,7 +1113,7 @@ export function ActionComposerSheet({
           </div>
         ) : null}
 
-        {playMode === "bank" ? (
+        {playMode === "bank" && !canChooseBankOrEffect ? (
           <div className="board-modal-sheet__body board-action-composer__section">
             <div className="board-action-composer__step-card">
               <div className="board-action-composer__section-header">
@@ -773,14 +1136,10 @@ export function ActionComposerSheet({
           <button
             type="button"
             className="board-primary-button"
-            disabled={submitIntent.missing.length > 0 || isSubmitting}
+            disabled={!canSubmit}
             onClick={() => void handleSubmit()}
           >
-            {isSubmitting
-              ? "Submitting..."
-              : playMode === "bank"
-                ? `Bank ${formatBankValue(meta.moneyValue)}`
-                : `Play ${meta.name}`}
+            {getPrimaryActionLabel()}
           </button>
         </div>
       </section>

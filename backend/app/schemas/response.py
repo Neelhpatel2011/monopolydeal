@@ -9,6 +9,7 @@ from ..services.player_view import PlayerView
 
 class GameSummary(BaseModel):
     game_id: str
+    game_code: Optional[str] = None
     player_ids: List[str]
     started: bool
 

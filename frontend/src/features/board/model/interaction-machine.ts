@@ -211,6 +211,22 @@ export function boardInteractionReducer(
 
       return toIdle(state, closeBrowsingWhileActing());
 
+    case "START_HAND_DRAG":
+      if (state.mode !== "idle" && state.mode !== "selected") {
+        return state;
+      }
+
+      return {
+        mode: "dragging",
+        selectedCardId: event.intent.cardId,
+        origin: event.origin,
+        intent: event.intent,
+        pointerId: event.pointerId,
+        hoverTargetId: event.hoverTargetId ?? null,
+        preview: event.preview,
+        ...mergeTransient(state, closeBrowsingWhileActing({ invalidFeedback: null })),
+      };
+
     case "START_DRAG": {
       const nextState = buildDraggingState(
         state,
@@ -348,14 +364,18 @@ export function boardInteractionReducer(
       return toSelected(state, state.origin, state.intent, { invalidFeedback: null });
 
     case "OPEN_END_TURN_CONFIRM":
-      if (state.mode !== "idle" || state.expandedOpponentId !== null) {
+      if (
+        (state.mode !== "idle" && state.mode !== "selected") ||
+        state.expandedOpponentId !== null
+      ) {
         return state;
       }
 
       return {
-        ...state,
+        mode: "idle",
         expandedOpponentId: null,
         endTurnConfirmOpen: true,
+        invalidFeedback: null,
       };
 
     case "CLOSE_END_TURN_CONFIRM":
@@ -403,7 +423,7 @@ export function boardInteractionReducer(
       });
 
     case "SUBMIT_END_TURN_START":
-      if (state.mode !== "idle") {
+      if (state.mode !== "idle" && state.mode !== "selected") {
         return state;
       }
 
