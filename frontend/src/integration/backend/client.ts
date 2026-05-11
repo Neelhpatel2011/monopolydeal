@@ -28,6 +28,112 @@ function resolveApiBaseUrl() {
 
 const API_BASE_URL = resolveApiBaseUrl();
 const WS_BASE_URL = API_BASE_URL.replace(/^http/, "ws");
+const SESSION_STORAGE_PREFIX = "monopolydeal:session:";
+
+class BackendNetworkError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BackendNetworkError";
+  }
+}
+
+type RequestOptions = RequestInit & {
+  gameId?: string;
+};
+
+function toFetchInit(init?: RequestOptions): RequestInit {
+  if (!init) {
+    return {};
+  }
+
+  const fetchInit: RequestOptions = { ...init };
+  delete fetchInit.gameId;
+  return fetchInit;
+}
+
+function isBrowserStorageAvailable(storage: Storage | undefined) {
+  if (!storage) {
+    return false;
+  }
+
+  try {
+    const probeKey = `${SESSION_STORAGE_PREFIX}probe`;
+    storage.setItem(probeKey, "1");
+    storage.removeItem(probeKey);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function getSessionStorage() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  if (isBrowserStorageAvailable(window.localStorage)) {
+    return window.localStorage;
+  }
+
+  if (isBrowserStorageAvailable(window.sessionStorage)) {
+    return window.sessionStorage;
+  }
+
+  return null;
+}
+
+function sessionTokenKey(gameId: string) {
+  return `${SESSION_STORAGE_PREFIX}${gameId}`;
+}
+
+function saveGameSessionToken(gameId: string | null | undefined, token: string | null | undefined) {
+  if (!gameId || !token) {
+    return;
+  }
+
+  getSessionStorage()?.setItem(sessionTokenKey(gameId), token);
+}
+
+function readGameSessionToken(gameId: string | null | undefined) {
+  if (!gameId) {
+    return null;
+  }
+
+  return getSessionStorage()?.getItem(sessionTokenKey(gameId)) ?? null;
+}
+
+function clearGameSessionToken(gameId: string | null | undefined) {
+  if (!gameId) {
+    return;
+  }
+
+  getSessionStorage()?.removeItem(sessionTokenKey(gameId));
+}
+
+function getRequestHeaders(init?: RequestOptions) {
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+
+  const token = readGameSessionToken(init?.gameId);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  return headers;
+}
+
+function getFetchFailureMessage(error: unknown) {
+  if (error instanceof BackendNetworkError || error instanceof BackendRequestError) {
+    return error.message;
+  }
+
+  const configuredBaseUrl = (import.meta.env.VITE_BACKEND_URL as string | undefined)?.trim();
+  const configHint = configuredBaseUrl
+    ? "Check that the backend is awake and allows this frontend origin."
+    : "Set VITE_BACKEND_URL to the deployed backend URL for hosted builds.";
+  const details = error instanceof Error && error.message ? ` (${error.message})` : "";
+  return `Could not reach the game server at ${API_BASE_URL}. ${configHint}${details}`;
+}
 
 export class BackendRequestError extends Error {
   status: number;
@@ -60,35 +166,45 @@ export function isAuthSessionError(error: unknown) {
   );
 }
 
-async function requestJson<T>(input: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE_URL}${input}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
+async function requestJson<T>(input: string, init?: RequestOptions): Promise<T> {
+  try {
+    const response = await fetch(`${API_BASE_URL}${input}`, {
+      ...toFetchInit(init),
+      credentials: "include",
+      headers: getRequestHeaders(init),
+    });
 
-  if (!response.ok) {
-    throw new BackendRequestError(response.status, await getResponseError(response));
+    if (!response.ok) {
+      throw new BackendRequestError(response.status, await getResponseError(response));
+    }
+
+    return response.json() as Promise<T>;
+  } catch (error) {
+    if (error instanceof BackendRequestError) {
+      throw error;
+    }
+
+    throw new BackendNetworkError(getFetchFailureMessage(error));
   }
-
-  return response.json() as Promise<T>;
 }
 
-async function requestVoid(input: string, init?: RequestInit): Promise<void> {
-  const response = await fetch(`${API_BASE_URL}${input}`, {
-    ...init,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
+async function requestVoid(input: string, init?: RequestOptions): Promise<void> {
+  try {
+    const response = await fetch(`${API_BASE_URL}${input}`, {
+      ...toFetchInit(init),
+      credentials: "include",
+      headers: getRequestHeaders(init),
+    });
 
-  if (!response.ok) {
-    throw new BackendRequestError(response.status, await getResponseError(response));
+    if (!response.ok) {
+      throw new BackendRequestError(response.status, await getResponseError(response));
+    }
+  } catch (error) {
+    if (error instanceof BackendRequestError) {
+      throw error;
+    }
+
+    throw new BackendNetworkError(getFetchFailureMessage(error));
   }
 }
 
@@ -110,10 +226,12 @@ function isMissingEndpointError(error: unknown) {
 
 export const backendClient = {
   async createGame(playerName: string) {
-    return requestJson<BackendGameSummary>("/games", {
+    const game = await requestJson<BackendGameSummary>("/games", {
       method: "POST",
       body: JSON.stringify({ player_name: playerName }),
     });
+    saveGameSessionToken(game.game_id, game.access_token);
+    return game;
   },
   async joinGame(gameId: string, playerName: string) {
     return requestJson<BackendJoinGameResponse>(`/games/${gameId}/players/${encodeURIComponent(playerName)}`, {
@@ -121,25 +239,29 @@ export const backendClient = {
     });
   },
   async joinGameByCode(request: BackendJoinByCodeRequest) {
-    return requestJson<BackendJoinGameResponse>("/games/join", {
+    const response = await requestJson<BackendJoinGameResponse>("/games/join", {
       method: "POST",
       body: JSON.stringify(request),
     });
+    saveGameSessionToken(response.player_view.game_id, response.access_token);
+    return response;
   },
   async getGameState(gameId: string) {
-    return requestJson<BackendGameSummary>(`/games/${gameId}/state`);
+    return requestJson<BackendGameSummary>(`/games/${gameId}/state`, { gameId });
   },
   async startGame(gameId: string) {
     return requestJson<BackendGameSummary>(`/games/${gameId}/start`, {
       method: "POST",
+      gameId,
     });
   },
   async getPlayerView(gameId: string) {
-    return requestJson<BackendPlayerView>(`/games/${gameId}/view`);
+    return requestJson<BackendPlayerView>(`/games/${gameId}/view`, { gameId });
   },
   async submitAction(gameId: string, request: BackendActionRequest) {
     return requestJson<BackendActionResponse>(`/games/${gameId}/actions`, {
       method: "POST",
+      gameId,
       body: JSON.stringify(request),
     });
   },
@@ -148,6 +270,7 @@ export const backendClient = {
       `/games/${gameId}/pending/${pendingId}/respond`,
       {
         method: "POST",
+        gameId,
         body: JSON.stringify(request),
       },
     );
@@ -155,23 +278,28 @@ export const backendClient = {
   async submitPayment(gameId: string, request: BackendPaymentRequest) {
     return requestJson<BackendPaymentResponse>(`/games/${gameId}/payments`, {
       method: "POST",
+      gameId,
       body: JSON.stringify(request),
     });
   },
   async surrenderGame(gameId: string) {
     try {
-      return await requestVoid(`/games/${gameId}/surrender`, {
+      await requestVoid(`/games/${gameId}/surrender`, {
         method: "POST",
+        gameId,
       });
     } catch (error) {
       if (!isMissingEndpointError(error)) {
         throw error;
       }
 
-      return requestVoid(`/games/${gameId}/players/me`, {
+      await requestVoid(`/games/${gameId}/players/me`, {
         method: "DELETE",
+        gameId,
       });
     }
+
+    clearGameSessionToken(gameId);
   },
   connectToGame(
     gameId: string,
@@ -182,7 +310,12 @@ export const backendClient = {
       onClose?: (event: CloseEvent) => void;
     },
   ) {
-    const socket = new WebSocket(`${WS_BASE_URL}/ws/games/${gameId}`);
+    const socketUrl = new URL(`${WS_BASE_URL}/ws/games/${gameId}`);
+    const token = readGameSessionToken(gameId);
+    if (token) {
+      socketUrl.searchParams.set("session_token", token);
+    }
+    const socket = new WebSocket(socketUrl);
 
     socket.addEventListener("message", (event) => {
       if (typeof event.data !== "string") {

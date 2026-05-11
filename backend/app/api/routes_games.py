@@ -210,6 +210,7 @@ def create_game(req: CreateGameRequest, request: Request, response: Response) ->
         game_code=state.game_code,
         player_ids=list(state.players.keys()),
         started=False,
+        access_token=session_token,
     )
 
 
@@ -228,7 +229,7 @@ async def join_game_with_code(
     set_player_session_cookie(response, request, session_token)
     player_view = res["player_view"]
     await manager.broadcast_player_views(player_view.game_id, get_state(game_id=player_view.game_id))
-    return res
+    return {**res, "access_token": session_token}
 
 
 @router.post("/games/{game_id}/players/{player_id}", response_model=JoinGameResponse)
