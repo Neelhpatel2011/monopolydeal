@@ -102,6 +102,10 @@ export function ActionComposerSheet({
     canChooseBankOrEffect && meta.effectType === "charge_player";
   const isPropertyExchangeFlow =
     meta.effectType === "steal_property" || meta.effectType === "swap_property";
+  const isWildPropertyAssignment =
+    playMode === "effect" &&
+    (meta.kind === "property_wild" || card.actionOptions?.cardKind === "property_wild") &&
+    fieldOrder.includes("property_color");
   const isGuidedPropertyAction =
     playMode === "effect" && isPropertyExchangeFlow && !isCompactTargetChargeFlow;
   const missingSubmitField =
@@ -639,9 +643,11 @@ export function ActionComposerSheet({
       ? option.label.replace(/^[^:]+:\s*/, "")
       : option.label;
     const detailCopy =
-      isGuidedPropertyAction && propertyChoicePreview
+      (isGuidedPropertyAction || isWildPropertyAssignment) && propertyChoicePreview
         ? null
-        : option.detail ??
+        : isWildPropertyAssignment && isSetOption
+          ? "Tap to place the wild here."
+          : option.detail ??
           (isTargetOption
             ? opponent != null
               ? isGuidedPropertyAction
@@ -717,7 +723,9 @@ export function ActionComposerSheet({
           {opponent?.isCurrentPlayer ? (
             <span className="board-action-composer__decision-chip">Current turn</span>
           ) : null}
-          <span className="board-action-composer__decision-cta">Choose</span>
+          <span className="board-action-composer__decision-cta">
+            {isWildPropertyAssignment ? "Place here" : "Choose"}
+          </span>
         </span>
       </button>
     );
@@ -796,6 +804,10 @@ export function ActionComposerSheet({
       return getBlockedActionLabel(missingSubmitField);
     }
 
+    if (isWildPropertyAssignment) {
+      return `Place wild`;
+    }
+
     if (isGuidedPropertyAction) {
       return `Play ${meta.name}`;
     }
@@ -810,6 +822,8 @@ export function ActionComposerSheet({
           canChooseBankOrEffect ? " board-action-composer--choice-flow" : ""
         }${
           isPropertyExchangeFlow ? " board-action-composer--guided-property" : ""
+        }${
+          isWildPropertyAssignment ? " board-action-composer--wild-assignment" : ""
         }`}
         role="dialog"
         aria-modal="true"
@@ -825,7 +839,9 @@ export function ActionComposerSheet({
             <p className="board-modal-sheet__copy board-action-composer__headline">
               {canChooseBankOrEffect
                 ? "Pick one use for this card."
-                : `Follow the guided sequence below to resolve ${meta.name}.`}
+                : isWildPropertyAssignment
+                  ? "Pick where this wild card goes."
+                  : `Follow the guided sequence below to resolve ${meta.name}.`}
             </p>
           </div>
           <button type="button" className="board-modal-sheet__close" onClick={onClose}>
@@ -980,9 +996,20 @@ export function ActionComposerSheet({
               </div>
             ) : null}
 
-            {renderProgressRail()}
+            {isWildPropertyAssignment ? null : renderProgressRail()}
 
-            {isGuidedPropertyAction ? (
+            {isWildPropertyAssignment ? (
+              <div className="board-action-composer__guided-panel board-action-composer__wild-panel">
+                <div className="board-action-composer__guided-head">
+                  <span className="board-action-composer__focus-step">Tap one</span>
+                  <h3>Pick a set</h3>
+                  <p>This wild becomes part of the set you tap.</p>
+                </div>
+                <div className="board-action-composer__decision-list board-action-composer__decision-list--wild">
+                  {options.map((option) => renderDecisionOption(firstMissingField, option))}
+                </div>
+              </div>
+            ) : isGuidedPropertyAction ? (
               <div className="board-action-composer__guided-panel">
                 <div className="board-action-composer__guided-head">
                   <span className="board-action-composer__focus-step">
@@ -1035,7 +1062,11 @@ export function ActionComposerSheet({
         ) : null}
 
         {shouldRenderGenericReadyEffect ? (
-          <div className="board-modal-sheet__body board-action-composer__section">
+          <div
+            className={`board-modal-sheet__body board-action-composer__section${
+              isWildPropertyAssignment ? " board-action-composer__section--wild-ready" : ""
+            }`}
+          >
             {actionOutcomeCopy ? (
               <div className="board-action-composer__step-card">
                 <div className="board-action-composer__section-header">
@@ -1099,15 +1130,17 @@ export function ActionComposerSheet({
               </div>
             ) : null}
 
-            {renderProgressRail()}
+            {isWildPropertyAssignment ? null : renderProgressRail()}
 
             <div className="board-action-composer__step-card">
               <div className="board-action-composer__section-header">
                 <p className="board-modal-sheet__eyebrow">Ready</p>
-                <h3>Play {meta.name}</h3>
+                <h3>{isWildPropertyAssignment ? "Ready to place" : `Play ${meta.name}`}</h3>
               </div>
               <p className="board-modal-sheet__copy">
-                All required choices are set. Submit to resolve the card.
+                {isWildPropertyAssignment
+                  ? "Press Place Wild to finish."
+                  : "All required choices are set. Submit to resolve the card."}
               </p>
             </div>
           </div>
