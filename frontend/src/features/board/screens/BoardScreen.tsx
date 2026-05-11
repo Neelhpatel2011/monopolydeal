@@ -63,17 +63,16 @@ function LobbyScreen({
   const playersNeeded = Math.max(0, MIN_PLAYERS_TO_START - players.length);
   const seatsRemaining = Math.max(0, MAX_LOBBY_PLAYERS - players.length);
   const isLobbyFull = players.length >= MAX_LOBBY_PLAYERS;
-  const rosterLabel = `${players.length} / ${MAX_LOBBY_PLAYERS} seats filled`;
-  const hostStatusCopy = isLobbyFull
-    ? "Your table is full. Start the match whenever everyone is ready."
-    : playersNeeded > 0
-      ? `Invite ${playersNeeded === 1 ? "1 more player" : `${playersNeeded} more players`} to unlock the match. Up to 4 players can join this table.`
-      : `You can start now, or wait for ${seatsRemaining === 1 ? "1 more player" : `${seatsRemaining} more players`} before the table fills up.`;
-  const guestStatusCopy = isLobbyFull
-    ? `The table is full. Waiting for ${hostId ?? "the host"} to start the match.`
-    : playersNeeded > 0
-      ? `Waiting for ${hostId ?? "the host"} to bring ${playersNeeded === 1 ? "1 more player" : `${playersNeeded} more players`}.`
-      : `Waiting for ${hostId ?? "the host"} to start the match. ${seatsRemaining === 1 ? "1 seat is still open." : `${seatsRemaining} seats are still open.`}`;
+  const filledSeatLabel = `${players.length}/${MAX_LOBBY_PLAYERS}`;
+  const emptySeats = Math.max(0, MAX_LOBBY_PLAYERS - players.length);
+  const lobbyStatus = playersNeeded > 0
+    ? `${playersNeeded} more needed`
+    : isLobbyFull
+      ? "Table full"
+      : "Ready to start";
+  const guestStatusCopy = playersNeeded > 0
+    ? `Waiting for ${playersNeeded === 1 ? "1 more player" : `${playersNeeded} more players`}.`
+    : `Waiting for ${hostId ?? "the host"} to start.`;
 
   async function handleStart() {
     setIsStarting(true);
@@ -102,25 +101,14 @@ function LobbyScreen({
     <main className="board-page">
       <div className="board-shell">
         <section className="board-loading-state board-lobby-state" aria-live="polite">
-          <p className="board-loading-state__eyebrow">Lobby</p>
           <div className="board-lobby-state__hero">
-            <div className="board-lobby-state__hero-copy">
-              <h1>{isHost ? "Your table is open" : "You are in the lobby"}</h1>
-              <p>
-                {isHost
-                  ? "Share the code, let everyone pile in, and start when the table feels ready."
-                  : "You are checked in. Hang tight while the host fills the table and kicks things off."}
-              </p>
-            </div>
-            <div className="board-lobby-state__identity">
-              <span className="board-lobby-state__identity-label">Playing as</span>
-              <strong>{playerId}</strong>
-            </div>
+            <p className="board-loading-state__eyebrow">Lobby</p>
+            <h1>{isHost ? "Table open" : "Lobby"}</h1>
           </div>
 
-          <div className="board-lobby-state__code-card">
+          <div className="board-lobby-state__code-card" aria-label={`Game code ${displayCode}`}>
             <div className="board-lobby-state__code-copy">
-              <span className="board-lobby-state__code-label">Share this game code</span>
+              <span className="board-lobby-state__code-label">Game code</span>
               <strong>{displayCode}</strong>
             </div>
             <button
@@ -140,41 +128,71 @@ function LobbyScreen({
             </button>
           </div>
 
-          <div className="board-lobby-state__status-band">
+          <div
+            className="board-lobby-state__status-band"
+            aria-label={`${filledSeatLabel} players seated`}
+          >
             <div className="board-lobby-state__status-copy">
-              <span className="board-lobby-state__status-label">{rosterLabel}</span>
-              <p>{isHost ? hostStatusCopy : guestStatusCopy}</p>
+              <span className="board-lobby-state__status-label">Players</span>
+              <strong>{filledSeatLabel}</strong>
             </div>
-            <span className="board-lobby-state__status-chip">
-              {isLobbyFull
-                ? "Table full"
-                : playersNeeded > 0
-                  ? `${playersNeeded} to go`
-                  : seatsRemaining === 1
-                    ? "1 seat open"
-                    : `${seatsRemaining} seats open`}
-            </span>
+            <div className="board-lobby-state__seat-dots" aria-hidden="true">
+              {Array.from({ length: MAX_LOBBY_PLAYERS }, (_, index) => (
+                <span
+                  key={index}
+                  className={`board-lobby-state__seat-dot${
+                    index < players.length ? " board-lobby-state__seat-dot--filled" : ""
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="board-lobby-state__status-chip">{lobbyStatus}</span>
           </div>
 
           <div className="board-lobby-state__players" aria-label="Players in lobby">
-            {players.map((player) => (
-              <article key={player} className="board-lobby-state__player-card">
+            {players.map((player) => {
+              const isCurrentPlayer = player === playerId;
+              const isPlayerHost = player === hostId;
+
+              return (
+                <article
+                  key={player}
+                  className={`board-lobby-state__player-card${
+                    isCurrentPlayer ? " board-lobby-state__player-card--you" : ""
+                  }`}
+                >
+                  <div className="board-lobby-state__player-avatar" aria-hidden="true">
+                    {player.charAt(0).toUpperCase()}
+                  </div>
+                  <div className="board-lobby-state__player-copy">
+                    <strong>{player}</strong>
+                    <span>{isCurrentPlayer ? "You" : "Player"}</span>
+                  </div>
+                  <div className="board-lobby-state__player-badges">
+                    {isCurrentPlayer ? (
+                      <span className="board-lobby-state__player-badge board-lobby-state__player-badge--you">
+                        You
+                      </span>
+                    ) : null}
+                    {isPlayerHost ? (
+                      <span className="board-lobby-state__player-badge">Host</span>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
+            {Array.from({ length: emptySeats }, (_, index) => (
+              <article
+                key={`empty-${index}`}
+                className="board-lobby-state__player-card board-lobby-state__player-card--empty"
+              >
                 <div className="board-lobby-state__player-avatar" aria-hidden="true">
-                  {player.charAt(0).toUpperCase()}
+                  +
                 </div>
                 <div className="board-lobby-state__player-copy">
-                  <strong>{player}</strong>
-                  <span>
-                    {player === hostId
-                      ? "Host"
-                      : player === playerId
-                        ? "Joined"
-                        : "In lobby"}
-                  </span>
+                  <strong>Open seat</strong>
+                  <span>Invite</span>
                 </div>
-                {player === hostId ? (
-                  <span className="board-lobby-state__player-badge">Host</span>
-                ) : null}
               </article>
             ))}
           </div>
@@ -190,7 +208,11 @@ function LobbyScreen({
                 disabled={players.length < MIN_PLAYERS_TO_START || isStarting}
                 onClick={() => void handleStart()}
               >
-                {isStarting ? "Starting..." : players.length < MIN_PLAYERS_TO_START ? "Need 2 Players" : "Start Match"}
+                {isStarting
+                  ? "Starting..."
+                  : players.length < MIN_PLAYERS_TO_START
+                    ? "Need 2 Players"
+                    : "Start Match"}
               </button>
               <p className="board-lobby-state__helper">
                 {players.length < MIN_PLAYERS_TO_START
