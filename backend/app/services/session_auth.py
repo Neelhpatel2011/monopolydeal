@@ -7,6 +7,7 @@ import secrets
 from typing import Any, Dict
 
 from fastapi import HTTPException, Request, Response, WebSocket
+from fastapi.security.utils import get_authorization_scheme_param
 
 from ..db import repo
 
@@ -104,17 +105,31 @@ def _validate_session_record(record: Dict[str, Any] | None, *, game_id: str) -> 
     return player_id
 
 
-def require_http_player_session(request: Request, game_id: str) -> str:
-    raw_token = request.cookies.get(PLAYER_SESSION_COOKIE_NAME)
+def _token_from_authorization_header(value: str | None) -> str | None:
+    scheme, token = get_authorization_scheme_param(value)
+    if scheme.lower() != "bearer" or not token:
+        return None
+    return token
+
+
+def _require_player_session(raw_token: str | None, game_id: str) -> str:
     if not raw_token:
         raise HTTPException(status_code=401, detail="Missing or expired game session.")
     record = repo.get_player_session(hash_player_session_token(raw_token))
     return _validate_session_record(record, game_id=game_id)
+
+
+def require_http_player_session(request: Request, game_id: str) -> str:
+    raw_token = (
+        _token_from_authorization_header(request.headers.get("Authorization"))
+        or request.cookies.get(PLAYER_SESSION_COOKIE_NAME)
+    )
+    return _require_player_session(raw_token, game_id)
 
 
 def require_websocket_player_session(websocket: WebSocket, game_id: str) -> str:
-    raw_token = websocket.cookies.get(PLAYER_SESSION_COOKIE_NAME)
-    if not raw_token:
-        raise HTTPException(status_code=401, detail="Missing or expired game session.")
-    record = repo.get_player_session(hash_player_session_token(raw_token))
-    return _validate_session_record(record, game_id=game_id)
+    raw_token = (
+        websocket.query_params.get("session_token")
+        or websocket.cookies.get(PLAYER_SESSION_COOKIE_NAME)
+    )
+    return _require_player_session(raw_token, game_id)

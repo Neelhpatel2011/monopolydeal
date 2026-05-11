@@ -41,7 +41,11 @@ def test_create_game_sets_http_only_session_cookie(monkeypatch):
     state = _build_state()
 
     monkeypatch.setattr(routes_games, "create_game_lobby", lambda player_ids: state)
-    monkeypatch.setattr(routes_games, "create_player_session_token", lambda game_id, player_id: "raw-session-token")
+    monkeypatch.setattr(
+        routes_games,
+        "create_player_session_token",
+        lambda game_id, player_id: "raw-session-token",
+    )
 
     response = client.post("/games", json={"player_name": "Host"})
 
@@ -189,3 +193,61 @@ def test_websocket_uses_cookie_session_identity(monkeypatch):
     assert payload["type"] == "state_update"
     assert payload["view"]["you"]["id"] == "Host"
     assert payload["view"]["you"]["hand"] == ["action_just_say_no"]
+
+
+def test_create_game_returns_session_access_token_for_cookie_blocked_browsers(monkeypatch):
+    client = TestClient(app)
+    state = _build_state()
+
+    monkeypatch.setattr(routes_games, "create_game_lobby", lambda player_ids: state)
+    monkeypatch.setattr(
+        routes_games,
+        "create_player_session_token",
+        lambda game_id, player_id: "raw-session-token",
+    )
+
+    response = client.post("/games", json={"player_name": "Host"})
+
+    assert response.status_code == 200
+    assert response.json()["access_token"] == "raw-session-token"
+
+
+def test_get_player_view_accepts_bearer_session_when_cookie_is_missing(monkeypatch):
+    state = _build_state()
+
+    monkeypatch.setattr(routes_games, "get_state", lambda game_id: state)
+
+    def fake_get_player_session(token_hash: str):
+        assert token_hash == session_auth.hash_player_session_token("raw-session-token")
+        return _session_row(game_id=state.id, player_id="Host")
+
+    monkeypatch.setattr(session_auth.repo, "get_player_session", fake_get_player_session)
+
+    with TestClient(app) as client:
+        response = client.get(
+            f"/games/{state.id}/view",
+            headers={"Authorization": "Bearer raw-session-token"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["you"]["id"] == "Host"
+
+
+def test_websocket_accepts_query_session_when_cookie_is_missing(monkeypatch):
+    state = _build_state()
+
+    monkeypatch.setattr(
+        session_auth.repo,
+        "get_player_session",
+        lambda token_hash: _session_row(game_id=state.id, player_id="Host"),
+    )
+    monkeypatch.setattr(ws_games.repo, "get_game", lambda game_id: state)
+
+    with TestClient(app) as client:
+        with client.websocket_connect(
+            f"/ws/games/{state.id}?session_token=raw-session-token",
+        ) as websocket:
+            payload = websocket.receive_json()
+
+    assert payload["type"] == "state_update"
+    assert payload["view"]["you"]["id"] == "Host"

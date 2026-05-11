@@ -45,6 +45,7 @@ export type BackendGameSummary = {
   game_code?: string | null;
   player_ids: string[];
   started: boolean;
+  access_token?: string | null;
 };
 
 export type BackendJoinByCodeRequest = {
@@ -234,6 +235,7 @@ export type BackendPaymentResponse = {
 export type BackendJoinGameResponse = {
   player_id: string;
   player_view: BackendPlayerView;
+  access_token?: string | null;
 };
 
 export type BackendRealtimeMessage =

@@ -12,11 +12,13 @@ class GameSummary(BaseModel):
     game_code: Optional[str] = None
     player_ids: List[str]
     started: bool
+    access_token: Optional[str] = None
 
 
 class JoinGameResponse(BaseModel):
     player_id: str
     player_view: PlayerView
+    access_token: Optional[str] = None
 
 
 class PaymentTarget(BaseModel):

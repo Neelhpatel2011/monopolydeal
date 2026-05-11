@@ -463,7 +463,8 @@ The live board now treats the backend as the source of truth.
 Rules:
 - backend owns Monopoly Deal logic, legality, prompts, payments, and state transitions
 - frontend may shape backend data for rendering, but must not recreate rules
-- board identity now comes from the backend guest-session cookie, not `playerId` in the URL
+- board identity comes from the backend guest session, not `playerId` in the URL
+- hosted cross-origin sessions must support both the HttpOnly cookie and the returned per-game access token, because some browsers block third-party cookies between the Vercel frontend and separate backend domains
 - surface-specific card sizes are only outer scale changes on canonical card faces
 - `PlayerView` now carries additive backend-derived UI fields for:
   - per-hand-card action options
