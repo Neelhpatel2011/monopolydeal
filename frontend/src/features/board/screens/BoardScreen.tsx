@@ -68,17 +68,10 @@ function LobbyScreen({
   const playersNeeded = Math.max(0, MIN_PLAYERS_TO_START - players.length);
   const seatsRemaining = Math.max(0, MAX_LOBBY_PLAYERS - players.length);
   const isLobbyFull = players.length >= MAX_LOBBY_PLAYERS;
-  const filledSeatLabel = `${players.length}/${MAX_LOBBY_PLAYERS}`;
   const emptySeats = Math.max(0, MAX_LOBBY_PLAYERS - players.length);
-  const lobbyStatus = playersNeeded > 0
-    ? `${playersNeeded} more needed`
-    : isLobbyFull
-      ? "Table full"
-      : "Ready to start";
   const guestStatusCopy = playersNeeded > 0
     ? `Waiting for ${playersNeeded === 1 ? "1 more player" : `${playersNeeded} more players`}.`
     : `Waiting for ${hostId ?? "the host"} to start.`;
-  const seatSummary = `${players.length} seated · ${seatsRemaining} ${seatsRemaining === 1 ? "seat" : "seats"} left`;
 
   async function handleStart() {
     setIsStarting(true);
@@ -179,28 +172,6 @@ function LobbyScreen({
                       : "Share invite"}
               </button>
             </div>
-          </div>
-
-          <div
-            className="board-lobby-state__status-band"
-            aria-label={`${filledSeatLabel} players seated`}
-          >
-            <div className="board-lobby-state__status-copy">
-              <span className="board-lobby-state__status-label">Players</span>
-              <strong>{filledSeatLabel}</strong>
-              <span>{seatSummary}</span>
-            </div>
-            <div className="board-lobby-state__seat-dots" aria-hidden="true">
-              {Array.from({ length: MAX_LOBBY_PLAYERS }, (_, index) => (
-                <span
-                  key={index}
-                  className={`board-lobby-state__seat-dot${
-                    index < players.length ? " board-lobby-state__seat-dot--filled" : ""
-                  }`}
-                />
-              ))}
-            </div>
-            <span className="board-lobby-state__status-text">{lobbyStatus}</span>
           </div>
 
           <div className="board-lobby-state__players" aria-label="Players in lobby">
