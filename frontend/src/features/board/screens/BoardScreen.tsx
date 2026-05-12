@@ -64,11 +64,12 @@ function LobbyScreen({
   const seatsRemaining = Math.max(0, MAX_LOBBY_PLAYERS - players.length);
   const isLobbyFull = players.length >= MAX_LOBBY_PLAYERS;
   const filledSeatLabel = `${players.length}/${MAX_LOBBY_PLAYERS}`;
-  const statusCopy = playersNeeded > 0
-    ? `${playersNeeded} more player${playersNeeded === 1 ? "" : "s"} needed to start.`
+  const emptySeats = Math.max(0, MAX_LOBBY_PLAYERS - players.length);
+  const lobbyStatus = playersNeeded > 0
+    ? `${playersNeeded} more needed`
     : isLobbyFull
-      ? "Table full. The host can start when ready."
-      : "Enough players to start. More can still join.";
+      ? "Table full"
+      : "Ready to start";
   const guestStatusCopy = playersNeeded > 0
     ? `Waiting for ${playersNeeded === 1 ? "1 more player" : `${playersNeeded} more players`}.`
     : `Waiting for ${hostId ?? "the host"} to start.`;
@@ -134,7 +135,6 @@ function LobbyScreen({
             <div className="board-lobby-state__status-copy">
               <span className="board-lobby-state__status-label">Players</span>
               <strong>{filledSeatLabel}</strong>
-              <p>{statusCopy}</p>
             </div>
             <div className="board-lobby-state__seat-dots" aria-hidden="true">
               {Array.from({ length: MAX_LOBBY_PLAYERS }, (_, index) => (
@@ -146,6 +146,7 @@ function LobbyScreen({
                 />
               ))}
             </div>
+            <span className="board-lobby-state__status-chip">{lobbyStatus}</span>
           </div>
 
           <div className="board-lobby-state__players" aria-label="Players in lobby">
@@ -165,19 +166,35 @@ function LobbyScreen({
                   </div>
                   <div className="board-lobby-state__player-copy">
                     <strong>{player}</strong>
-                    <span>
-                      {isCurrentPlayer
-                        ? isPlayerHost
-                          ? "You · Host"
-                          : "You"
-                        : isPlayerHost
-                          ? "Host"
-                          : "Player"}
-                    </span>
+                    <span>{isCurrentPlayer ? "You" : "Player"}</span>
+                  </div>
+                  <div className="board-lobby-state__player-badges">
+                    {isCurrentPlayer ? (
+                      <span className="board-lobby-state__player-badge board-lobby-state__player-badge--you">
+                        You
+                      </span>
+                    ) : null}
+                    {isPlayerHost ? (
+                      <span className="board-lobby-state__player-badge">Host</span>
+                    ) : null}
                   </div>
                 </article>
               );
             })}
+            {Array.from({ length: emptySeats }, (_, index) => (
+              <article
+                key={`empty-${index}`}
+                className="board-lobby-state__player-card board-lobby-state__player-card--empty"
+              >
+                <div className="board-lobby-state__player-avatar" aria-hidden="true">
+                  +
+                </div>
+                <div className="board-lobby-state__player-copy">
+                  <strong>Open seat</strong>
+                  <span>Invite</span>
+                </div>
+              </article>
+            ))}
           </div>
 
           {error || startError ? (

@@ -5556,7 +5556,7 @@
 
 .board-lobby-state__status-band {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: 12px;
   padding: 12px 14px;
@@ -5579,15 +5579,26 @@
   letter-spacing: -0.06em;
 }
 
-.board-lobby-state__status-copy p {
-  margin: 2px 0 0;
-  color: rgba(40, 35, 30, 0.72);
-  font-size: 0.82rem;
-  font-weight: 800;
-  line-height: 1.25;
+.board-lobby-state__seat-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-.board-lobby-state__seat-dots {
+.board-lobby-state__seat-dot {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(24, 22, 20, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 250, 242, 0.92);
+}
+
+.board-lobby-state__seat-dot--filled {
+  border-color: var(--ink-strong);
+  background: #1d1a17;
+}
+
+.board-lobby-state__status-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -5637,6 +5648,18 @@
   opacity: 0;
   animation: lobby-you-pulse 1.8s ease-out infinite;
   pointer-events: none;
+}
+
+.board-lobby-state__player-card--empty {
+  border-color: rgba(24, 22, 20, 0.2);
+  background: rgba(255, 250, 242, 0.72);
+  color: rgba(40, 35, 30, 0.56);
+}
+
+.board-lobby-state__player-card--empty .board-lobby-state__player-avatar {
+  border-color: rgba(24, 22, 20, 0.24);
+  background: rgba(255, 247, 234, 0.9);
+  color: rgba(40, 35, 30, 0.56);
 }
 
 @keyframes lobby-you-pulse {
@@ -5689,6 +5712,34 @@
   text-transform: uppercase;
 }
 
+.board-lobby-state__player-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.board-lobby-state__player-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 3px solid var(--ink-strong);
+  border-radius: 999px;
+  background: #fff7ea;
+  color: var(--ink-strong);
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.board-lobby-state__player-badge--you {
+  background: #1d1a17;
+  color: #fff7ea;
+}
+
 .board-lobby-state__actions {
   display: grid;
   gap: 8px;
@@ -5738,6 +5789,11 @@
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
+  .board-lobby-state__status-chip {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+
   .board-lobby-state__copy-button {
     width: 100%;
     justify-content: center;
@@ -5745,6 +5801,11 @@
 
   .board-lobby-state__player-card {
     grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .board-lobby-state__player-badges {
+    grid-column: 2;
+    justify-content: flex-start;
   }
 }
 
@@ -6700,15 +6761,6 @@
   background: #fff8e8;
 }
 
-.board-action-composer__guided-head--simple {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.board-action-composer__guided-head--simple h3,
-.board-action-composer__guided-head--simple p {
-  grid-column: 1;
-}
-
 .board-action-composer__decision-list--wild {
   gap: 10px;
 }
@@ -6717,12 +6769,6 @@
   min-height: 78px;
   border-width: 3px;
   background: rgba(255, 250, 242, 0.98);
-}
-
-.board-action-composer--wild-assignment .board-action-composer__decision-card--selected {
-  border-color: var(--ink-strong);
-  background: #fff0c8;
-  box-shadow: 4px 4px 0 rgba(24, 22, 20, 0.14);
 }
 
 .board-action-composer--wild-assignment .board-action-composer__decision-card:hover,
@@ -6736,26 +6782,6 @@
   gap: 12px;
 }
 
-.board-action-composer__decision-check {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 auto;
-  border: 3px solid var(--ink-strong);
-  border-radius: 999px;
-  background: #fffaf2;
-  color: var(--ink-strong);
-  font-family: var(--display-font);
-  font-size: 0.9rem;
-  line-height: 1;
-}
-
-.board-action-composer__decision-card--selected .board-action-composer__decision-check {
-  background: #1d1a17;
-  color: #fff7ea;
-}
-
 .board-action-composer--wild-assignment .property-set__swatch {
   width: 16px;
   min-height: 52px;
@@ -6764,6 +6790,12 @@
 
 .board-action-composer--wild-assignment .board-action-composer__decision-copy strong {
   font-size: 1.1rem;
+}
+
+.board-action-composer--wild-assignment .board-action-composer__decision-cta {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 0.68rem;
 }
 
 .board-action-composer__section--wild-ready .board-action-composer__step-card {

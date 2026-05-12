@@ -668,7 +668,7 @@ export function ActionComposerSheet({
       (isGuidedPropertyAction || isWildPropertyAssignment) && propertyChoicePreview
         ? null
         : isWildPropertyAssignment && isSetOption
-          ? "Tap to select this set."
+          ? "Tap to place the wild here."
           : option.detail ??
           (isTargetOption
             ? opponent != null
@@ -745,22 +745,22 @@ export function ActionComposerSheet({
           </span>
         </span>
 
-        {!isWildSetOption ? (
-          <span className="board-action-composer__decision-side">
-            {propertySummary ? (
-              <span className="board-action-composer__decision-chip">{propertySummary}</span>
-            ) : null}
-            {localSetSummary ? (
-              <span className="board-action-composer__decision-chip">
-                {localSetSummary.isComplete ? "Full set" : "In play"}
-              </span>
-            ) : null}
-            {opponent?.isCurrentPlayer ? (
-              <span className="board-action-composer__decision-chip">Current turn</span>
-            ) : null}
-            <span className="board-action-composer__decision-cta">Choose</span>
+        <span className="board-action-composer__decision-side">
+          {propertySummary ? (
+            <span className="board-action-composer__decision-chip">{propertySummary}</span>
+          ) : null}
+          {localSetSummary ? (
+            <span className="board-action-composer__decision-chip">
+              {localSetSummary.isComplete ? "Full set" : "In play"}
+            </span>
+          ) : null}
+          {opponent?.isCurrentPlayer ? (
+            <span className="board-action-composer__decision-chip">Current turn</span>
+          ) : null}
+          <span className="board-action-composer__decision-cta">
+            {isWildPropertyAssignment ? "Place here" : "Choose"}
           </span>
-        ) : null}
+        </span>
       </button>
     );
   }
@@ -839,7 +839,7 @@ export function ActionComposerSheet({
     }
 
     if (isWildPropertyAssignment) {
-      return `Place property`;
+      return `Place wild`;
     }
 
     if (isGuidedPropertyAction) {
@@ -1034,15 +1034,12 @@ export function ActionComposerSheet({
 
             {isWildPropertyAssignment ? (
               <div className="board-action-composer__guided-panel board-action-composer__wild-panel">
-                <div className="board-action-composer__guided-head board-action-composer__guided-head--simple">
+                <div className="board-action-composer__guided-head">
+                  <span className="board-action-composer__focus-step">Tap one</span>
                   <h3>Pick a set</h3>
-                  <p>Tap a property set. Your choice gets a checkmark.</p>
+                  <p>This wild becomes part of the set you tap.</p>
                 </div>
-                <div
-                  className="board-action-composer__decision-list board-action-composer__decision-list--wild"
-                  role="radiogroup"
-                  aria-label="Property set"
-                >
+                <div className="board-action-composer__decision-list board-action-composer__decision-list--wild">
                   {options.map((option) => renderDecisionOption(firstMissingField, option))}
                 </div>
               </div>
@@ -1169,36 +1166,14 @@ export function ActionComposerSheet({
 
             {isWildPropertyAssignment ? null : renderProgressRail()}
 
-            {isWildPropertyAssignment ? (
-              <div className="board-action-composer__guided-panel board-action-composer__wild-panel">
-                <div className="board-action-composer__guided-head board-action-composer__guided-head--simple">
-                  <h3>Pick a set</h3>
-                  <p>Selected: {chosenWildPropertyLabel ?? "None"}</p>
-                </div>
-                <div
-                  className="board-action-composer__decision-list board-action-composer__decision-list--wild"
-                  role="radiogroup"
-                  aria-label="Property set"
-                >
-                  {wildAssignmentOptions.map((option) =>
-                    renderDecisionOption("property_color", option),
-                  )}
-                </div>
-              </div>
-            ) : null}
-
             <div className="board-action-composer__step-card">
               <div className="board-action-composer__section-header">
                 <p className="board-modal-sheet__eyebrow">Ready</p>
-                <h3>
-                  {isWildPropertyAssignment
-                    ? `Place in ${chosenWildPropertyLabel ?? "set"}`
-                    : `Play ${meta.name}`}
-                </h3>
+                <h3>{isWildPropertyAssignment ? "Ready to place" : `Play ${meta.name}`}</h3>
               </div>
               <p className="board-modal-sheet__copy">
                 {isWildPropertyAssignment
-                  ? "Press Place property to finish."
+                  ? "Press Place Wild to finish."
                   : "All required choices are set. Submit to resolve the card."}
               </p>
             </div>
