@@ -122,17 +122,6 @@ export function ActionComposerSheet({
         : [],
     [card, draftIntent.chosen, isCompactTargetChargeFlow],
   );
-  const wildAssignmentOptions = useMemo(
-    () =>
-      isWildPropertyAssignment
-        ? getComposerOptions({
-            card,
-            field: "property_color",
-            chosen: draftIntent.chosen,
-          })
-        : [],
-    [card, draftIntent.chosen, isWildPropertyAssignment],
-  );
   const availableDoubleRentCount = card.actionOptions?.availableDoubleRentCount ?? 0;
   const availableDoubleRentCardId = card.actionOptions?.availableDoubleRentCardId ?? null;
   const selectedDoubleRentIds = Array.isArray(draftIntent.chosen.double_rent_ids)
@@ -229,15 +218,6 @@ export function ActionComposerSheet({
   const chosenGiveCardLabel =
     chosenGiveCardId != null
       ? getChosenOption("give_card_id", chosenGiveCardId)?.label ?? chosenGiveCardId
-      : null;
-  const chosenWildPropertyColor =
-    typeof draftIntent.chosen.property_color === "string"
-      ? draftIntent.chosen.property_color
-      : null;
-  const chosenWildPropertyLabel =
-    chosenWildPropertyColor != null
-      ? getChosenOption("property_color", chosenWildPropertyColor)?.label ??
-        formatColorLabel(chosenWildPropertyColor)
       : null;
   const chosenTargetDisplayName = chosenTargetOpponent?.name ?? chosenTargetPlayerId;
   const chosenStealCardDisplayLabel =
