@@ -5601,18 +5601,20 @@
 .board-lobby-state__status-chip {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  min-width: 84px;
-  min-height: 34px;
-  padding: 0 12px;
-  border: 3px solid var(--ink-strong);
+  gap: 6px;
+}
+
+.board-lobby-state__seat-dot {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(24, 22, 20, 0.22);
   border-radius: 999px;
+  background: rgba(255, 250, 242, 0.92);
+}
+
+.board-lobby-state__seat-dot--filled {
+  border-color: var(--ink-strong);
   background: #1d1a17;
-  color: #fff7ea;
-  font-family: var(--display-font);
-  font-size: 0.88rem;
-  letter-spacing: -0.03em;
-  text-transform: uppercase;
 }
 
 .board-lobby-state__players {
@@ -5623,7 +5625,7 @@
 .board-lobby-state__player-card {
   position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr);
   align-items: center;
   gap: 12px;
   padding: 12px 14px;

@@ -122,6 +122,17 @@ export function ActionComposerSheet({
         : [],
     [card, draftIntent.chosen, isCompactTargetChargeFlow],
   );
+  const wildAssignmentOptions = useMemo(
+    () =>
+      isWildPropertyAssignment
+        ? getComposerOptions({
+            card,
+            field: "property_color",
+            chosen: draftIntent.chosen,
+          })
+        : [],
+    [card, draftIntent.chosen, isWildPropertyAssignment],
+  );
   const availableDoubleRentCount = card.actionOptions?.availableDoubleRentCount ?? 0;
   const availableDoubleRentCardId = card.actionOptions?.availableDoubleRentCardId ?? null;
   const selectedDoubleRentIds = Array.isArray(draftIntent.chosen.double_rent_ids)
@@ -218,6 +229,15 @@ export function ActionComposerSheet({
   const chosenGiveCardLabel =
     chosenGiveCardId != null
       ? getChosenOption("give_card_id", chosenGiveCardId)?.label ?? chosenGiveCardId
+      : null;
+  const chosenWildPropertyColor =
+    typeof draftIntent.chosen.property_color === "string"
+      ? draftIntent.chosen.property_color
+      : null;
+  const chosenWildPropertyLabel =
+    chosenWildPropertyColor != null
+      ? getChosenOption("property_color", chosenWildPropertyColor)?.label ??
+        formatColorLabel(chosenWildPropertyColor)
       : null;
   const chosenTargetDisplayName = chosenTargetOpponent?.name ?? chosenTargetPlayerId;
   const chosenStealCardDisplayLabel =
@@ -638,6 +658,8 @@ export function ActionComposerSheet({
     const localSetSummary = localSet ? propertySetSummaryMap.get(localSet.backendColor) ?? null : null;
     const isTargetOption = field === "target_player_id";
     const isSetOption = isSetField(field);
+    const isWildSetOption = isWildPropertyAssignment && field === "property_color";
+    const isSelectedOption = draftIntent.chosen[field] === option.value;
     const propertyChoicePreview = getPropertyChoicePreview(field, option.value);
     const optionLabel = propertyChoicePreview
       ? option.label.replace(/^[^:]+:\s*/, "")
@@ -672,12 +694,24 @@ export function ActionComposerSheet({
           propertyChoicePreview ? " board-action-composer__decision-card--property-choice" : ""
         }${
           isGuidedPropertyAction ? " board-action-composer__decision-card--guided" : ""
+        }${
+          isWildSetOption ? " board-action-composer__decision-card--wild" : ""
+        }${
+          isWildSetOption && isSelectedOption ? " board-action-composer__decision-card--selected" : ""
         }`}
+        role={isWildSetOption ? "radio" : undefined}
+        aria-checked={isWildSetOption ? isSelectedOption : undefined}
         onClick={() =>
           setDraftIntent((current) => applyChosenValue(current, field, option.value))
         }
       >
         <span className="board-action-composer__decision-leading">
+          {isWildSetOption ? (
+            <span className="board-action-composer__decision-check" aria-hidden="true">
+              {isSelectedOption ? "✓" : ""}
+            </span>
+          ) : null}
+
           {isTargetOption && opponent ? (
             <span className={`avatar avatar--opponent avatar--${opponent.avatarTone ?? "sky"}`}>
               {opponent.avatarInitial}
