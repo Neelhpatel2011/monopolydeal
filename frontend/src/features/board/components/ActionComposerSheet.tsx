@@ -820,7 +820,7 @@ export function ActionComposerSheet({
           {chosenTargetOpponent.avatarInitial}
         </span>
         <span className="board-action-composer__target-summary-copy">
-          <span>Target locked</span>
+          <span>Selected target</span>
           <strong>{chosenTargetOpponent.name}</strong>
           <span>
             {chosenTargetOpponent.handCount} cards · {chosenTargetOpponent.bankTotal} bank
@@ -839,7 +839,7 @@ export function ActionComposerSheet({
 
   function renderCompactDecisionPanel() {
     if (!firstMissingField) {
-      return null;
+      return renderCompactReadyPanel();
     }
 
     return (
@@ -855,9 +855,65 @@ export function ActionComposerSheet({
           </strong>
         </div>
         {renderChosenTargetSummary()}
+        <p className="board-action-composer__compact-instruction">
+          Choose one option below. Your previous choice stays visible and can be changed before you play the card.
+        </p>
         <div className="board-action-composer__decision-list board-action-composer__decision-list--compact">
           {options.map((option) => renderDecisionOption(firstMissingField, option))}
         </div>
+      </div>
+    );
+  }
+
+  function renderCompactReadyPanel() {
+    const chosenFields = fieldOrder.filter(
+      (field) => typeof draftIntent.chosen[field] === "string",
+    );
+
+    if (chosenFields.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="board-action-composer__compact-panel board-action-composer__compact-panel--ready">
+        <div className="board-action-composer__compact-head">
+          <div>
+            <span>Review play</span>
+            <h3>Ready to charge</h3>
+          </div>
+          <strong>All choices set</strong>
+        </div>
+
+        <div className="board-action-composer__compact-review-list" aria-label="Selected choices">
+          {chosenFields.map((field) => {
+            const chosenValue = draftIntent.chosen[field];
+            if (typeof chosenValue !== "string") {
+              return null;
+            }
+
+            return (
+              <div key={field} className="board-action-composer__compact-review-row">
+                <span className="board-action-composer__compact-review-copy">
+                  <span>{getFieldSummaryLabel(field)}</span>
+                  <strong>{formatCompactChosenValue(field, chosenValue)}</strong>
+                </span>
+                <button
+                  type="button"
+                  className="board-action-composer__compact-review-action"
+                  onClick={() => handleResetFromField(field)}
+                >
+                  Change
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="board-action-composer__compact-ready-copy">
+          {boostedRentAmount != null
+            ? `This will charge ${formatBankValue(boostedRentAmount)}. Press Play action to resolve, or change any choice above.`
+            : "Press Play action to resolve, or change any choice above."}
+        </p>
       </div>
     );
   }
@@ -1060,7 +1116,11 @@ export function ActionComposerSheet({
           </div>
         ) : null}
 
-        {playMode === "effect" && (firstMissingField || isWildPropertyAssignment) && !isCompactTargetChargeFlow ? (
+        {playMode === "effect" &&
+        (firstMissingField ||
+          isWildPropertyAssignment ||
+          (canChooseBankOrEffect && !isCompactTargetChargeFlow && !missingSubmitField)) &&
+        !isCompactTargetChargeFlow ? (
           <div
             className={`board-modal-sheet__body board-action-composer__section${
               isGuidedPropertyAction ? " board-action-composer__section--guided-property" : ""

@@ -6575,10 +6575,10 @@
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  border: 2px solid rgba(25, 23, 20, 0.16);
-  border-radius: 16px;
-  background: linear-gradient(180deg, #fff7db, #fff1c5);
-  box-shadow: 0 4px 0 rgba(37, 31, 24, 0.16);
+  border: 2px dashed rgba(25, 23, 20, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 250, 242, 0.72);
+  box-shadow: none;
 }
 
 .board-action-composer__target-summary .avatar--opponent {
@@ -7930,6 +7930,81 @@
   line-height: 0.94;
   letter-spacing: -0.04em;
   text-transform: uppercase;
+}
+
+.board-action-composer__compact-instruction,
+.board-action-composer__compact-ready-copy {
+  margin: 0;
+  color: rgba(40, 35, 30, 0.68);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.28;
+}
+
+.board-action-composer__compact-panel--ready {
+  background: linear-gradient(180deg, #fffaf2 0%, #fff7e5 100%);
+}
+
+.board-action-composer__compact-review-list {
+  display: grid;
+  gap: 8px;
+}
+
+.board-action-composer__compact-review-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 10px 12px;
+  border: 2px solid rgba(25, 23, 20, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 253, 248, 0.92);
+}
+
+.board-action-composer__compact-review-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.board-action-composer__compact-review-copy span {
+  color: rgba(40, 35, 30, 0.58);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.board-action-composer__compact-review-copy strong {
+  overflow: hidden;
+  color: var(--ink-strong);
+  font-size: 0.98rem;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.board-action-composer__compact-review-action {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 2px solid rgba(25, 23, 20, 0.18);
+  border-radius: 999px;
+  background: #fffdf8;
+  color: var(--ink-strong);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.board-action-composer__compact-review-action:hover,
+.board-action-composer__compact-review-action:focus-visible,
+.board-action-composer__target-summary-action:hover,
+.board-action-composer__target-summary-action:focus-visible {
+  border-color: var(--ink-strong);
+  outline: none;
 }
 
 .board-action-composer__decision-list--compact {
