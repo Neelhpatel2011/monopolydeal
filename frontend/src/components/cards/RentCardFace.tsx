@@ -3,6 +3,7 @@ import { CardChip } from "./CardChip";
 import { CardFrame } from "./CardFrame";
 import { getCardIcon } from "./getCardIcon";
 import { formatCardColorLabel } from "./cardUtils";
+import { getRentTargetBadge } from "./cardTargeting";
 
 type RentCardFaceProps = {
   card: RentCardData;
@@ -16,6 +17,7 @@ export function RentCardFace({ card, size = "md" }: RentCardFaceProps) {
   const summary = isMulticolorRent
     ? "Charge rent on any property set."
     : "Charge rent for these property sets.";
+  const targetBadge = getRentTargetBadge(card);
   const styleOverrides = isMulticolorRent
     ? {
         "--card-face-background":
@@ -41,6 +43,14 @@ export function RentCardFace({ card, size = "md" }: RentCardFaceProps) {
           </div>
 
           <p className="rent-card__description">{summary}</p>
+
+          <div
+            className="card-target-badge"
+            aria-label={`${targetBadge.description} ${targetBadge.label}: ${targetBadge.value}`}
+          >
+            <span>{targetBadge.label}</span>
+            <strong>{targetBadge.value}</strong>
+          </div>
 
           {card.rentColors?.length ? (
             <div className="rent-card__footer">
