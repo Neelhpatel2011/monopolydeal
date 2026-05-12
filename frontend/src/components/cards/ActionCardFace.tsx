@@ -9,6 +9,7 @@ type ActionCardFaceProps = {
 
 export function ActionCardFace({ card, size = "md" }: ActionCardFaceProps) {
   const targetBadge = getActionTargetBadge(card);
+  const description = [card.description, targetBadge?.sentence].filter(Boolean).join(" ");
 
   return (
     <CardFrame card={card} size={size} className="monopoly-card--action" showMidLine showInnerLine showMoneyBadge>
@@ -18,16 +19,7 @@ export function ActionCardFace({ card, size = "md" }: ActionCardFaceProps) {
           <div className="action-card__stage">
             <div className="action-card__copy">
               <h2 className="action-card__title">{card.name}</h2>
-              {targetBadge ? (
-                <div
-                  className="card-target-badge card-target-badge--action"
-                  aria-label={`${targetBadge.description} ${targetBadge.label}: ${targetBadge.value}`}
-                >
-                  <span>{targetBadge.label}</span>
-                  <strong>{targetBadge.value}</strong>
-                </div>
-              ) : null}
-              {card.description ? <p className="action-card__description">{card.description}</p> : null}
+              {description ? <p className="action-card__description">{description}</p> : null}
             </div>
           </div>
 

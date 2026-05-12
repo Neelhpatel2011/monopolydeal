@@ -14,10 +14,10 @@ export function RentCardFace({ card, size = "md" }: RentCardFaceProps) {
   const Icon = getCardIcon(card.icon);
   const isMulticolorRent = card.rentColors.includes("any");
   const label = isMulticolorRent ? "Multicolor Rent" : card.label;
-  const summary = isMulticolorRent
-    ? "Charge rent on any property set."
-    : "Charge rent for these property sets.";
   const targetBadge = getRentTargetBadge(card);
+  const summary = isMulticolorRent
+    ? `Charge rent on any property set. ${targetBadge.sentence}`
+    : `Charge rent for these property sets. ${targetBadge.sentence}`;
   const styleOverrides = isMulticolorRent
     ? {
         "--card-face-background":
@@ -43,14 +43,6 @@ export function RentCardFace({ card, size = "md" }: RentCardFaceProps) {
           </div>
 
           <p className="rent-card__description">{summary}</p>
-
-          <div
-            className="card-target-badge"
-            aria-label={`${targetBadge.description} ${targetBadge.label}: ${targetBadge.value}`}
-          >
-            <span>{targetBadge.label}</span>
-            <strong>{targetBadge.value}</strong>
-          </div>
 
           {card.rentColors?.length ? (
             <div className="rent-card__footer">

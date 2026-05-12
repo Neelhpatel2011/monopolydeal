@@ -555,10 +555,10 @@
 }
 
 .monopoly-card--xs .rent-card__description {
-  margin-top: 10px;
-  max-width: 11ch;
-  font-size: 0.68rem;
-  line-height: 1.14;
+  margin-top: 8px;
+  max-width: 14ch;
+  font-size: 0.6rem;
+  line-height: 1.12;
 }
 
 .monopoly-card--xs .rent-card__footer,
@@ -835,9 +835,9 @@
 
 .action-card__description,
 .rent-card__description {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  line-height: 1.34;
+  line-height: 1.3;
   color: rgba(24, 22, 20, 0.84);
 }
 
@@ -853,8 +853,9 @@
 }
 
 .rent-card__description {
-  margin: 18px auto 0;
-  max-width: 13ch;
+  margin: 16px auto 0;
+  max-width: 16ch;
+  font-size: 12px;
 }
 
 .rent-card__footer,
@@ -1305,39 +1306,3 @@
   margin-top: calc(var(--card-height-base) * 0.006);
 }
 
-.card-target-badge {
-  display: inline-grid;
-  grid-template-columns: auto auto;
-  align-items: center;
-  gap: 5px;
-  margin-top: 10px;
-  padding: 5px 8px;
-  border: 1px solid rgba(24, 22, 20, 0.18);
-  border-radius: 8px;
-  background: rgba(255, 250, 242, 0.74);
-  color: #1d2a35;
-  box-shadow: 0 2px 5px rgba(38, 24, 8, 0.08);
-}
-
-.card-target-badge span,
-.card-target-badge strong {
-  font-size: 0.58rem;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.card-target-badge span {
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  opacity: 0.72;
-}
-
-.card-target-badge strong {
-  font-weight: 950;
-  letter-spacing: 0.04em;
-}
-
-.card-target-badge--action {
-  margin-top: 10px;
-  background: rgba(248, 245, 238, 0.9);
-}
