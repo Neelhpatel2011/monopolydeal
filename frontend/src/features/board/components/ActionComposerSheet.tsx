@@ -156,6 +156,17 @@ export function ActionComposerSheet({
   const baseRentAmount = selectedPropertySet?.currentRentAmount ?? null;
   const rentMultiplier = 2 ** selectedDoubleRentCount;
   const boostedRentAmount = baseRentAmount != null ? baseRentAmount * rentMultiplier : null;
+  const targetScope =
+    meta.kind === "rent"
+      ? meta.effectParams.target === "all_others"
+        ? "ALL"
+        : "1"
+      : meta.effectType === "charge_players"
+        ? "ALL"
+        : fieldOrder.includes("target_player_id") || meta.effectType === "charge_player"
+          ? "1"
+          : null;
+  const targetScopeLabel = targetScope ? `Target: ${targetScope}` : null;
 
   useEffect(() => {
     setDraftIntent(intent);
@@ -320,7 +331,9 @@ export function ActionComposerSheet({
       ? `collect ${effectAmountLabel ?? "money"} from ${chosenTargetOpponent.name}.`
       : `choose one opponent to collect ${effectAmountLabel ?? "money"} from.`
     : firstMissingField
-      ? "continue the guided choices below."
+      ? meta.kind === "rent"
+        ? "choose target + set."
+        : "choose target."
       : compactEffectNote.charAt(0).toLowerCase() + compactEffectNote.slice(1) + ".";
   const shouldShowModeOutcome =
     playMode === "bank" || !isPropertyExchangeFlow || isCompactTargetChargeFlow;
@@ -336,7 +349,7 @@ export function ActionComposerSheet({
   function getFieldTitle(field: ActionFieldKey) {
     switch (field) {
       case "target_player_id":
-        return "Choose a target player";
+        return canChooseBankOrEffect ? "Choose player" : "Choose a target player";
       case "steal_color":
         return chosenTargetDisplayName
           ? `Choose a full set from ${chosenTargetDisplayName}`
@@ -362,6 +375,25 @@ export function ActionComposerSheet({
         return "Choose which set this card joins";
       default:
         return "Choose the next step";
+    }
+  }
+
+  function getCompactFieldLabel(field: ActionFieldKey) {
+    switch (field) {
+      case "target_player_id":
+        return "Target";
+      case "rent_color":
+        return "Charge set";
+      case "property_color":
+        return "Set";
+      case "steal_card_id":
+        return meta.effectType === "swap_property" ? "Take" : "Steal";
+      case "give_card_id":
+        return "Give";
+      case "steal_color":
+        return "Full set";
+      default:
+        return "Step";
     }
   }
 
@@ -770,6 +802,30 @@ export function ActionComposerSheet({
     return isPropertyCardChoiceField(field) ? label.replace(/^[^:]+:\s*/, "") : label;
   }
 
+  function renderCompactDecisionPanel() {
+    if (!firstMissingField) {
+      return null;
+    }
+
+    return (
+      <div className="board-action-composer__compact-panel">
+        <div className="board-action-composer__compact-head">
+          <div>
+            <span>{getCompactFieldLabel(firstMissingField)}</span>
+            <h3>{getFieldTitle(firstMissingField)}</h3>
+          </div>
+          <strong>
+            Step {currentStepIndex + 1}/{fieldOrder.length}
+            {targetScopeLabel ? ` · ${targetScopeLabel}` : ""}
+          </strong>
+        </div>
+        <div className="board-action-composer__decision-list board-action-composer__decision-list--compact">
+          {options.map((option) => renderDecisionOption(firstMissingField, option))}
+        </div>
+      </div>
+    );
+  }
+
   function renderCompactTargetOption(option: (typeof targetOptions)[number]) {
     const { opponent } = getOptionMeta("target_player_id", option.value);
     const isSelected = chosenTargetPlayerId === option.value;
@@ -801,7 +857,7 @@ export function ActionComposerSheet({
           <span>{detailCopy}</span>
         </span>
         <span className="board-action-composer__choice-tag">
-          {isSelected ? "Selected" : "Target"}
+          {isSelected ? "Selected" : targetScopeLabel ?? "Target"}
         </span>
       </button>
     );
@@ -912,7 +968,11 @@ export function ActionComposerSheet({
                     {compactEffectNote}
                   </span>
                 </span>
-                <span className="board-action-composer__choice-tag">Action</span>
+                {targetScopeLabel ? (
+                  <span className="board-action-composer__choice-tag">{targetScopeLabel}</span>
+                ) : (
+                  <span className="board-action-composer__choice-tag">Action</span>
+                )}
               </button>
               <button
                 type="button"
@@ -940,9 +1000,9 @@ export function ActionComposerSheet({
             </div>
             {shouldShowModeOutcome ? (
               <p className="board-action-composer__mode-outcome" aria-live="polite">
-                <strong>{playMode === "bank" ? "Bank selected:" : "Play selected:"}</strong>{" "}
+                <strong>{playMode === "bank" ? "Bank:" : "Play:"}</strong>{" "}
                 {playMode === "bank"
-                  ? `add this card as ${bankValueLabel}.`
+                  ? bankValueLabel
                   : compactEffectOutcome}
               </p>
             ) : null}
@@ -968,6 +1028,8 @@ export function ActionComposerSheet({
           <div
             className={`board-modal-sheet__body board-action-composer__section${
               isGuidedPropertyAction ? " board-action-composer__section--guided-property" : ""
+            }${
+              canChooseBankOrEffect ? " board-action-composer__section--compact-choice" : ""
             }`}
           >
             {actionOutcomeCopy && !isGuidedPropertyAction ? (
@@ -1030,9 +1092,11 @@ export function ActionComposerSheet({
               </div>
             ) : null}
 
-            {isWildPropertyAssignment ? null : renderProgressRail()}
+            {isWildPropertyAssignment || canChooseBankOrEffect ? null : renderProgressRail()}
 
-            {isWildPropertyAssignment ? (
+            {canChooseBankOrEffect ? (
+              renderCompactDecisionPanel()
+            ) : isWildPropertyAssignment ? (
               <div className="board-action-composer__guided-panel board-action-composer__wild-panel">
                 <div className="board-action-composer__guided-head">
                   <span className="board-action-composer__focus-step">Select one</span>
