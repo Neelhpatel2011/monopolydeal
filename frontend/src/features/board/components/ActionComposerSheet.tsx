@@ -402,6 +402,14 @@ export function ActionComposerSheet({
     }
   }
 
+  function getCompactStepTitle(field: ActionFieldKey) {
+    if (field === "rent_color") {
+      return "Choose property set";
+    }
+
+    return getFieldTitle(field);
+  }
+
   function getFieldDescription(field: ActionFieldKey) {
     switch (field) {
       case "target_player_id":
@@ -708,11 +716,11 @@ export function ActionComposerSheet({
           (isTargetOption
             ? opponent != null
               ? isGuidedPropertyAction
-                ? `${opponent.handCount} cards - ${opponent.bankTotal}`
-                : `${opponent.handCount} cards in hand - ${opponent.bankTotal} bank`
+                ? `${opponent.handCount} cards · ${opponent.bankTotal}`
+                : `${opponent.handCount} cards · ${opponent.bankTotal} bank`
               : "Choose this player as the target."
             : localSetSummary != null
-              ? `${localSetSummary.count}/${localSetSummary.targetSize} cards - Rent ${localSetSummary.currentRentLabel}`
+              ? `${localSetSummary.count}/${localSetSummary.targetSize} cards · Rent ${localSetSummary.currentRentLabel}`
               : opponentSet != null
                 ? `${opponentSet.count}/${opponentSet.targetSize} cards in the set`
                 : "Choose this option to continue.");
@@ -807,20 +815,26 @@ export function ActionComposerSheet({
     return isPropertyCardChoiceField(field) ? label.replace(/^[^:]+:\s*/, "") : label;
   }
 
-  function renderChosenTargetSummary() {
+  function renderChosenTargetSummary(variant: "default" | "compact" = "default") {
     if (!chosenTargetOpponent || firstMissingField === "target_player_id") {
       return null;
     }
 
+    const summaryClassName = `board-action-composer__target-summary${
+      variant === "compact" ? " board-action-composer__target-summary--compact" : ""
+    }`;
+
     return (
-      <div className="board-action-composer__target-summary" aria-live="polite">
-        <span
-          className={`avatar avatar--opponent avatar--${chosenTargetOpponent.avatarTone ?? "sky"}`}
-        >
-          {chosenTargetOpponent.avatarInitial}
-        </span>
+      <div className={summaryClassName} aria-live="polite">
+        {variant === "default" ? (
+          <span
+            className={`avatar avatar--opponent avatar--${chosenTargetOpponent.avatarTone ?? "sky"}`}
+          >
+            {chosenTargetOpponent.avatarInitial}
+          </span>
+        ) : null}
         <span className="board-action-composer__target-summary-copy">
-          <span>Selected target</span>
+          {variant === "default" ? <span>Selected target</span> : null}
           <strong>{chosenTargetOpponent.name}</strong>
           <span>
             {chosenTargetOpponent.handCount} cards · {chosenTargetOpponent.bankTotal} bank
@@ -847,16 +861,15 @@ export function ActionComposerSheet({
         <div className="board-action-composer__compact-head">
           <div>
             <span>{getCompactFieldLabel(firstMissingField)}</span>
-            <h3>{getFieldTitle(firstMissingField)}</h3>
+            <h3>{getCompactStepTitle(firstMissingField)}</h3>
           </div>
           <strong>
             Step {currentStepIndex + 1}/{fieldOrder.length}
-            {targetScopeLabel ? ` · ${targetScopeLabel}` : ""}
           </strong>
         </div>
-        {renderChosenTargetSummary()}
+        {renderChosenTargetSummary("compact")}
         <p className="board-action-composer__compact-instruction">
-          Choose one option below. Your previous choice stays visible and can be changed before you play the card.
+          Pick a set to charge.
         </p>
         <div className="board-action-composer__decision-list board-action-composer__decision-list--compact">
           {options.map((option) => renderDecisionOption(firstMissingField, option))}
@@ -1045,7 +1058,7 @@ export function ActionComposerSheet({
                 type="button"
                 role="radio"
                 aria-checked={playMode === "effect"}
-                className={`board-action-composer__mode-option${
+                className={`board-action-composer__mode-option board-action-composer__mode-option--simple${
                   playMode === "effect" ? " board-action-composer__mode-option--active" : ""
                 }`}
                 onClick={() => {
@@ -1060,11 +1073,9 @@ export function ActionComposerSheet({
                     {compactEffectNote}
                   </span>
                 </span>
-                {targetScopeLabel ? (
-                  <span className="board-action-composer__choice-tag">{targetScopeLabel}</span>
-                ) : (
-                  <span className="board-action-composer__choice-tag">Action</span>
-                )}
+                <span className="board-action-composer__mode-hint" aria-hidden="true">
+                  Action
+                </span>
               </button>
               <button
                 type="button"
