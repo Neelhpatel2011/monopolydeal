@@ -3,6 +3,7 @@ import type { PointerEvent as ReactPointerEvent, RefObject } from "react";
 import { ScaledMonopolyCard } from "../../../components/cards/ScaledMonopolyCard";
 import { getHandRenderCard } from "../../../components/cards/boardCardAdapters";
 import { formatCardColorLabel } from "../../../components/cards/cardUtils";
+import { getActionTargetBadge, getRentTargetBadge } from "../../../components/cards/cardTargeting";
 import type { MonopolyDealCardData } from "../../../types/monopolyDeal";
 import type { LocalHandCard } from "../../board/model/localPlayer";
 import { HandCard } from "./HandCard";
@@ -44,11 +45,20 @@ function describeCard(card: MonopolyDealCardData) {
   }
 
   if (card.type === "rent") {
+    const targetBadge = getRentTargetBadge(card);
     details.push(
       card.rentColors.includes("any")
         ? "Charge any color you own"
         : `Charges ${card.rentColors.map(formatCardColorLabel).join(" or ")}`,
     );
+    details.push(targetBadge.sentence);
+  }
+
+  if (card.type === "action") {
+    const targetBadge = getActionTargetBadge(card);
+    if (targetBadge) {
+      details.push(targetBadge.sentence);
+    }
   }
 
   if (card.type === "money") {

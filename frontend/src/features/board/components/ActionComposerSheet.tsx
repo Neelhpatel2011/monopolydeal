@@ -166,7 +166,12 @@ export function ActionComposerSheet({
         : fieldOrder.includes("target_player_id") || meta.effectType === "charge_player"
           ? "1"
           : null;
-  const targetScopeLabel = targetScope ? `Target: ${targetScope}` : null;
+  const targetScopeLabel =
+    targetScope === "ALL"
+      ? "Targets all players"
+      : targetScope === "1"
+        ? "Targets 1 player"
+        : null;
 
   useEffect(() => {
     setDraftIntent(intent);
@@ -802,6 +807,36 @@ export function ActionComposerSheet({
     return isPropertyCardChoiceField(field) ? label.replace(/^[^:]+:\s*/, "") : label;
   }
 
+  function renderChosenTargetSummary() {
+    if (!chosenTargetOpponent || firstMissingField === "target_player_id") {
+      return null;
+    }
+
+    return (
+      <div className="board-action-composer__target-summary" aria-live="polite">
+        <span
+          className={`avatar avatar--opponent avatar--${chosenTargetOpponent.avatarTone ?? "sky"}`}
+        >
+          {chosenTargetOpponent.avatarInitial}
+        </span>
+        <span className="board-action-composer__target-summary-copy">
+          <span>Target locked</span>
+          <strong>{chosenTargetOpponent.name}</strong>
+          <span>
+            {chosenTargetOpponent.handCount} cards · {chosenTargetOpponent.bankTotal} bank
+          </span>
+        </span>
+        <button
+          type="button"
+          className="board-action-composer__target-summary-action"
+          onClick={() => handleResetFromField("target_player_id")}
+        >
+          Change
+        </button>
+      </div>
+    );
+  }
+
   function renderCompactDecisionPanel() {
     if (!firstMissingField) {
       return null;
@@ -819,6 +854,7 @@ export function ActionComposerSheet({
             {targetScopeLabel ? ` · ${targetScopeLabel}` : ""}
           </strong>
         </div>
+        {renderChosenTargetSummary()}
         <div className="board-action-composer__decision-list board-action-composer__decision-list--compact">
           {options.map((option) => renderDecisionOption(firstMissingField, option))}
         </div>
@@ -1122,12 +1158,14 @@ export function ActionComposerSheet({
                   <h3>{getGuidedStepTitle(firstMissingField)}</h3>
                   <p>{getGuidedStepDescription(firstMissingField)}</p>
                 </div>
+                {renderChosenTargetSummary()}
                 <div className="board-action-composer__decision-list board-action-composer__decision-list--guided">
                   {options.map((option) => renderDecisionOption(firstMissingField, option))}
                 </div>
               </div>
             ) : (
               <>
+                {renderChosenTargetSummary()}
                 <div className="board-action-composer__focus-card">
                   <div className="board-action-composer__focus-head">
                     <p className="board-modal-sheet__eyebrow">Current decision</p>
@@ -1155,6 +1193,7 @@ export function ActionComposerSheet({
         {shouldRenderPropertyReadyEffect ? (
           <div className="board-modal-sheet__body board-action-composer__section board-action-composer__section--guided-property">
             {renderProgressRail()}
+            {renderChosenTargetSummary()}
             <div className="board-action-composer__guided-panel board-action-composer__guided-panel--ready">
               <div className="board-action-composer__guided-head">
                 <span className="board-action-composer__focus-step">Ready</span>
