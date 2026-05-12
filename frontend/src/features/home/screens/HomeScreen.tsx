@@ -19,108 +19,8 @@ function openGameRoute(gameId: string) {
 
 type HomeFlow = "options" | "start" | "join";
 
-const howToBasics = [
-  {
-    title: "Win with 3 complete property sets",
-    copy: "Collect full color groups in front of you. For example, two dark blue properties make one complete dark blue set.",
-  },
-  {
-    title: "Draw 2 cards when your turn starts",
-    copy: "The app handles the draw for you. Look at your hand, then decide what helps your board most.",
-  },
-  {
-    title: "Play up to 3 cards",
-    copy: "A play can be adding a property, putting money in your bank, or using an action card. You can also play fewer than 3 and end your turn.",
-  },
-];
-
-const howToCardTypes = [
-  {
-    title: "Properties",
-    copy: "Place these in your property area to build sets. Example: play Boardwalk, then add Park Place later to complete dark blue.",
-  },
-  {
-    title: "Money and banked cards",
-    copy: "Put money cards, or bankable action cards, into your bank. Example: bank a $3M card so you can pay rent later.",
-  },
-  {
-    title: "Rent cards",
-    copy: "Charge players for one of your property colors. Example: if you own red properties, a red/yellow rent card can ask for red rent.",
-  },
-  {
-    title: "Action cards",
-    copy: "These do special moves like drawing extra cards, collecting money, or stealing properties. Follow the prompt after you choose one.",
-  },
-  {
-    title: "Just Say No",
-    copy: "Use this to block an action aimed at you. Example: if someone tries to steal your property, Just Say No cancels it.",
-  },
-];
-
-function HowToPlayGuide({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="home-how-to" role="presentation" onClick={onClose}>
-      <section
-        className="home-how-to__sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="home-how-to-title"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <div className="home-how-to__header">
-          <div>
-            <p className="home-how-to__eyebrow">New Player Guide</p>
-            <h2 id="home-how-to-title">How to Play</h2>
-          </div>
-          <button
-            className="home-how-to__close"
-            type="button"
-            onClick={onClose}
-            aria-label="Close how to play guide"
-          >
-            ×
-          </button>
-        </div>
-
-        <div className="home-how-to__intro">
-          <strong>Short version:</strong> build 3 full property sets before everyone else.
-        </div>
-
-        <div className="home-how-to__section">
-          <h3>On every turn</h3>
-          <ol className="home-how-to__steps">
-            {howToBasics.map((item) => (
-              <li key={item.title}>
-                <strong>{item.title}</strong>
-                <span>{item.copy}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-
-        <div className="home-how-to__section">
-          <h3>What the cards do</h3>
-          <div className="home-how-to__cards">
-            {howToCardTypes.map((item) => (
-              <article key={item.title} className="home-how-to__card-type">
-                <strong>{item.title}</strong>
-                <p>{item.copy}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-
-        <div className="home-how-to__section home-how-to__tip">
-          <h3>Easy beginner plan</h3>
-          <p>
-            First, play properties so you can start building sets. Next, keep some money in your bank
-            so rent does not force you to give away properties. Then use rent and action cards to slow
-            opponents down while you finish your third set.
-          </p>
-        </div>
-      </section>
-    </div>
-  );
+function openHowToRoute() {
+  window.location.assign("/how-to");
 }
 
 export function HomeScreen() {
@@ -129,7 +29,6 @@ export function HomeScreen() {
   const [gameCode, setGameCode] = useState("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isHowToOpen, setIsHowToOpen] = useState(false);
   const featuredCards = useMemo(() => heroCards, []);
 
   function openFlow(nextFlow: Exclude<HomeFlow, "options">) {
@@ -332,14 +231,13 @@ export function HomeScreen() {
           <button
             className="home-utility__button home-utility__button--dark"
             type="button"
-            onClick={() => setIsHowToOpen(true)}
+            onClick={openHowToRoute}
           >
             How to Play
           </button>
         </section>
       </div>
 
-      {isHowToOpen ? <HowToPlayGuide onClose={() => setIsHowToOpen(false)} /> : null}
     </main>
   );
 }

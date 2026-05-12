@@ -620,3 +620,289 @@
     grid-template-columns: 1fr;
   }
 }
+
+.how-to-screen {
+  min-height: 100svh;
+  padding: 20px 14px 34px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.95) 0%, rgba(246, 242, 235, 0.9) 38%, rgba(231, 225, 216, 1) 100%);
+}
+
+.how-to-shell {
+  width: min(100%, 920px);
+  margin: 0 auto;
+  display: grid;
+  gap: 18px;
+}
+
+.how-to-hero,
+.how-to-panel {
+  border: 4px solid var(--ink-strong);
+  border-radius: 28px;
+  background: rgba(255, 250, 240, 0.94);
+  box-shadow: 8px 8px 0 rgba(24, 22, 20, 0.92);
+}
+
+.how-to-hero {
+  display: grid;
+  gap: 18px;
+  padding: 18px;
+  overflow: hidden;
+}
+
+.how-to-back,
+.how-to-action {
+  min-height: 42px;
+  border: 3px solid var(--ink-strong);
+  border-radius: 999px;
+  background: #fffaf0;
+  color: var(--ink-strong);
+  font-family: var(--display-font);
+  font-size: 0.86rem;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  box-shadow: 4px 4px 0 rgba(24, 22, 20, 0.92);
+}
+
+.how-to-back {
+  width: fit-content;
+  padding: 0 14px;
+}
+
+.how-to-eyebrow,
+.how-to-kicker {
+  margin: 0 0 8px;
+  color: rgba(40, 35, 30, 0.62);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.how-to-hero h1,
+.how-to-panel h2,
+.how-to-card-type h3 {
+  margin: 0;
+  color: var(--ink-strong);
+  font-family: var(--display-font);
+  letter-spacing: -0.06em;
+  text-transform: uppercase;
+}
+
+.how-to-hero h1 {
+  max-width: 8.5ch;
+  font-size: clamp(3rem, 13vw, 6rem);
+  line-height: 0.86;
+}
+
+.how-to-hero p:last-child,
+.how-to-panel > p,
+.how-to-card-type p,
+.how-to-ui-map__item p,
+.how-to-steps span {
+  margin: 0;
+  color: rgba(40, 35, 30, 0.76);
+  font-size: 0.98rem;
+  font-weight: 750;
+  line-height: 1.48;
+}
+
+.how-to-hero p:last-child {
+  max-width: 58ch;
+  font-size: 1.08rem;
+}
+
+.how-to-panel {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.how-to-panel--goal {
+  background: linear-gradient(180deg, #fff0c5 0%, #fff8e8 100%);
+}
+
+.how-to-panel--strategy {
+  background: linear-gradient(180deg, rgba(214, 225, 246, 0.92) 0%, rgba(255, 250, 240, 0.96) 100%);
+}
+
+.how-to-section-heading {
+  display: grid;
+  gap: 2px;
+}
+
+.how-to-panel h2 {
+  font-size: clamp(1.9rem, 8vw, 3rem);
+  line-height: 0.92;
+}
+
+.how-to-steps {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  counter-reset: how-to-page-step;
+}
+
+.how-to-steps li {
+  counter-increment: how-to-page-step;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 12px;
+  padding: 13px;
+  border: 2px solid rgba(24, 22, 20, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.82);
+}
+
+.how-to-steps li::before {
+  content: counter(how-to-page-step);
+  grid-row: span 2;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink-strong);
+  border-radius: 12px;
+  background: #d6e1f6;
+  color: #21324d;
+  font-family: var(--display-font);
+  font-size: 1rem;
+}
+
+.how-to-steps strong {
+  color: var(--ink-strong);
+  font-family: var(--display-font);
+  font-size: 1.08rem;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.how-to-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.how-to-card-type,
+.how-to-ui-map__item {
+  display: grid;
+  gap: 7px;
+  padding: 14px;
+  border: 2px solid rgba(24, 22, 20, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 253, 248, 0.84);
+}
+
+.how-to-card-type h3 {
+  font-size: 1.18rem;
+}
+
+.how-to-ui-map {
+  display: grid;
+  grid-template-areas:
+    "opponents opponents"
+    "center center"
+    "tableau turn"
+    "hand hand";
+  gap: 10px;
+}
+
+.how-to-ui-map__item:nth-child(1) {
+  grid-area: opponents;
+}
+
+.how-to-ui-map__item:nth-child(2) {
+  grid-area: center;
+}
+
+.how-to-ui-map__item:nth-child(3) {
+  grid-area: tableau;
+}
+
+.how-to-ui-map__item:nth-child(4) {
+  grid-area: hand;
+  background: rgba(35, 31, 27, 0.92);
+}
+
+.how-to-ui-map__item:nth-child(5) {
+  grid-area: turn;
+}
+
+.how-to-ui-map__item span {
+  color: var(--ink-strong);
+  font-family: var(--display-font);
+  font-size: 1rem;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+}
+
+.how-to-ui-map__item:nth-child(4) span,
+.how-to-ui-map__item:nth-child(4) p {
+  color: #fffaf0;
+}
+
+.how-to-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.how-to-action {
+  padding: 0 16px;
+}
+
+.how-to-action--primary {
+  background: var(--accent-gold);
+}
+
+@media (max-width: 760px) {
+  .how-to-screen {
+    padding: 14px 12px 28px;
+  }
+
+  .how-to-shell {
+    gap: 14px;
+  }
+
+  .how-to-hero,
+  .how-to-panel {
+    border-width: 3px;
+    border-radius: 24px;
+    box-shadow: 6px 6px 0 rgba(24, 22, 20, 0.92);
+  }
+
+  .how-to-hero,
+  .how-to-panel {
+    padding: 16px 14px;
+  }
+
+  .how-to-steps li,
+  .how-to-card-grid,
+  .how-to-ui-map {
+    grid-template-columns: 1fr;
+  }
+
+  .how-to-steps li::before {
+    grid-row: auto;
+  }
+
+  .how-to-card-grid,
+  .how-to-ui-map {
+    display: grid;
+  }
+
+  .how-to-ui-map {
+    grid-template-areas:
+      "opponents"
+      "center"
+      "tableau"
+      "hand"
+      "turn";
+  }
+
+  .how-to-action {
+    width: 100%;
+  }
+}
