@@ -471,3 +471,8 @@ Rules:
   - property-set summaries
   - wild reassignment options
 - prefer consuming those additive fields over inferring action semantics or rent/set state in the frontend
+
+## Hand Inspection and Guide UX
+- Hand cards support a press-and-hold inspection state that enlarges the card with a short descriptor while preserving tap-to-select and drag-to-play behavior.
+- The inspection animation should feel premium and intentional: slight delay, scale-up motion, soft spotlight, and reduced-motion fallback.
+- New-player education lives on the `/how-to` page instead of a home-screen modal, with deeper rule explanations and a walkthrough of the game UI.

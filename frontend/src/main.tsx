@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import GameDeckView from "./components/cards/GameDeckView";
 import { BoardScreen } from "./features/board/screens/BoardScreen";
 import { HomeScreen } from "./features/home/screens/HomeScreen";
+import { HowToScreen } from "./features/how-to/screens/HowToScreen";
 import "./styles/cards.css";
 import "./styles/global.css";
 import "./styles/home.css";
@@ -20,6 +21,8 @@ createRoot(root).render(
       <GameDeckView />
     ) : window.location.pathname.startsWith("/game") ? (
       <BoardScreen />
+    ) : window.location.pathname.startsWith("/how-to") ? (
+      <HowToScreen />
     ) : (
       <HomeScreen />
     )}
