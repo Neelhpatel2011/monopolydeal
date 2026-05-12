@@ -38,6 +38,10 @@ async function copyToClipboard(value: string) {
   document.body.removeChild(input);
 }
 
+function getInviteMessage(gameCode: string) {
+  return `Join my Greed Deal game at ${window.location.origin} with code ${gameCode}.`;
+}
+
 function LobbyScreen({
   gameId,
   gameCode,
@@ -59,6 +63,7 @@ function LobbyScreen({
   const [startError, setStartError] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState<"idle" | "copied" | "error">("idle");
+  const [inviteFeedback, setInviteFeedback] = useState<"idle" | "shared" | "copied" | "error">("idle");
   const displayCode = gameCode ?? gameId;
   const playersNeeded = Math.max(0, MIN_PLAYERS_TO_START - players.length);
   const seatsRemaining = Math.max(0, MAX_LOBBY_PLAYERS - players.length);
@@ -73,6 +78,7 @@ function LobbyScreen({
   const guestStatusCopy = playersNeeded > 0
     ? `Waiting for ${playersNeeded === 1 ? "1 more player" : `${playersNeeded} more players`}.`
     : `Waiting for ${hostId ?? "the host"} to start.`;
+  const seatSummary = `${players.length} seated · ${seatsRemaining} ${seatsRemaining === 1 ? "seat" : "seats"} left`;
 
   async function handleStart() {
     setIsStarting(true);
@@ -97,35 +103,82 @@ function LobbyScreen({
     }
   }
 
+  async function handleShareInvite() {
+    const inviteMessage = getInviteMessage(displayCode);
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: "Join my Greed Deal game",
+          text: inviteMessage,
+        });
+        setInviteFeedback("shared");
+      } else {
+        await copyToClipboard(inviteMessage);
+        setInviteFeedback("copied");
+      }
+      window.setTimeout(() => setInviteFeedback("idle"), 2200);
+    } catch (shareFailure) {
+      if (shareFailure instanceof DOMException && shareFailure.name === "AbortError") {
+        return;
+      }
+      setInviteFeedback("error");
+      window.setTimeout(() => setInviteFeedback("idle"), 2400);
+    }
+  }
+
   return (
     <main className="board-page">
       <div className="board-shell">
         <section className="board-loading-state board-lobby-state" aria-live="polite">
           <div className="board-lobby-state__hero">
-            <p className="board-loading-state__eyebrow">Lobby</p>
-            <h1>{isHost ? "Table open" : "Lobby"}</h1>
+            <p className="board-loading-state__eyebrow">Game Lobby</p>
+            <h1>{isHost ? "Your table" : "Waiting room"}</h1>
+            <p className="board-lobby-state__helper">
+              {playersNeeded > 0
+                ? `Need ${playersNeeded === 1 ? "1 more player" : `${playersNeeded} more players`} to start.`
+                : isHost
+                  ? "Enough players are here. Start when ready."
+                  : guestStatusCopy}
+            </p>
           </div>
 
           <div className="board-lobby-state__code-card" aria-label={`Game code ${displayCode}`}>
             <div className="board-lobby-state__code-copy">
               <span className="board-lobby-state__code-label">Game code</span>
               <strong>{displayCode}</strong>
+              <span className="board-lobby-state__code-hint">Share this code with players joining from home.</span>
             </div>
-            <button
-              type="button"
-              className="board-lobby-state__copy-button"
-              aria-label={`Copy game code ${displayCode}`}
-              onClick={() => void handleCopyCode()}
-            >
-              <CopyIcon className="board-lobby-state__copy-icon" />
-              <span>
-                {copyFeedback === "copied"
-                  ? "Copied"
-                  : copyFeedback === "error"
-                    ? "Retry"
-                    : "Copy"}
-              </span>
-            </button>
+            <div className="board-lobby-state__code-actions">
+              <button
+                type="button"
+                className="board-lobby-state__copy-button"
+                aria-label={`Copy game code ${displayCode}`}
+                onClick={() => void handleCopyCode()}
+              >
+                <CopyIcon className="board-lobby-state__copy-icon" />
+                <span>
+                  {copyFeedback === "copied"
+                    ? "Copied"
+                    : copyFeedback === "error"
+                      ? "Retry"
+                      : "Copy code"}
+                </span>
+              </button>
+              <button
+                type="button"
+                className="board-lobby-state__copy-button board-lobby-state__copy-button--secondary"
+                onClick={() => void handleShareInvite()}
+              >
+                {inviteFeedback === "shared"
+                  ? "Shared"
+                  : inviteFeedback === "copied"
+                    ? "Invite copied"
+                    : inviteFeedback === "error"
+                      ? "Retry invite"
+                      : "Share invite"}
+              </button>
+            </div>
           </div>
 
           <div
@@ -135,6 +188,7 @@ function LobbyScreen({
             <div className="board-lobby-state__status-copy">
               <span className="board-lobby-state__status-label">Players</span>
               <strong>{filledSeatLabel}</strong>
+              <span>{seatSummary}</span>
             </div>
             <div className="board-lobby-state__seat-dots" aria-hidden="true">
               {Array.from({ length: MAX_LOBBY_PLAYERS }, (_, index) => (
@@ -146,11 +200,11 @@ function LobbyScreen({
                 />
               ))}
             </div>
-            <span className="board-lobby-state__status-chip">{lobbyStatus}</span>
+            <span className="board-lobby-state__status-text">{lobbyStatus}</span>
           </div>
 
           <div className="board-lobby-state__players" aria-label="Players in lobby">
-            {players.map((player) => {
+            {players.map((player, index) => {
               const isCurrentPlayer = player === playerId;
               const isPlayerHost = player === hostId;
 
@@ -162,21 +216,15 @@ function LobbyScreen({
                   }`}
                 >
                   <div className="board-lobby-state__player-avatar" aria-hidden="true">
-                    {player.charAt(0).toUpperCase()}
+                    {index + 1}
                   </div>
                   <div className="board-lobby-state__player-copy">
                     <strong>{player}</strong>
-                    <span>{isCurrentPlayer ? "You" : "Player"}</span>
-                  </div>
-                  <div className="board-lobby-state__player-badges">
-                    {isCurrentPlayer ? (
-                      <span className="board-lobby-state__player-badge board-lobby-state__player-badge--you">
-                        You
-                      </span>
-                    ) : null}
-                    {isPlayerHost ? (
-                      <span className="board-lobby-state__player-badge">Host</span>
-                    ) : null}
+                    <span>
+                      {[isPlayerHost ? "Host" : "Player", isCurrentPlayer ? "You" : null]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
                   </div>
                 </article>
               );
@@ -187,11 +235,11 @@ function LobbyScreen({
                 className="board-lobby-state__player-card board-lobby-state__player-card--empty"
               >
                 <div className="board-lobby-state__player-avatar" aria-hidden="true">
-                  +
+                  {players.length + index + 1}
                 </div>
                 <div className="board-lobby-state__player-copy">
                   <strong>Open seat</strong>
-                  <span>Invite</span>
+                  <span>Waiting for player</span>
                 </div>
               </article>
             ))}
