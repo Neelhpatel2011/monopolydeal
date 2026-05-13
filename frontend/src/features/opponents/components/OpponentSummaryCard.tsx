@@ -66,7 +66,16 @@ export function OpponentSummaryCard({
 
           <div className="opponent-summary-card__body">
             <h2>{opponent.name}</h2>
-            <p className="opponent-summary-card__bank">{opponent.bankTotal}</p>
+            <div className="opponent-summary-card__meta-row">
+              <p className="opponent-summary-card__bank">{opponent.bankTotal}</p>
+              <span
+                className="opponent-summary-card__hand-count"
+                data-opponent-hand-anchor={opponent.id}
+                aria-label={`${opponent.name} has ${opponent.handCount} ${opponent.handCount === 1 ? "card" : "cards"} in hand`}
+              >
+                {opponent.handCount} {opponent.handCount === 1 ? "card" : "cards"}
+              </span>
+            </div>
           </div>
         </div>
 

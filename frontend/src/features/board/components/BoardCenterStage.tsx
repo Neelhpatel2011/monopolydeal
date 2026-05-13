@@ -28,7 +28,7 @@ export function BoardCenterStage({
   return (
     <section className="board-center-stage" aria-label="Board center stage">
       <div className="pile-card">
-        <div className="pile-card__stack pile-card__stack--deck">
+        <div className="pile-card__stack pile-card__stack--deck" data-draw-pile-anchor>
           <div className="pile-card__face pile-card__face--deck">
             <BoardCardBack tone="deck" size="sm" scale={0.28} className="pile-card__card-back" />
           </div>
