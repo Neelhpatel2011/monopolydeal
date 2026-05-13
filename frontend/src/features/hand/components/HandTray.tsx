@@ -220,7 +220,7 @@ export function HandTray({
 
   return (
     <section className="hand-tray" aria-label="Cards in hand">
-      <div className="hand-tray__viewport hand-tray__viewport--scrollable" ref={viewportRef}>
+      <div className="hand-tray__viewport hand-tray__viewport--scrollable" ref={viewportRef} data-player-hand-anchor>
         <div className="hand-tray__cards" role="list" aria-label="Hand cards">
           {cards.map((card) => (
             <div

@@ -54,6 +54,7 @@ import { PaymentFlowSheet } from "./PaymentFlowSheet";
 import { DiscardFlowSheet } from "./DiscardFlowSheet";
 import { QuitGameConfirmSheet } from "./QuitGameConfirmSheet";
 import { SurrenderNoticeSheet } from "./SurrenderNoticeSheet";
+import { DrawCardAnimation } from "./DrawCardAnimation";
 import { getPendingPaymentSelectionSummary } from "../../../integration/backend/adapters";
 import { deriveHandCardIntentProfile } from "../model/card-intents";
 import { getBackendCardMeta } from "../../../integration/backend/catalog";
@@ -864,6 +865,13 @@ export function BoardShell({
           isPlayPreviewed={showTargetHighlights && previewTarget?.id === BOARD_PLAY_TARGET_ID}
           isPlayInvalid={invalidTargetId === BOARD_PLAY_TARGET_ID}
           onPlayZonePress={handlePlayZonePress}
+        />
+        <DrawCardAnimation
+          currentPlayerId={playerView.current_player_id}
+          turnNumber={playerView.turn_number}
+          actionsTaken={playerView.actions_taken}
+          localPlayer={localPlayer}
+          opponents={opponentSummaries}
         />
         <LocalPlayerPanel
           {...localPlayer}

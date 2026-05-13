@@ -476,3 +476,9 @@ Rules:
 - Hand cards support a press-and-hold inspection state that enlarges the card with a short descriptor while preserving tap-to-select and drag-to-play behavior.
 - The inspection animation should feel premium and intentional: slight delay, scale-up motion, soft spotlight, and reduced-motion fallback.
 - New-player education lives on the `/how-to` page instead of a home-screen modal, with deeper rule explanations and a walkthrough of the game UI.
+
+## Turn Draw Animation UX
+- At the start of each backend turn, the board animates one or more card backs from the center deck anchor to the active player's hand anchor.
+- The animation always uses card backs so opponents can see that cards were drawn without learning card identities.
+- Local draws target the hand tray; opponent draws target the compact opponent hand-count badge in the summary rail.
+- The animation is visual-only and derives from backend turn/player/hand-count state rather than changing game rules or card visibility.
