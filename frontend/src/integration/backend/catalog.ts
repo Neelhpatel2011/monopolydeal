@@ -375,11 +375,12 @@ export function createBackendHandIntentProfile(cardId: string): BackendHandInten
   }
 
   if (meta.kind === "rent") {
+    const isAllOpponentsRent = meta.effectParams.target === "all_others";
     return {
       actionType: "play_action_counterable",
       category: "rent",
       chosen: {},
-      missing: ["target_player_id", "rent_color"],
+      missing: isAllOpponentsRent ? ["rent_color"] : ["target_player_id", "rent_color"],
       canBank: meta.bankable,
     };
   }

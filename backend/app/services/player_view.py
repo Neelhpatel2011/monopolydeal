@@ -397,11 +397,25 @@ def _build_hand_action_view(
 
     if card.kind == "rent":
         double_rent_card_id, double_rent_count = _get_available_double_rent_modifier(actor, catalog)
-        target_options = [
-            _build_choice_option(other_id, label=other_id)
-            for other_id in state.players.keys()
-            if other_id != player_id
+        target_mode = card.play.params.get("target") if card.play else None
+        fields = [
+            FieldOptionsView(
+                field="rent_color",
+                options=_get_rent_color_options(actor, catalog, card_id),
+            ),
         ]
+        required_fields: List[ActionFieldName] = ["rent_color"]
+        if target_mode != "all_others":
+            target_options = [
+                _build_choice_option(other_id, label=other_id)
+                for other_id in state.players.keys()
+                if other_id != player_id
+            ]
+            required_fields = ["target_player_id", *required_fields]
+            fields = [
+                FieldOptionsView(field="target_player_id", options=target_options),
+                *fields,
+            ]
         return HandActionView(
             card_id=card_id,
             card_kind=card.kind,
@@ -409,11 +423,8 @@ def _build_hand_action_view(
             can_bank=can_bank,
             available_double_rent_count=double_rent_count,
             available_double_rent_card_id=double_rent_card_id,
-            required_fields=["target_player_id", "rent_color"],
-            fields=[
-                FieldOptionsView(field="target_player_id", options=target_options),
-                FieldOptionsView(field="rent_color", options=_get_rent_color_options(actor, catalog, card_id)),
-            ],
+            required_fields=required_fields,
+            fields=fields,
         )
 
     effect = card.play.effect if card.play else None
