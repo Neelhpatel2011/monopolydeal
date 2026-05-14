@@ -65,7 +65,15 @@ export function OpponentSummaryCard({
           </div>
 
           <div className="opponent-summary-card__body">
-            <h2>{opponent.name}</h2>
+            <div className="opponent-summary-card__title-row">
+              <h2>{opponent.name}</h2>
+              {opponent.isCurrentPlayer ? (
+                <span className="turn-indicator-pill turn-indicator-pill--opponent" aria-label="Current turn">
+                  <span className="turn-indicator-pill__dot" aria-hidden="true" />
+                  Turn
+                </span>
+              ) : null}
+            </div>
             <div className="opponent-summary-card__meta-row">
               <p className="opponent-summary-card__bank">{opponent.bankTotal}</p>
               <span
