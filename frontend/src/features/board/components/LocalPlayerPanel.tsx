@@ -65,9 +65,8 @@ export function LocalPlayerPanel({
       <div className="local-player-panel__committed-surface">
         {isCurrentTurn ? (
           <div className="local-player-panel__turn-indicator" role="status" aria-live="polite">
-            <span className="turn-indicator-pill turn-indicator-pill--local">
+            <span className="turn-indicator-pill turn-indicator-pill--local" aria-label="Your turn">
               <span className="turn-indicator-pill__dot" aria-hidden="true" />
-              Your turn
             </span>
           </div>
         ) : null}

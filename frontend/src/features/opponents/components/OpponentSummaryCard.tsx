@@ -70,7 +70,6 @@ export function OpponentSummaryCard({
               {opponent.isCurrentPlayer ? (
                 <span className="turn-indicator-pill turn-indicator-pill--opponent" aria-label="Current turn">
                   <span className="turn-indicator-pill__dot" aria-hidden="true" />
-                  Turn
                 </span>
               ) : null}
             </div>
