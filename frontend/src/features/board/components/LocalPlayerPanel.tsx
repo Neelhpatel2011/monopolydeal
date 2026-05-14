@@ -30,6 +30,7 @@ type LocalPlayerPanelProps = LocalPlayerState & {
 
 export function LocalPlayerPanel({
   bankTotal,
+  isCurrentTurn,
   handCards,
   propertySets,
   bankCards,
@@ -53,9 +54,23 @@ export function LocalPlayerPanel({
   onTargetBank,
   onChangeWild,
 }: LocalPlayerPanelProps) {
+  const panelClassName = `local-player-panel${isCurrentTurn ? " local-player-panel--current" : ""}`;
+
   return (
-    <section className="local-player-panel" aria-label="Local player area">
+    <section
+      className={panelClassName}
+      aria-current={isCurrentTurn ? "true" : undefined}
+      aria-label={isCurrentTurn ? "Local player area, your turn" : "Local player area"}
+    >
       <div className="local-player-panel__committed-surface">
+        {isCurrentTurn ? (
+          <div className="local-player-panel__turn-indicator" role="status" aria-live="polite">
+            <span className="turn-indicator-pill turn-indicator-pill--local">
+              <span className="turn-indicator-pill__dot" aria-hidden="true" />
+              Your turn
+            </span>
+          </div>
+        ) : null}
         <div className="local-player-panel__board-state">
           <TableauPanel
             sets={propertySets}
