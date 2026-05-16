@@ -762,6 +762,57 @@ export function BoardShell({
     setComposerIntent(nextIntent);
   }
 
+
+  function getHotelWithoutHouseFeedback(card: LocalHandCard) {
+    if (card.backendCardId !== "action_hotel") {
+      return null;
+    }
+
+    const rentColorOptions =
+      card.actionOptions?.fieldOptions.find((field) => field.field === "rent_color")?.options ?? [];
+    if (rentColorOptions.length > 0) {
+      return null;
+    }
+
+    const fullSetsWithoutHouse = localPlayer.propertySets.filter(
+      (set) =>
+        set.isComplete &&
+        set.backendColor !== "railroad" &&
+        set.backendColor !== "utility" &&
+        !(set.buildings ?? []).includes("House"),
+    );
+
+    if (fullSetsWithoutHouse.length === 0) {
+      return null;
+    }
+
+    const setNames = fullSetsWithoutHouse.map((set) => set.name).join(", ");
+
+    return createInvalidFeedback(
+      "invalidTarget",
+      "Hotel needs a house first",
+      {
+        cardId: card.id,
+        targetId: LOCAL_TABLEAU_TARGET_ID,
+        detail: `You have a full set (${setNames}), but Monopoly Deal hotels can only be added to a completed set that already has a house. Play a House on that full set before adding a Hotel.`,
+      },
+    );
+  }
+
+  function showHotelWithoutHouseFeedback(card: LocalHandCard) {
+    const feedback = getHotelWithoutHouseFeedback(card);
+    if (!feedback) {
+      return false;
+    }
+
+    dispatch({
+      type: "SUBMIT_ACTION_REJECTED",
+      feedback,
+      preserveSelection: true,
+    });
+    return true;
+  }
+
   function handleResolvedDropTarget(target: DragTargetDefinition, cardId: string) {
     const context = resolveIntentContext(cardId);
     if (!context) {
@@ -801,6 +852,9 @@ export function BoardShell({
   function handlePlayZonePress(cardId?: string) {
     const context = resolveIntentContext(cardId);
     if (!context) {
+      return;
+    }
+    if (showHotelWithoutHouseFeedback(context.card)) {
       return;
     }
     const profile = deriveHandCardIntentProfile(context.card);
@@ -853,6 +907,9 @@ export function BoardShell({
     if (!context) {
       return;
     }
+    if (showHotelWithoutHouseFeedback(context.card)) {
+      return;
+    }
     if (
       context.intent.actionType !== "play_property" &&
       context.intent.actionType !== "play_action_non_counterable"
@@ -873,6 +930,9 @@ export function BoardShell({
   function handleTableauSetTarget(setId: string, cardId?: string) {
     const context = resolveIntentContext(cardId);
     if (!context) {
+      return;
+    }
+    if (showHotelWithoutHouseFeedback(context.card)) {
       return;
     }
     if (

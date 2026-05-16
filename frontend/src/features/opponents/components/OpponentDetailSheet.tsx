@@ -29,6 +29,16 @@ export function OpponentDetailSheet({
   const propertySurfacePreset = boardCardSurfacePresets["opponent-property"];
   const moneySurfacePreset = boardCardSurfacePresets["opponent-money"];
   const bankSummary = getBankSummaryData(opponent.moneyCards);
+  const sortedPropertySets = [...opponent.propertySets].sort((left, right) => {
+    const leftComplete = left.cards.length >= left.targetSize;
+    const rightComplete = right.cards.length >= right.targetSize;
+
+    if (leftComplete !== rightComplete) {
+      return leftComplete ? -1 : 1;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -90,7 +100,7 @@ export function OpponentDetailSheet({
           </div>
 
           <div className="opponent-detail-properties">
-            {opponent.propertySets.map((propertySet) => {
+            {sortedPropertySets.map((propertySet) => {
               const count = propertySet.cards.length;
               const isComplete = count >= propertySet.targetSize;
               const renderCards = getPropertySetRenderCards(propertySet);
