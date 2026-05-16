@@ -125,3 +125,23 @@ def test_multicolor_rent_still_requires_one_target_and_accept_creates_payment():
     assert payment_response["payment_request"]["targets"] == [
         {"player_id": "Sam", "amount": 3}
     ]
+
+
+def test_player_view_exposes_persistent_game_log_for_played_cards():
+    state = _three_player_rent_state(rent_card_id="rent_red_yellow")
+
+    start_action(
+        state,
+        CATALOG,
+        "Host",
+        action_type="play_action_counterable",
+        card_id="rent_red_yellow",
+        rent_color="red",
+    )
+    view = build_player_view(state, "Alex", CATALOG)
+
+    assert state.turn_actions[-1].card_ids == ["rent_red_yellow"]
+    assert view.game_log[-1].player_id == "Host"
+    assert view.game_log[-1].action_type == "play_action_counterable"
+    assert view.game_log[-1].card_ids == ["rent_red_yellow"]
+    assert view.game_log[-1].turn_number == state.turn_number

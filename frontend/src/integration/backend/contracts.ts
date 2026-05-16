@@ -67,6 +67,14 @@ export type BackendTurnActionView = {
   card_ids: string[];
 };
 
+export type BackendGameLogEntryView = {
+  id: string;
+  turn_number: number;
+  player_id: string;
+  action_type: string;
+  card_ids: string[];
+};
+
 export type BackendPaymentParticipantView = {
   player_id: string;
   amount: number;
@@ -160,6 +168,7 @@ export type BackendPlayerView = {
   others: BackendPlayerPublicView[];
   pending_prompts: BackendPendingActionPrompt[];
   turn_actions: BackendTurnActionView[];
+  game_log: BackendGameLogEntryView[];
   payment_trackers: BackendPaymentTrackerView[];
   deck_count: number;
   discard_pile: string[];

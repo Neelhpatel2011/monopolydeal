@@ -25,6 +25,16 @@ class TurnAction(BaseModel):
     card_ids: List[str] = Field(default_factory=list)
 
 
+class GameLogEntry(BaseModel):
+    """A public, persistent action history entry for the UI."""
+
+    id: str
+    turn_number: int
+    player_id: str
+    action_type: str
+    card_ids: List[str] = Field(default_factory=list)
+
+
 class PaymentParticipant(BaseModel):
     player_id: str
     amount: int
@@ -51,6 +61,7 @@ class GameState(BaseModel):
     turn_number: int = 1
     actions_taken: int = 0
     turn_actions: List[TurnAction] = Field(default_factory=list)
+    game_log: List[GameLogEntry] = Field(default_factory=list)
     payment_trackers: List[PaymentTracker] = Field(default_factory=list)
     winner_id: Optional[str] = None
     pending_actions: Dict[str, Dict[str, Any]] = Field(default_factory=dict)

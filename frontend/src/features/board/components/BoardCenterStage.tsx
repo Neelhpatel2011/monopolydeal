@@ -3,6 +3,11 @@ import { getRenderCardByCatalogId } from "../../../components/cards/boardCardAda
 import { ScaledMonopolyCard } from "../../../components/cards/ScaledMonopolyCard";
 import { BOARD_PLAY_TARGET_ID } from "../../drag-targeting/model/target-preview";
 
+type CenterPlayAnnouncement = {
+  title: string;
+  detail: string;
+};
+
 type BoardCenterStageProps = {
   drawCount: number;
   discardCount: number;
@@ -11,6 +16,7 @@ type BoardCenterStageProps = {
   isPlayPreviewed?: boolean;
   isPlayInvalid?: boolean;
   onPlayZonePress?: () => void;
+  latestPlay?: CenterPlayAnnouncement | null;
 };
 
 export function BoardCenterStage({
@@ -21,6 +27,7 @@ export function BoardCenterStage({
   isPlayPreviewed = false,
   isPlayInvalid = false,
   onPlayZonePress,
+  latestPlay = null,
 }: BoardCenterStageProps) {
   void drawCount;
   const hasDiscardTopCard = discardCount > 0 && typeof discardTopCardId === "string";
@@ -46,13 +53,23 @@ export function BoardCenterStage({
         data-board-target-id={BOARD_PLAY_TARGET_ID}
         onClick={onPlayZonePress}
       >
-        <p className="drop-zone-panel__mark" aria-hidden="true">GREED</p>
+        {latestPlay ? (
+          <div className="drop-zone-panel__latest" role="status" aria-live="polite">
+            <p className="drop-zone-panel__latest-eyebrow">Last play</p>
+            <p className="drop-zone-panel__latest-title">{latestPlay.title}</p>
+            <p className="drop-zone-panel__latest-detail">{latestPlay.detail}</p>
+          </div>
+        ) : (
+          <p className="drop-zone-panel__mark" aria-hidden="true">GREED</p>
+        )}
         <p className="drop-zone-panel__subtitle">
           {isPlayPreviewed
             ? "Release to play"
             : isPlayTargetable
               ? "Drop card here"
-              : "Play cards here"}
+              : latestPlay
+                ? "Visible to all players"
+                : "Play cards here"}
         </p>
       </button>
 

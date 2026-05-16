@@ -55,6 +55,8 @@ import { DiscardFlowSheet } from "./DiscardFlowSheet";
 import { QuitGameConfirmSheet } from "./QuitGameConfirmSheet";
 import { SurrenderNoticeSheet } from "./SurrenderNoticeSheet";
 import { DrawCardAnimation } from "./DrawCardAnimation";
+import { GameLogPanel } from "./GameLogPanel";
+import { formatGameLogLine } from "../model/gameLog";
 import { getPendingPaymentSelectionSummary } from "../../../integration/backend/adapters";
 import { deriveHandCardIntentProfile } from "../model/card-intents";
 import { getBackendCardMeta } from "../../../integration/backend/catalog";
@@ -180,6 +182,24 @@ export function BoardShell({
     quitConfirmOpen ||
     visibleSurrenderAnnouncement !== null ||
     interactionState.mode === "submittingEndTurn";
+
+  const latestGameLogEntry = playerView.game_log[playerView.game_log.length - 1] ?? null;
+  const latestPlayAnnouncement = latestGameLogEntry
+    ? {
+        title: formatGameLogLine(latestGameLogEntry, localPlayer.id),
+        detail:
+          latestGameLogEntry.action_type === "play_action_counterable" ||
+          latestGameLogEntry.action_type === "play_action_non_counterable" ||
+          latestGameLogEntry.action_type === "discard" ||
+          latestGameLogEntry.action_type === "just_say_no"
+            ? "Action card is visible in the discard pile."
+            : latestGameLogEntry.action_type === "play_bank"
+              ? "Card was added to that player's bank."
+              : latestGameLogEntry.action_type === "change_wild"
+                ? "That player changed a wild card color."
+                : "Card was added to that player's tableau.",
+      }
+    : null;
   const activeHandCardId = draggedCardId ?? selectedCardId;
   const activeHandCard = useMemo(
     () => localPlayer.handCards.find((card) => card.id === activeHandCardId) ?? null,
@@ -951,7 +971,9 @@ export function BoardShell({
           isPlayPreviewed={showTargetHighlights && previewTarget?.id === BOARD_PLAY_TARGET_ID}
           isPlayInvalid={invalidTargetId === BOARD_PLAY_TARGET_ID}
           onPlayZonePress={handlePlayZonePress}
+          latestPlay={latestPlayAnnouncement}
         />
+        <GameLogPanel entries={playerView.game_log} localPlayerId={localPlayer.id} />
         <DrawCardAnimation
           currentPlayerId={playerView.current_player_id}
           turnNumber={playerView.turn_number}
