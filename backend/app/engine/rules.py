@@ -8,6 +8,7 @@ from .state import (
     DeckState,
     GameState,
     PlayerState,
+    GameLogEntry,
     TurnAction,
     set_payment_tracker_status,
     upsert_payment_tracker,
@@ -37,13 +38,24 @@ def record_turn_action(
     action_type: str,
     card_ids: List[str],
 ) -> None:
+    public_card_ids = [cid for cid in card_ids if cid]
     state.turn_actions.append(
         TurnAction(
             player_id=player_id,
             action_type=action_type,
-            card_ids=[cid for cid in card_ids if cid],
+            card_ids=public_card_ids,
         )
     )
+    state.game_log.append(
+        GameLogEntry(
+            id=f"log_{uuid.uuid4().hex}",
+            turn_number=state.turn_number,
+            player_id=player_id,
+            action_type=action_type,
+            card_ids=public_card_ids,
+        )
+    )
+    state.game_log = state.game_log[-80:]
 
 
 def end_turn(state: GameState, turn_order: List[str]) -> GameState:
@@ -424,6 +436,12 @@ def start_action(
         # === Discard / End turn ===
         if action_type == "discard":
             discard_cards(state, player_id, discard_ids)
+            record_turn_action(
+                state,
+                player_id=player_id,
+                action_type=action_type,
+                card_ids=discard_ids or [],
+            )
             return {"status": "ok", "response_type": "action_resolved", "state": state}
 
         if action_type == "end_turn":

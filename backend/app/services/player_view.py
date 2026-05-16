@@ -33,6 +33,14 @@ class TurnActionView(BaseModel):
     card_ids: List[str] = Field(default_factory=list)
 
 
+class GameLogEntryView(BaseModel):
+    id: str
+    turn_number: int
+    player_id: str
+    action_type: str
+    card_ids: List[str] = Field(default_factory=list)
+
+
 class PaymentParticipantView(BaseModel):
     player_id: str
     amount: int
@@ -118,6 +126,7 @@ class PlayerView(BaseModel):
     others: List[PlayerPublicView] = Field(default_factory=list)
     pending_prompts: List[PendingActionPrompt] = Field(default_factory=list)
     turn_actions: List[TurnActionView] = Field(default_factory=list)
+    game_log: List[GameLogEntryView] = Field(default_factory=list)
     payment_trackers: List[PaymentTrackerView] = Field(default_factory=list)
     deck_count: int
     discard_pile: List[str] = Field(default_factory=list)
@@ -610,6 +619,10 @@ def build_player_view(
         TurnActionView.model_validate(a.model_dump() if hasattr(a, "model_dump") else a)
         for a in (state.turn_actions or [])
     ]
+    game_log = [
+        GameLogEntryView.model_validate(a.model_dump() if hasattr(a, "model_dump") else a)
+        for a in (state.game_log or [])
+    ]
     payment_trackers = []
     for tracker in (state.payment_trackers or []):
         tracker_payload = tracker.model_dump() if hasattr(tracker, "model_dump") else tracker
@@ -630,6 +643,7 @@ def build_player_view(
         others=others,
         pending_prompts=pending_prompts,
         turn_actions=turn_actions,
+        game_log=game_log,
         payment_trackers=payment_trackers,
         deck_count=len(state.deck.draw_pile),
         discard_pile=state.deck.discard_pile,
