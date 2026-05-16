@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ScaledMonopolyCard } from "../../../components/cards/ScaledMonopolyCard";
 import type { LocalBankCard } from "../../board/model/localPlayer";
 import { getBankSummaryData } from "../model/bankSummary";
@@ -29,7 +30,7 @@ export function BankDetailSheet({ cards, total, onClose }: BankDetailSheetProps)
     };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div className="bank-detail-overlay" role="presentation" onClick={onClose}>
       <section
         className="bank-detail-sheet"
@@ -107,6 +108,7 @@ export function BankDetailSheet({ cards, total, onClose }: BankDetailSheetProps)
           </div>
         </section>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
