@@ -15,6 +15,8 @@ export type OutstandingEndTurnPayment = {
   playerName: string;
   amount: number;
   amountLabel: string;
+  status: "awaiting_response" | "pending";
+  statusLabel: string;
 };
 
 export function buildEndTurnConfirmCopy(actionsLeft: number): EndTurnConfirmCopy {
@@ -42,8 +44,11 @@ export function buildOutstandingPaymentSummary(
   }
 
   if (payments.length === 1) {
-    return `${payments[0].playerName} still owes you ${payments[0].amountLabel}`;
+    const payment = payments[0];
+    return payment.status === "awaiting_response"
+      ? `${payment.playerName} still needs to respond`
+      : `${payment.playerName} still owes you ${payment.amountLabel}`;
   }
 
-  return `${payments.length} players still owe you payment`;
+  return `${payments.length} players still need to resolve payment`;
 }
