@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { BoardCenterStage } from "./BoardCenterStage";
 import { BoardHeader } from "./BoardHeader";
 import { LocalPlayerPanel } from "./LocalPlayerPanel";
@@ -128,6 +128,7 @@ export function BoardShell({
     createInitialInteractionState,
   );
   const previousIsCurrentTurnRef = useRef(isCurrentTurn);
+  const autoEndTurnKeyRef = useRef<string | null>(null);
   const expandedOpponentId = selectExpandedOpponentId(interactionState);
   const dragPreview = selectDragPreview(interactionState);
   const draggedCardId = selectDraggedCardId(interactionState);
@@ -272,26 +273,52 @@ export function BoardShell({
       }
 
       tracker.participants.forEach((participant) => {
-        if (participant.status !== "pending" || participant.amount <= 0) {
+        if (
+          (participant.status !== "awaiting_response" && participant.status !== "pending") ||
+          participant.amount <= 0
+        ) {
           return;
         }
 
-        pendingAmounts.set(
-          participant.player_id,
-          (pendingAmounts.get(participant.player_id) ?? 0) + participant.amount,
-        );
+        const existing = pendingAmounts.get(participant.player_id);
+        pendingAmounts.set(participant.player_id, (existing ?? 0) + participant.amount);
+      });
+    });
+
+    const playerStatuses = new Map<string, "awaiting_response" | "pending">();
+    playerView.payment_trackers.forEach((tracker) => {
+      if (tracker.receiver_id !== localPlayer.id) {
+        return;
+      }
+
+      tracker.participants.forEach((participant) => {
+        if (participant.status !== "awaiting_response" && participant.status !== "pending") {
+          return;
+        }
+
+        if (participant.status === "pending" || !playerStatuses.has(participant.player_id)) {
+          playerStatuses.set(participant.player_id, participant.status);
+        }
       });
     });
 
     return [...pendingAmounts.entries()]
-      .map(([playerId, amount]) => ({
-        playerName: playerNames.get(playerId) ?? playerId,
-        amount,
-        amountLabel: formatBankValue(amount),
-      }))
+      .map(([playerId, amount]) => {
+        const status = playerStatuses.get(playerId) ?? "pending";
+        const amountLabel = formatBankValue(amount);
+        return {
+          playerName: playerNames.get(playerId) ?? playerId,
+          amount,
+          amountLabel,
+          status,
+          statusLabel: status === "awaiting_response" ? `Responding • ${amountLabel}` : amountLabel,
+        };
+      })
       .sort(
         (left, right) =>
-          right.amount - left.amount || left.playerName.localeCompare(right.playerName),
+          Number(right.status === "pending") - Number(left.status === "pending") ||
+          right.amount - left.amount ||
+          left.playerName.localeCompare(right.playerName),
       );
   }, [
     localPlayer.id,
@@ -362,6 +389,46 @@ export function BoardShell({
     () => localPlayer.handCards.some((card) => card.backendCardId === "action_just_say_no"),
     [localPlayer.handCards],
   );
+
+  const submitEndTurn = useCallback(async () => {
+    if (outstandingEndTurnPayments.length > 0) {
+      dispatch({
+        type: "SUBMIT_END_TURN_REJECTED",
+        feedback: createInvalidFeedback(
+          "blocked",
+          "Pending payments are still unresolved.",
+          {
+            detail:
+              outstandingPaymentSummary ??
+              "The remaining players need to finish their payment prompts before the turn can end.",
+          },
+        ),
+      });
+      return;
+    }
+
+    const submissionId = `end-turn-${Date.now()}`;
+    dispatch({ type: "SUBMIT_END_TURN_START", submissionId });
+
+    try {
+      const result = await Promise.resolve(onConfirmEndTurn?.());
+      if (result?.status === "error") {
+        throw new Error(result.message ?? "End turn failed.");
+      }
+      dispatch({ type: "SUBMIT_END_TURN_RESOLVE" });
+    } catch (error) {
+      dispatch({
+        type: "SUBMIT_END_TURN_REJECTED",
+        feedback: createInvalidFeedback(
+          "blocked",
+          error instanceof Error ? error.message : "End turn could not be completed.",
+          {
+            detail: outstandingPaymentSummary ?? "Try again once the board is ready.",
+          },
+        ),
+      });
+    }
+  }, [onConfirmEndTurn, outstandingEndTurnPayments.length, outstandingPaymentSummary]);
 
   useEffect(() => {
     if (activeGameOverOverlay) {
@@ -486,6 +553,61 @@ export function BoardShell({
     };
   }, [dispatch, invalidFeedback]);
 
+  useEffect(() => {
+    const autoEndTurnKey = `${playerView.game_id}:${playerView.turn_number}:${playerView.actions_taken}`;
+    const canAutoEndTurn =
+      isCurrentTurn &&
+      actionsLeft === 0 &&
+      activeBlockingOverlay === null &&
+      outstandingEndTurnPayments.length === 0 &&
+      interactionState.mode === "idle" &&
+      !interactionState.endTurnConfirmOpen &&
+      expandedOpponentId === null &&
+      !quitConfirmOpen &&
+      visibleSurrenderAnnouncement === null &&
+      !composerIntent &&
+      !playerView.game_over;
+
+    if (!canAutoEndTurn) {
+      if (!isCurrentTurn || actionsLeft > 0) {
+        autoEndTurnKeyRef.current = null;
+      }
+      return undefined;
+    }
+
+    if (autoEndTurnKeyRef.current === autoEndTurnKey) {
+      return undefined;
+    }
+
+    autoEndTurnKeyRef.current = autoEndTurnKey;
+    const timeoutId = window.setTimeout(() => {
+      void submitEndTurn();
+    }, 300);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      if (autoEndTurnKeyRef.current === autoEndTurnKey) {
+        autoEndTurnKeyRef.current = null;
+      }
+    };
+  }, [
+    actionsLeft,
+    activeBlockingOverlay,
+    composerIntent,
+    expandedOpponentId,
+    interactionState.endTurnConfirmOpen,
+    interactionState.mode,
+    isCurrentTurn,
+    outstandingEndTurnPayments.length,
+    playerView.actions_taken,
+    playerView.game_id,
+    playerView.game_over,
+    playerView.turn_number,
+    quitConfirmOpen,
+    submitEndTurn,
+    visibleSurrenderAnnouncement,
+  ]);
+
   function handleHandCardPress(cardId: string) {
     if (handDragController.shouldSuppressCardPress(cardId)) {
       return;
@@ -540,43 +662,7 @@ export function BoardShell({
   }
 
   async function handleConfirmEndTurn() {
-    if (outstandingEndTurnPayments.length > 0) {
-      dispatch({
-        type: "SUBMIT_END_TURN_REJECTED",
-        feedback: createInvalidFeedback(
-          "blocked",
-          "Pending payments are still unresolved.",
-          {
-            detail:
-              outstandingPaymentSummary ??
-              "The remaining players need to finish their payments before the turn can end.",
-          },
-        ),
-      });
-      return;
-    }
-
-    const submissionId = `end-turn-${Date.now()}`;
-    dispatch({ type: "SUBMIT_END_TURN_START", submissionId });
-
-    try {
-      const result = await Promise.resolve(onConfirmEndTurn?.());
-      if (result?.status === "error") {
-        throw new Error(result.message ?? "End turn failed.");
-      }
-      dispatch({ type: "SUBMIT_END_TURN_RESOLVE" });
-    } catch (error) {
-      dispatch({
-        type: "SUBMIT_END_TURN_REJECTED",
-        feedback: createInvalidFeedback(
-          "blocked",
-          error instanceof Error ? error.message : "End turn could not be completed.",
-          {
-            detail: outstandingPaymentSummary ?? "Try again once the board is ready.",
-          },
-        ),
-      });
-    }
+    await submitEndTurn();
   }
 
   function resolveIntentContext(cardId?: string): {

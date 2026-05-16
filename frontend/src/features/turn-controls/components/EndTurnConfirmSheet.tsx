@@ -59,7 +59,7 @@ export function EndTurnConfirmSheet({
               {outstandingPayments.map((payment) => (
                 <li key={payment.playerName}>
                   <span>{payment.playerName}</span>
-                  <strong>{payment.amountLabel}</strong>
+                  <strong>{payment.statusLabel}</strong>
                 </li>
               ))}
             </ul>
