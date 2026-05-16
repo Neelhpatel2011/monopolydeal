@@ -129,6 +129,31 @@ export function buildInvalidReleaseFeedback(args: {
 }): InvalidFeedback {
   const { card, targetId, validTargets, localPlayer, opponents } = args;
   const attemptedTarget = getAttemptedTargetCopy({ targetId, localPlayer, opponents });
+  const isTableauAttempt =
+    targetId === LOCAL_TABLEAU_TARGET_ID ||
+    targetId?.startsWith(`${LOCAL_TABLEAU_TARGET_ID}:`);
+
+  if (card.backendCardId === "action_hotel" && isTableauAttempt) {
+    const fullSetsWithoutHouse = localPlayer.propertySets.filter(
+      (set) =>
+        set.isComplete &&
+        set.backendColor !== "railroad" &&
+        set.backendColor !== "utility" &&
+        !(set.buildings ?? []).includes("House"),
+    );
+
+    if (fullSetsWithoutHouse.length > 0) {
+      return {
+        kind: "invalidTarget",
+        cardId: card.id,
+        targetId: targetId ?? undefined,
+        message: "Hotel needs a house first",
+        detail: `You have a full set (${fullSetsWithoutHouse
+          .map((set) => set.name)
+          .join(", ")}), but hotels can only be added to a completed set that already has a house. Play a House on that full set before adding a Hotel.`,
+      };
+    }
+  }
 
   return {
     kind: "invalidTarget",
@@ -145,7 +170,6 @@ export function getValidDragTargets(
   localPlayer: LocalPlayerState,
   opponents: OpponentSummary[],
 ): DragTargetDefinition[] {
-  void localPlayer;
   void opponents;
 
   const profile = deriveHandCardIntentProfile(card);
@@ -175,6 +199,49 @@ export function getValidDragTargets(
 
   function canAdvanceIntentFromCurrentChoices() {
     return intent.missing.every((field) => getFieldChoiceCount(field) > 0);
+  }
+
+  function getFieldOptionValues(field: ActionFieldKey): Set<string> {
+    const fieldView = card.actionOptions?.fieldOptions.find((entry) => entry.field === field);
+    return new Set(
+      fieldView?.options
+        .map((option) => option.value)
+        .filter((value): value is string => typeof value === "string") ?? [],
+    );
+  }
+
+  function addLocalTableauTarget(detail: string) {
+    if (targets.some((target) => target.id === LOCAL_TABLEAU_TARGET_ID)) {
+      return;
+    }
+
+    targets.push({
+      id: LOCAL_TABLEAU_TARGET_ID,
+      scope: "tableau",
+      label: "Your tableau",
+      detail,
+      field: null,
+      value: null,
+    });
+  }
+
+  function addSetChoiceTargets(field: "property_color" | "rent_color", detailPrefix: string) {
+    const optionValues = getFieldOptionValues(field);
+
+    for (const set of localPlayer.propertySets) {
+      if (!optionValues.has(set.backendColor)) {
+        continue;
+      }
+
+      targets.push({
+        id: getLocalTableauSetTargetId(set.id),
+        scope: "tableau",
+        label: set.name,
+        detail: `${detailPrefix} ${set.name}.`,
+        field,
+        value: set.backendColor,
+      });
+    }
   }
 
   if (profile.canBank) {
@@ -208,6 +275,24 @@ export function getValidDragTargets(
       field: null,
       value: null,
     });
+    addLocalTableauTarget("Drop here to commit this property to your tableau.");
+
+    if (intent.missing.includes("property_color")) {
+      addSetChoiceTargets("property_color", "Drop here to choose");
+    }
+  }
+
+  if (
+    profile.actionType === "play_action_non_counterable" &&
+    (card.backendCardId === "action_house" || card.backendCardId === "action_hotel")
+  ) {
+    if (intent.missing.includes("rent_color")) {
+      addSetChoiceTargets("rent_color", "Drop here to add this building to");
+    }
+
+    if (getFieldChoiceCount("rent_color") > 0) {
+      addLocalTableauTarget("Drop here to choose a completed set for this building.");
+    }
   }
 
   if (

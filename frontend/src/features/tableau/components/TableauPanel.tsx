@@ -67,13 +67,15 @@ export function TableauPanel({
           }
         }}
         onClick={(event) => {
-          if (isTargetable && event.target === event.currentTarget) {
+          const target = event.target as HTMLElement;
+          const setTarget = target.closest(`[data-board-target-id^="${LOCAL_TABLEAU_TARGET_ID}:"]`);
+          if (isTargetable && !setTarget) {
             onTargetTableau?.();
           }
         }}
       >
-        <div className="tableau-panel__viewport">
-          <div className="tableau-panel__sets" aria-label="Property sets">
+        <div className="tableau-panel__viewport" data-board-target-id={LOCAL_TABLEAU_TARGET_ID}>
+          <div className="tableau-panel__sets" aria-label="Property sets" data-board-target-id={LOCAL_TABLEAU_TARGET_ID}>
             {sets.map((set) => {
               const setTargetId = getLocalTableauSetTargetId(set.id);
 
