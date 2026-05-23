@@ -8556,45 +8556,25 @@
   color: #fff7ea;
 }
 
-.game-log-panel {
+.game-log-modal {
   display: grid;
   gap: 10px;
-  padding: 12px;
-  border: 3px solid var(--ink-strong);
-  border-radius: 22px;
-  background: rgba(255, 252, 245, 0.94);
-  box-shadow: 5px 5px 0 rgba(24, 22, 20, 0.86);
+  width: min(560px, calc(100vw - 32px));
+  max-height: min(80vh, 680px);
 }
 
-.game-log-panel__header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+.game-log-modal__header {
+  align-items: flex-start;
 }
 
-.game-log-panel__header p,
-.game-log-panel__header span,
-.game-log-panel__empty {
-  margin: 0;
+.game-log-modal__body {
+  display: grid;
+  gap: 10px;
+  min-height: 160px;
+  overflow: auto;
 }
 
-.game-log-panel__header p {
-  font-size: 0.84rem;
-  font-weight: 950;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-strong);
-}
-
-.game-log-panel__header span,
-.game-log-panel__empty {
-  color: rgba(53, 48, 41, 0.7);
-  font-size: 0.76rem;
-  font-weight: 750;
-}
-
-.game-log-panel__list {
+.game-log-modal__list {
   display: grid;
   gap: 7px;
   margin: 0;
@@ -8602,7 +8582,7 @@
   list-style: none;
 }
 
-.game-log-panel__entry {
+.game-log-modal__entry {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   align-items: start;
@@ -8614,7 +8594,7 @@
   line-height: 1.24;
 }
 
-.game-log-panel__turn {
+.game-log-modal__turn {
   display: inline-grid;
   place-items: center;
   min-width: 34px;
@@ -8627,6 +8607,13 @@
   font-weight: 950;
 }
 
+.game-log-modal__empty {
+  margin: 0;
+  color: rgba(53, 48, 41, 0.7);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
 @media (max-width: 900px) {
   .drop-zone-panel__latest {
     gap: 5px;
@@ -8637,19 +8624,17 @@
     max-width: 20ch;
   }
 
-  .game-log-panel {
+  .game-log-modal {
     gap: 8px;
-    padding: 10px;
-    border-width: 2px;
-    border-radius: 18px;
-    box-shadow: 4px 4px 0 rgba(24, 22, 20, 0.82);
+    width: min(100vw - 20px, 520px);
+    max-height: min(84vh, 620px);
   }
 
-  .game-log-panel__list {
+  .game-log-modal__list {
     gap: 6px;
   }
 
-  .game-log-panel__entry {
+  .game-log-modal__entry {
     font-size: 0.76rem;
   }
 }

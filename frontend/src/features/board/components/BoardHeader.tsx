@@ -7,12 +7,14 @@ type BoardHeaderProps = {
   turnControlState: EndTurnControlState;
   onRequestEndTurn: () => void;
   onRequestSurrender: () => void;
+  onRequestGameLog: () => void;
 };
 
 export function BoardHeader({
   turnControlState,
   onRequestEndTurn,
   onRequestSurrender,
+  onRequestGameLog,
 }: BoardHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -58,7 +60,14 @@ export function BoardHeader({
 
         {menuOpen ? (
           <div className="board-header__menu-panel">
-            <button className="board-header__menu-item" type="button">
+            <button
+              className="board-header__menu-item"
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                onRequestGameLog();
+              }}
+            >
               Game Log
             </button>
             <button

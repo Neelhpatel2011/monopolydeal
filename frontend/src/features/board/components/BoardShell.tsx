@@ -55,7 +55,7 @@ import { DiscardFlowSheet } from "./DiscardFlowSheet";
 import { QuitGameConfirmSheet } from "./QuitGameConfirmSheet";
 import { SurrenderNoticeSheet } from "./SurrenderNoticeSheet";
 import { DrawCardAnimation } from "./DrawCardAnimation";
-import { GameLogPanel } from "./GameLogPanel";
+import { GameLogModal } from "./GameLogModal";
 import { formatGameLogLine } from "../model/gameLog";
 import { getPendingPaymentSelectionSummary } from "../../../integration/backend/adapters";
 import { deriveHandCardIntentProfile } from "../model/card-intents";
@@ -157,6 +157,7 @@ export function BoardShell({
   const activeGameOverEmphasisLabel = activeGameOverOverlay?.emphasisLabel ?? null;
   const [composerIntent, setComposerIntent] = useState<typeof activeIntent>(null);
   const [isPromptSubmitting, setIsPromptSubmitting] = useState(false);
+  const [isGameLogOpen, setIsGameLogOpen] = useState(false);
   const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
   const [isSurrendering, setIsSurrendering] = useState(false);
   const visibleSurrenderAnnouncement = useMemo(
@@ -996,6 +997,7 @@ export function BoardShell({
           turnControlState={endTurnControlState}
           onRequestEndTurn={handleRequestEndTurn}
           onRequestSurrender={handleRequestSurrender}
+          onRequestGameLog={() => setIsGameLogOpen(true)}
         />
         {activeGameOverOverlay && isGameOverBrowseMode ? (
           <section className="board-game-over-banner" role="status" aria-live="polite">
@@ -1033,7 +1035,6 @@ export function BoardShell({
           onPlayZonePress={handlePlayZonePress}
           latestPlay={latestPlayAnnouncement}
         />
-        <GameLogPanel entries={playerView.game_log} localPlayerId={localPlayer.id} />
         <DrawCardAnimation
           currentPlayerId={playerView.current_player_id}
           turnNumber={playerView.turn_number}
@@ -1120,6 +1121,13 @@ export function BoardShell({
         isSubmitting={isSurrendering}
         onCancel={() => setQuitConfirmOpen(false)}
         onConfirm={handleConfirmSurrender}
+      />
+
+      <GameLogModal
+        isOpen={isGameLogOpen}
+        entries={playerView.game_log}
+        localPlayerId={localPlayer.id}
+        onClose={() => setIsGameLogOpen(false)}
       />
 
       <BoardOverlayHost
